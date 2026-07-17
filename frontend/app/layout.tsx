@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  variable: "--font-inter",
 });
 
-const outfit = Outfit({
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
-  variable: "--font-outfit",
 });
 
 export const metadata: Metadata = {
-  title: "Asala Hub - Offline-First E-Learning PWA",
-  description: "Empowering education anywhere, anytime, completely offline.",
+  title: "Asala Hub — Offline-First Learning Platform",
+  description: "Empowering education anywhere, anytime, with robust offline capabilities.",
 };
 
 export default function RootLayout({
@@ -23,60 +23,54 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable} h-full dark`}>
-      <body className="min-h-full flex flex-col bg-[#0b0c10] text-[#c5c6c7] font-sans antialiased">
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <body className="h-full bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-zinc-50 flex flex-col transition-colors duration-300">
+        
         {/* Navigation Bar */}
-        <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0b0c10]/70 backdrop-blur-md">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 items-center justify-between">
-              
-              {/* Brand Logo & Name */}
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center font-bold text-white text-lg shadow-lg shadow-purple-500/20">
-                  A
-                </div>
-                <span className="font-outfit text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent tracking-wide">
-                  Asala Hub
-                </span>
+        <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/70 dark:bg-zinc-950/70 border-b border-slate-200/80 dark:border-zinc-800/80 transition-colors duration-300">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
               </div>
+              <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                Asala Hub
+              </span>
+            </div>
 
-              {/* Navigation Placeholder Links */}
-              <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
-                <a href="#" className="hover:text-white transition-colors duration-200">Dashboard</a>
-                <a href="#" className="hover:text-white transition-colors duration-200">Courses</a>
-                <a href="#" className="hover:text-white transition-colors duration-200">Library</a>
+            {/* Navigation links & status */}
+            <div className="flex items-center space-x-6">
+              <nav className="hidden md:flex space-x-1">
+                <a href="#" className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-100/50 dark:hover:bg-zinc-800/50 transition-all">
+                  Dashboard
+                </a>
+                <a href="#" className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-100/50 dark:hover:bg-zinc-800/50 transition-all">
+                  Courses
+                </a>
+                <a href="#" className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-100/50 dark:hover:bg-zinc-800/50 transition-all">
+                  Assignments
+                </a>
               </nav>
 
-              {/* Status & Action Area */}
-              <div className="flex items-center gap-4">
-                {/* Sync Indicator */}
-                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold tracking-wider uppercase select-none">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  Online
-                </div>
-                
-                {/* Profile Placeholder */}
-                <div className="h-8 w-8 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center font-semibold text-xs text-slate-300">
-                  JD
-                </div>
+              {/* Status Badge */}
+              <div className="flex items-center space-x-2 bg-emerald-500/10 dark:bg-emerald-500/5 border border-emerald-500/20 px-3.5 py-1.5 rounded-full text-emerald-600 dark:text-emerald-400 text-xs font-semibold select-none shadow-sm shadow-emerald-500/5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>Online</span>
               </div>
-
             </div>
           </div>
         </header>
 
-        {/* Main Content Area */}
-        <main className="flex-grow flex flex-col">
+        {/* Content Body */}
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {children}
         </main>
-
-        {/* Footer */}
-        <footer className="border-t border-white/5 bg-[#08090d] py-6 text-center text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} Asala Hub. Built for offline resilience.</p>
-        </footer>
       </body>
     </html>
   );
