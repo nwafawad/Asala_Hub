@@ -1,21 +1,13 @@
-from app.models.base import TimestampedUUIDModel
-from app.models.user import User, UserRole
-from app.models.course import Course
-from app.models.module import Module, ModuleContentType
-from app.models.assignment import Assignment
-from app.models.submission import Submission, SyncStatus
-from app.models.transaction import TransactionLog
+from app.models.entities import User, Course, Module, Assignment, Submission, TransactionLog, UserRole, ContentType, SyncStatus
 
-# Ensure all models are loaded so SQLModel.metadata is fully populated
 __all__ = [
-    "TimestampedUUIDModel",
     "User",
-    "UserRole",
     "Course",
     "Module",
-    "ModuleContentType",
     "Assignment",
     "Submission",
+    "TransactionLog",
+    "UserRole",
+    "ContentType",
     "SyncStatus",
-    "TransactionLog"
 ]
