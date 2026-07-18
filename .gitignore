@@ -4,6 +4,7 @@ Thumbs.db
 db.sqlite3
 
 # Environments
+.env
 .env.local
 .env.development.local
 .env.test.local
@@ -39,3 +40,13 @@ yarn-error.log*
 # Docker
 .docker/
 *.log
+asala-hub-3week-sprint-plan.md
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
