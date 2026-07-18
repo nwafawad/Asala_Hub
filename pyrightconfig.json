@@ -1,0 +1,10 @@
+{
+  "venvPath": "/Users/nawafawad/Desktop/Asala_Hub/backend",
+  "venv": "venv",
+  "include": [
+    "backend"
+  ],
+  "extraPaths": [
+    "backend"
+  ]
+}

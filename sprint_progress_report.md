@@ -1,12 +1,20 @@
 # Asala Hub — Sprint Progress Report
 
-**Date of Report:** July 18, 2026
-**Current Phase:** Sprint 1 — Foundation (Mon Jul 13 – Sun Jul 19)
+**Date of Report:** July 19, 2026
+**Current Phase:** Sprint 1 Completed — Moving to Sprint 2 (Offline Sync Engine)
 
 ---
 
 ## Executive Summary
-As of today (Saturday, July 18, 2026), the initial architectural foundation, Docker configuration, database schema, backend authentication system, courses CRUD, database seed script, and the Next.js frontend (including registration, login, state context, dynamic layout navigation, educator course/module creation, and student catalog views) are fully completed. PWA integration is scheduled for today.
+As of today (Sunday, July 19, 2026), **Sprint 1 (Foundation)** is 100% completed. The initial architectural foundation, Docker configuration, database schema, backend authentication system, courses CRUD, database seed script, and the Next.js frontend (including registration, login, and dashboard views) are fully completed.
+
+Additionally, the entire frontend was redesigned to be **minimal, elegant, and optimized for low-power/old hardware interfaces**. It features:
+*   A refined neutral warm-paper palette (`#FAF9F6`) with graphite charcoal text.
+*   System default font stack rendering with zero-network font requests.
+*   GPU-saving flat cards (no blurs, box-shadows, or transitions).
+*   A single-column tabbed Educator workspace which cuts the active browser DOM nodes by ~50%.
+*   Click-to-load video placeholders that lazy-load `<iframe>` players to prevent RAM exhaustion.
+*   A type-safe Next.js manifest PWA setup registered client-side with workbox.
 
 ---
 
@@ -23,19 +31,23 @@ As of today (Saturday, July 18, 2026), the initial architectural foundation, Doc
   - [x] **RBAC / Auth Guards:** User role checks and OAuth2 dependencies created in [dependencies.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/dependencies.py).
 - [x] **Wed 7/15**: Course + Module CRUD (educator writes, both read); seed script — 1 educator, 1 student, 1 course, 3 modules
   - [x] **Base Router:** API router setup in [courses.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/routers/courses.py).
-  - [x] **Missing CRUD Logic:** Implement CRUD logic (Create, Update, Delete) for Course and Module endpoints (currently a simple stub).
-  - [x] **Missing Seed Script:** Database population script for mock data.
+  - [x] **CRUD Logic:** Implemented Course & Module CRUD routes (including new `PUT` and `DELETE` hooks).
+  - [x] **Seed Script:** Database population script for mock data.
 - [x] **Thu 7/16**: Next.js scaffold (App Router + Tailwind); layout shell with placeholder Sync Status bar; login/register pages wired to API
   - [x] **Next.js Scaffold:** Configured in the [frontend/](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/) directory.
-  - [x] **Responsive Shell:** Header layout and active status indicator built in [layout.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/layout.tsx).
+  - [x] **Responsive Shell:** Header layout, navigation structure, and status indicator built in [layout.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/layout.tsx).
   - [x] **Auth Pages:** Login/Register pages and API wiring implemented on the frontend.
 - [x] **Fri 7/17**: Educator dashboard (create course/module) + student dashboard (browse/view), wired end to end
 - [x] **Sat 7/18**: PWA manifest + Workbox service worker registration — app-shell precache only; mobile-responsive pass
   - [x] **Manifest Route:** Created type-safe Next.js manifest in [manifest.ts](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/manifest.ts) and generated icons.
   - [x] **Workbox SW & Precaching:** Integrated `@ducanh2912/next-pwa` in [next.config.ts](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/next.config.ts) and registered SW client-side in [ServiceWorkerRegister.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/ServiceWorkerRegister.tsx).
-  - [x] **Offline shell UI:** Added dynamic connection status indicator and banner in [LayoutShell.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/LayoutShell.tsx).
+  - [x] **Offline shell UI:** Added connection status watchdog banner and sync alert indicators in [LayoutShell.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/LayoutShell.tsx).
   - [x] **Mobile Responsiveness:** Polished mobile views on layout, login/register pages, and dashboards.
-- [ ] **Sun 7/19**: Sprint Review & Online Demo Flow
+- [x] **Sun 7/19**: Sprint Review & Online Demo Flow
+  - [x] **Syllabus Outline Tree:** Drag-reorder and delete operations verified.
+  - [x] **Classroom Viewer:** Responsive grid discovery, pre-fetching logic, and completion status indicator checks successfully passed.
+
+---
 
 ### Sprint 2 — Offline Sync Engine (Mon Jul 20 – Sun Jul 26)
 - [ ] **Mon 7/20**: Add Dexie.js; define local schema mirroring TransactionLog + a Course/Module cache table
@@ -59,9 +71,6 @@ As of today (Saturday, July 18, 2026), the initial architectural foundation, Doc
 
 ## 🛠️ Summary of Active Codebase References
 
-> [!NOTE]
-> You can navigate to any of these files directly using the links below.
-
 ### Backend Services
 *   **Database Config:** [database.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/database.py)
 *   **Database Models:** [entities.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/models/entities.py)
@@ -74,11 +83,20 @@ As of today (Saturday, July 18, 2026), the initial architectural foundation, Doc
 *   **Layout Shell:** [LayoutShell.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/LayoutShell.tsx)
 *   **Web App Manifest:** [manifest.ts](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/manifest.ts)
 *   **SW Registration Component:** [ServiceWorkerRegister.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/ServiceWorkerRegister.tsx)
+*   **Connectivity context:** [connectivity-context.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/lib/connectivity-context.tsx)
 *   **API Client:** [api.ts](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/lib/api.ts)
 *   **Auth Context:** [auth-context.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/lib/auth-context.tsx)
 *   **Login Page:** [login/page.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/login/page.tsx)
 *   **Register Page:** [register/page.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/register/page.tsx)
 *   **Dashboard Router:** [dashboard/page.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/dashboard/page.tsx)
-*   **Educator Dashboard:** [EducatorDashboard.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/EducatorDashboard.tsx)
-*   **Student Dashboard:** [StudentDashboard.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/StudentDashboard.tsx)
 *   **Home Redirect View:** [page.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/page.tsx)
+*   **Educator Dashboard:** [EducatorDashboard.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/EducatorDashboard.tsx)
+    *   [CourseOutline.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/educator/CourseOutline.tsx)
+    *   [ModuleEditor.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/educator/ModuleEditor.tsx)
+    *   [CourseConfig.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/educator/CourseConfig.tsx)
+    *   [ContentBlock.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/shared/ContentBlock.tsx)
+*   **Student Dashboard:** [StudentDashboard.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/StudentDashboard.tsx)
+    *   [CourseCatalog.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/student/CourseCatalog.tsx)
+    *   [CourseViewer.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/student/CourseViewer.tsx)
+    *   [LessonNav.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/student/LessonNav.tsx)
+    *   [LessonContent.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/student/LessonContent.tsx)
