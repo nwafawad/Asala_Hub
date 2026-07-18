@@ -1,74 +1,104 @@
-# Asala Hub — Day 1 Scaffold
+# Asala Hub — Offline-First E-Learning PWA
 
-An offline-first e-learning PWA. This is the Day 1 prototype skeleton featuring a Next.js frontend, a FastAPI backend with SQLModel, and a PostgreSQL database containerized via Docker.
+Asala Hub is a Progressive Web Application (PWA) designed to provide continuous learning resilience. It allows educators to create structured courses and modules, and students to browse materials and submit assignments—completely offline.
+
+## System Features (Sprint 1 Completed)
+
+- **Containerized Stack**: Multi-container environment running PostgreSQL, FastAPI, and Next.js (App Router + Tailwind CSS).
+- **Secure Authentication**: JWT-based user registration and login with Role-Based Access Control (Educators vs. Students).
+- **Course & Module Management**: Full CRUD capabilities for creating courses and modules.
+- **Web App Manifest & Precaching**: Natively integrated PWA Manifest and Workbox service worker precaching of the app shell (JS, CSS, HTML, fonts, and assets).
+- **Graceful Offline UI**: Dynamic network status listeners (`navigator.onLine` + browser events) with connection indicator dots and warning banners when offline.
+- **Mobile-Responsive Sizing**: Fully optimized layouts across common smartphone screen widths (375px – 428px).
+
+---
 
 ## Project Structure
 
 ```
-asala-hub/
-├── docker-compose.yml
-├── .env.example
-├── .gitignore
-├── README.md
-├── backend/
+Asala_Hub/
+├── docker-compose.yml       # DB, Backend, and Frontend containers
+├── .env.example             # Template environment variables
+├── README.md                # System documentation
+├── sprint_progress_report.md# Sprint tracker checklist
+├── backend/                 # FastAPI + SQLModel backend service
 │   ├── Dockerfile
 │   ├── requirements.txt
-│   ├── alembic.ini
-│   ├── alembic/
-│   └── app/
-└── frontend/
+│   ├── alembic.ini          # Alembic migrations configuration
+│   ├── alembic/             # Migration history versions
+│   └── app/                 # FastAPI router and schema controllers
+└── frontend/                # Next.js App Router client app
     ├── Dockerfile
     ├── package.json
-    └── app/
+    ├── next.config.ts       # next-pwa compiler configurations
+    ├── app/                 # Main routers (with manifest.ts)
+    └── components/          # Shell and dashboard layout views
 ```
+
+---
 
 ## Getting Started
 
 ### Prerequisites
 
 Ensure you have the following installed:
-- [Docker](https://www.docker.com/products/docker-desktop) and Docker Compose.
-- [Node.js](https://nodejs.org/) (optional, for local development outside containers).
-- [Python 3.11+](https://www.python.org/) (optional, for local backend development).
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) (includes Docker Compose)
+- [Node.js](https://nodejs.org/) (optional, for local development/build testing outside containers)
 
-### Setup and Running
+### Docker Environment Setup
 
-1. **Clone/open the repository**:
-   Navigate to the root directory `Asala_Hub/`.
-
-2. **Set up Environment Variables**:
+1. **Set up Environment Variables**:
    Copy `.env.example` to `.env`:
    ```bash
    cp .env.example .env
    ```
    *(A pre-configured `.env` has already been generated in the root during setup)*.
 
-3. **Start the containers**:
-   Run the following command to build and run all services:
+2. **Start the Docker Stack**:
+   Build and start the PostgreSQL database, FastAPI backend, and Next.js frontend services:
    ```bash
-   docker compose up --build
+   docker compose up -d --build
    ```
+   *(Use `-V` / `--renew-anon-volumes` if you've added new dependencies to refresh container node_modules volumes: `docker compose up -d -V --build`)*.
 
-4. **Verify connection**:
-   - Frontend is running at: [http://localhost:3000](http://localhost:3000)
-   - Backend is running at: [http://localhost:8000](http://localhost:8000)
-   - Database is accessible via container port `5432`
+3. **Verify running containers**:
+   - Next.js Frontend: [http://localhost:3000](http://localhost:3000)
+   - FastAPI Backend: [http://localhost:8000](http://localhost:8000)
+   - FastAPI API Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### Running Alembic Migrations
-
-To apply database migrations:
-
-1. **Generate the migration script** (already initialized):
-   ```bash
-   docker compose exec backend alembic revision --autogenerate -m "Initial schema"
-   ```
-
-2. **Apply the migrations to PostgreSQL**:
+4. **Initialize Database Tables (Migrations)**:
+   Apply migration head to configure database schemas:
    ```bash
    docker compose exec backend alembic upgrade head
    ```
 
-3. **Verify table structure inside the database**:
+5. **Seed Initial Mock Data**:
+   Populate initial mock data (creates 1 educator, 1 student, 1 course, and 3 modules):
    ```bash
-   docker compose exec db psql -U postgres -d asalahub -c "\dt"
+   docker compose exec backend python -m app.scripts.seed
    ```
+
+---
+
+## Running PWA Local Production Build
+
+To test service worker caching, installability, and full offline capabilities, run the Next.js production build:
+
+1. **Install dependencies and compile**:
+   ```bash
+   cd frontend
+   npm install
+   npm run build
+   ```
+   *(This triggers `next build --webpack` to generate the custom service worker `/sw.js` and Workbox caching scripts in the `public/` folder)*.
+
+2. **Start the production server**:
+   ```bash
+   npm run start
+   ```
+
+3. **Test Offline Rendering**:
+   - Open browser to `http://localhost:3000`.
+   - Open DevTools > Network tab, and check the **Offline** checkbox.
+   - Reload the page. The app shell will continue to render.
+   - The layout banner will notify you: *You're offline — some data may not be available*.

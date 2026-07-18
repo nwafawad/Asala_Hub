@@ -30,7 +30,11 @@ As of today (Saturday, July 18, 2026), the initial architectural foundation, Doc
   - [x] **Responsive Shell:** Header layout and active status indicator built in [layout.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/layout.tsx).
   - [x] **Auth Pages:** Login/Register pages and API wiring implemented on the frontend.
 - [x] **Fri 7/17**: Educator dashboard (create course/module) + student dashboard (browse/view), wired end to end
-- [ ] **Sat 7/18** *(Today)*: PWA manifest + Workbox service worker registration — app-shell precache only; mobile-responsive pass
+- [x] **Sat 7/18**: PWA manifest + Workbox service worker registration — app-shell precache only; mobile-responsive pass
+  - [x] **Manifest Route:** Created type-safe Next.js manifest in [manifest.ts](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/manifest.ts) and generated icons.
+  - [x] **Workbox SW & Precaching:** Integrated `@ducanh2912/next-pwa` in [next.config.ts](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/next.config.ts) and registered SW client-side in [ServiceWorkerRegister.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/ServiceWorkerRegister.tsx).
+  - [x] **Offline shell UI:** Added dynamic connection status indicator and banner in [LayoutShell.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/LayoutShell.tsx).
+  - [x] **Mobile Responsiveness:** Polished mobile views on layout, login/register pages, and dashboards.
 - [ ] **Sun 7/19**: Sprint Review & Online Demo Flow
 
 ### Sprint 2 — Offline Sync Engine (Mon Jul 20 – Sun Jul 26)
@@ -68,6 +72,8 @@ As of today (Saturday, July 18, 2026), the initial architectural foundation, Doc
 ### Frontend Client
 *   **Root Layout:** [layout.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/layout.tsx)
 *   **Layout Shell:** [LayoutShell.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/LayoutShell.tsx)
+*   **Web App Manifest:** [manifest.ts](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/manifest.ts)
+*   **SW Registration Component:** [ServiceWorkerRegister.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/components/ServiceWorkerRegister.tsx)
 *   **API Client:** [api.ts](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/lib/api.ts)
 *   **Auth Context:** [auth-context.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/lib/auth-context.tsx)
 *   **Login Page:** [login/page.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/login/page.tsx)
