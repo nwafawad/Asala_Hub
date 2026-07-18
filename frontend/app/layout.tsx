@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { LayoutShell } from "@/components/LayoutShell";
 
-const inter = Inter({
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  variable: "--font-inter",
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 const outfit = Outfit({
@@ -24,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable} h-full dark`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} h-full dark`}>
       <body className="min-h-full flex flex-col bg-[#0b0c10] text-[#c5c6c7] font-sans antialiased">
         <LayoutShell>{children}</LayoutShell>
       </body>
