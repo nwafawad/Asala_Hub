@@ -2,136 +2,188 @@
 
 import { useEffect, useState } from "react";
 
-interface HealthStatus {
+interface HealthResponse {
   status: string;
-  [key: string]: any;
 }
 
-export default function HomePage() {
-  const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function Home() {
+  const [health, setHealth] = useState<HealthResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchHealth = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("http://localhost:8000/health");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      setHealth(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to reach backend API");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        setLoading(true);
+        // Next.js client-side call to the backend API URL
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const res = await fetch(`${apiUrl}/health`);
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const data = await res.json();
+        setHealth(data);
+        setError(null);
+      } catch (err: any) {
+        console.error("Health check fetch failed:", err);
+        setError(err.message || "Failed to connect to the backend server.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchHealth();
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col justify-center items-center px-4 py-16 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))]">
-      <div className="w-full max-w-2xl text-center space-y-8">
+    <div className="space-y-12 py-6">
+      
+      {/* Hero Welcome Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-zinc-950 text-white p-8 md:p-12 shadow-2xl border border-indigo-500/20">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl"></div>
         
-        {/* Hero Section */}
-        <div className="space-y-4">
-          <h1 className="font-outfit text-4xl sm:text-5xl font-extrabold tracking-tight text-white leading-none">
-            Welcome to <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Asala Hub</span>
+        <div className="relative z-10 space-y-4 max-w-2xl">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-400/20">
+            Sprint 1: Architecture & Scaffold
+          </span>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
+            Education has <br />
+            <span className="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-300 bg-clip-text text-transparent">
+              No Boundaries
+            </span>
           </h1>
-          <p className="max-w-md mx-auto text-slate-400 text-sm sm:text-base leading-relaxed">
-            Day 1 Scaffold: Testing cross-container database integration and application framework setup.
+          <p className="text-slate-300 text-lg leading-relaxed">
+            Welcome to Asala Hub's initial skeleton. We are establishing the bedrock structure for a high-performance, offline-capable learning experience.
           </p>
         </div>
+      </div>
 
-        {/* Integration Status Card */}
-        <div className="relative group rounded-2xl border border-white/5 bg-[#12131a]/85 p-8 shadow-2xl backdrop-blur-sm overflow-hidden">
-          {/* Decorative background glow */}
-          <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-indigo-500/10 blur-3xl group-hover:bg-indigo-500/20 transition-all duration-500"></div>
-          
-          <div className="relative space-y-6">
-            <h2 className="font-outfit text-lg font-semibold text-white tracking-wide">
-              Backend Integration Status
+      {/* Connection Verification Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* API Connection Health Panel */}
+        <div className="lg:col-span-2 bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-slate-200/50 dark:border-zinc-800/50 flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-zinc-100 flex items-center space-x-2">
+              <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>Backend Connectivity Test</span>
             </h2>
-
-            {/* API Fetch States */}
-            {loading && (
-              <div className="flex flex-col items-center justify-center py-6 space-y-3">
-                <div className="h-8 w-8 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin"></div>
-                <span className="text-xs text-slate-400 font-medium">Checking connection to http://localhost:8000/health...</span>
-              </div>
-            )}
-
-            {!loading && error && (
-              <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-5 text-left space-y-3">
-                <div className="flex items-center gap-3 text-rose-400 font-semibold text-sm">
-                  <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <p className="text-sm text-slate-500 dark:text-zinc-400 mt-2">
+              Proving communication between Next.js and FastAPI containerized services.
+            </p>
+            
+            {/* Status display */}
+            <div className="mt-6 p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto border border-slate-800 min-h-[100px] flex items-center justify-center">
+              {loading ? (
+                <div className="flex items-center space-x-2 text-indigo-400">
+                  <svg className="animate-spin h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Backend Unreachable</span>
+                  <span>Pinging API server...</span>
                 </div>
-                <p className="text-xs text-rose-300/80 leading-relaxed">
-                  Could not fetch health check from <code className="bg-rose-950/40 px-1 py-0.5 rounded text-rose-300 font-mono text-[11px]">http://localhost:8000/health</code>. Ensure that Docker containers are running and the port mapping is active.
-                </p>
-                <div className="pt-2">
-                  <button 
-                    onClick={fetchHealth}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-semibold transition-colors"
-                  >
-                    Retry Connection
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {!loading && health && (
-              <div className="space-y-4">
-                <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-5 text-left flex items-start gap-4">
-                  <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-emerald-400 text-sm">Successfully Connected</h3>
-                    <p className="text-xs text-emerald-300/80">
-                      The Next.js container has successfully resolved communication with the FastAPI container!
-                    </p>
+              ) : error ? (
+                <div className="space-y-2 text-rose-400 w-full text-left">
+                  <div className="font-bold">❌ Connection Failed</div>
+                  <div className="opacity-95">{error}</div>
+                  <div className="text-[10px] text-slate-500 mt-2">
+                    Check if the docker services are fully up: <code className="bg-slate-800 px-1 py-0.5 rounded text-slate-300">docker compose up</code>.
                   </div>
                 </div>
-
-                {/* API Payload View */}
-                <div className="text-left space-y-2">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Payload Response</span>
-                  <pre className="rounded-xl border border-white/5 bg-black/40 p-4 font-mono text-xs text-indigo-300 overflow-x-auto">
+              ) : (
+                <div className="w-full text-left space-y-2">
+                  <div className="text-emerald-400 font-bold flex items-center space-x-1">
+                    <span>⚡ Connection Successful</span>
+                  </div>
+                  <pre className="text-slate-300 bg-slate-950 p-3 rounded-lg overflow-x-auto">
                     {JSON.stringify(health, null, 2)}
                   </pre>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-xs text-slate-500 dark:text-zinc-400">
+            <span>Target: <code className="bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono">/health</code></span>
+            <span>Method: <code className="bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono">GET</code></span>
           </div>
         </div>
 
-        {/* Next Steps / Features */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-          <div className="p-5 rounded-xl border border-white/5 bg-[#12131a]/40 hover:bg-[#12131a]/60 transition-colors">
-            <h4 className="font-semibold text-white text-sm mb-1">SQLModel & Alembic</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Schema migrations ready. Postgres initialized with 6 core tables.
+        {/* Database Status Panel */}
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-slate-200/50 dark:border-zinc-800/50 flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-zinc-100 flex items-center space-x-2">
+              <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+              </svg>
+              <span>Database Schema</span>
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-zinc-400 mt-2">
+              PostgreSQL schema entities configured for SQLModel auto-migration.
             </p>
+            
+            <ul className="mt-6 space-y-2">
+              {["User", "Course", "Module", "Assignment", "Submission", "TransactionLog"].map((table) => (
+                <li key={table} className="flex items-center justify-between text-sm px-3 py-2 rounded-lg bg-slate-50 dark:bg-zinc-800/30 border border-slate-100 dark:border-zinc-800/30">
+                  <span className="font-semibold text-slate-700 dark:text-zinc-300">{table}</span>
+                  <span className="text-xs bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full font-medium">
+                    UUID Key
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="p-5 rounded-xl border border-white/5 bg-[#12131a]/40 hover:bg-[#12131a]/60 transition-colors">
-            <h4 className="font-semibold text-white text-sm mb-1">Docker Environment</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Hot-reloaded frontend, backend and database services configured.
-            </p>
+
+          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-zinc-800 text-xs text-slate-500 dark:text-zinc-400">
+            <span>Provider: PostgreSQL 16</span>
           </div>
         </div>
 
       </div>
+
+      {/* Feature Preview Grid */}
+      <div>
+        <h3 className="text-lg font-bold text-slate-800 dark:text-zinc-200 mb-6">Upcoming Offline Features</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/50 dark:border-zinc-800/50 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h4 className="font-bold text-slate-800 dark:text-zinc-100">Local Transaction Log</h4>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+              Mutations are captured locally in IndexedDB as append-only transaction logs while network connectivity is unavailable.
+            </p>
+          </div>
+          <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/50 dark:border-zinc-800/50 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </div>
+            <h4 className="font-bold text-slate-800 dark:text-zinc-100">Sync Manager</h4>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+              When network connection returns, the Sync Engine pushes pending transactions in order, resolving conflicts gracefully.
+            </p>
+          </div>
+          <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/50 dark:border-zinc-800/50 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-600 dark:text-pink-400 flex items-center justify-center">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+            <h4 className="font-bold text-slate-800 dark:text-zinc-100">Asset Cache</h4>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+              Service worker caching for offline access to static scripts, styles, and structured text lessons.
+            </p>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }
