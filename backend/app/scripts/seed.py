@@ -42,7 +42,7 @@ def seed_db():
             print(f"Student {student.email} already exists. Skipping.")
 
         # 3. Seed Course
-        course_title = "Introduction to Islamic Studies"
+        course_title = "Introduction to Computer Science"
         course = session.exec(
             select(Course).where(Course.title == course_title, Course.educator_id == educator.id)
         ).first()

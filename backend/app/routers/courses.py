@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
@@ -50,15 +50,20 @@ def create_course(
 def list_courses(
     skip: int = 0,
     limit: int = 100,
+    educator_id: Optional[uuid.UUID] = None,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     """
     List all courses.
     
+    Optional query parameter `educator_id` filters courses owned by a specific educator.
     Any authenticated user (students and educators) can read the list of courses.
     """
-    courses = session.exec(select(Course).offset(skip).limit(limit)).all()
+    query = select(Course)
+    if educator_id is not None:
+        query = query.where(Course.educator_id == educator_id)
+    courses = session.exec(query.offset(skip).limit(limit)).all()
     return courses
 
 
