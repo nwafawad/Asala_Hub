@@ -63,21 +63,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-center items-center px-4 py-16 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.12),rgba(255,255,255,0))]">
-      <div className="w-full max-w-md space-y-8">
+    <div className="flex-1 flex flex-col justify-center items-center px-4 py-8 sm:py-16 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.12),rgba(255,255,255,0))]">
+      <div className="w-full max-w-md space-y-6 sm:space-y-8">
         
         {/* Title Block */}
         <div className="text-center space-y-2">
-          <h2 className="font-outfit text-3xl font-extrabold tracking-tight text-white">
+          <h2 className="font-outfit text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
             Welcome back to <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Asala Hub</span>
           </h2>
-          <p className="text-sm text-slate-400">
+          <p className="text-xs sm:text-sm text-slate-400">
             Sign in to access your dashboard
           </p>
         </div>
 
         {/* Card Form */}
-        <div className="rounded-2xl border border-white/5 bg-[#12131a]/80 p-8 shadow-2xl backdrop-blur-sm">
+        <div className="rounded-2xl border border-white/5 bg-[#12131a]/80 p-6 sm:p-8 shadow-2xl backdrop-blur-sm">
           <form onSubmit={handleSubmit} className="space-y-6">
             
             {/* Form Error */}

@@ -398,14 +398,14 @@ export function EducatorDashboard() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
                       Position: <span className="text-slate-400 font-bold">#{modules.length + 1}</span> (Auto-calculated)
                     </span>
                     <button
                       type="submit"
                       disabled={moduleSubmitting || !newModuleTitle.trim() || !newModuleContent.trim()}
-                      className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold shadow-md shadow-indigo-600/15 cursor-pointer transition-colors duration-150"
+                      className="w-full sm:w-auto px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold shadow-md shadow-indigo-600/15 cursor-pointer transition-colors duration-150 text-center"
                     >
                       {moduleSubmitting ? "Adding..." : "Add Module"}
                     </button>

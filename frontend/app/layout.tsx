@@ -21,6 +21,18 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "Asala Hub - Offline-First E-Learning PWA",
   description: "Empowering education anywhere, anytime, completely offline.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Asala Hub",
+  },
+};
+
+export const viewport = {
+  themeColor: "#6366f1",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
