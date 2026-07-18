@@ -1,43 +1,46 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { api, CourseRead, ModuleRead, ContentType } from "@/lib/api";
+import { api, CourseRead, ModuleRead } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useConnectivity } from "@/lib/connectivity-context";
+import { CourseOutline } from "./educator/CourseOutline";
+import { ModuleEditor } from "./educator/ModuleEditor";
+import { CourseConfig } from "./educator/CourseConfig";
 
 export function EducatorDashboard() {
   const { user } = useAuth();
+  const { syncStatus } = useConnectivity();
   
-  // Courses state
+  // List of courses
   const [courses, setCourses] = useState<CourseRead[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [coursesError, setCoursesError] = useState<string | null>(null);
 
-  // Selected course details
+  // Selected course context
   const [selectedCourse, setSelectedCourse] = useState<CourseRead | null>(null);
   const [modules, setModules] = useState<ModuleRead[]>([]);
   const [modulesLoading, setModulesLoading] = useState(false);
   const [modulesError, setModulesError] = useState<string | null>(null);
+  const [selectedModule, setSelectedModule] = useState<ModuleRead | null>(null);
 
-  // Create Course form state
-  const [newCourseTitle, setNewCourseTitle] = useState("");
-  const [newCourseDesc, setNewCourseDesc] = useState("");
-  const [courseSubmitError, setCourseSubmitError] = useState<string | null>(null);
-  const [courseSubmitting, setCourseSubmitting] = useState(false);
+  // Tab switching state to reduce DOM nodes on low-power devices
+  const [activeTab, setActiveTab] = useState<"structure" | "editor" | "settings">("structure");
 
-  // Create Module form state
-  const [newModuleTitle, setNewModuleTitle] = useState("");
-  const [newModuleType, setNewModuleType] = useState<ContentType>("text");
-  const [newModuleContent, setNewModuleContent] = useState("");
-  const [moduleSubmitError, setModuleSubmitError] = useState<string | null>(null);
-  const [moduleSubmitting, setModuleSubmitting] = useState(false);
+  // Course Creation Dialog/Toggle
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
 
-  // Fetch all courses on mount and filter client-side
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Fetch all courses owned by educator
   const fetchCourses = async () => {
     setCoursesLoading(true);
     setCoursesError(null);
     try {
       const allCourses = await api.getCourses();
-      // Filter to only courses owned by this educator
       const owned = allCourses.filter((c) => c.educator_id === user?.id);
       setCourses(owned);
     } catch (err: any) {
@@ -53,15 +56,23 @@ export function EducatorDashboard() {
     }
   }, [user]);
 
-  // Fetch modules for the selected course
-  const fetchModules = async (courseId: string) => {
+  // Fetch modules for selected course
+  const fetchModules = async (courseId: string, selectFirst = false) => {
     setModulesLoading(true);
     setModulesError(null);
     try {
       const courseModules = await api.getCourseModules(courseId);
-      // Sort by order_index just to be safe
       const sorted = [...courseModules].sort((a, b) => a.order_index - b.order_index);
       setModules(sorted);
+      
+      if (selectFirst && sorted.length > 0) {
+        setSelectedModule(sorted[0]);
+      } else if (sorted.length === 0) {
+        setSelectedModule(null);
+      } else if (selectedModule) {
+        const updated = sorted.find((m) => m.id === selectedModule.id);
+        setSelectedModule(updated || sorted[0]);
+      }
     } catch (err: any) {
       setModulesError(err.message || "Failed to load modules");
     } finally {
@@ -71,366 +82,377 @@ export function EducatorDashboard() {
 
   const handleSelectCourse = (course: CourseRead) => {
     setSelectedCourse(course);
-    fetchModules(course.id);
-    // Reset module creation form
-    setNewModuleTitle("");
-    setNewModuleType("text");
-    setNewModuleContent("");
-    setModuleSubmitError(null);
+    setSelectedModule(null);
+    setActiveTab("structure");
+    fetchModules(course.id, true);
   };
 
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCourseTitle.trim()) return;
+    if (!newTitle.trim()) return;
 
-    setCourseSubmitting(true);
-    setCourseSubmitError(null);
+    setIsSubmitting(true);
+    setSubmitError(null);
     try {
       const created = await api.createCourse({
-        title: newCourseTitle.trim(),
-        description: newCourseDesc.trim(),
+        title: newTitle.trim(),
+        description: newDesc.trim(),
       });
-      // Refresh course list
       await fetchCourses();
-      // Auto-select the newly created course
       handleSelectCourse(created);
-      // Reset form
-      setNewCourseTitle("");
-      setNewCourseDesc("");
+      setNewTitle("");
+      setNewDesc("");
+      setShowCreateForm(false);
     } catch (err: any) {
-      setCourseSubmitError(err.message || "Failed to create course");
+      setSubmitError(err.message || "Failed to create course");
     } finally {
-      setCourseSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleCreateModule = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateCourse = async (title: string, description: string) => {
     if (!selectedCourse) return;
-    if (!newModuleTitle.trim() || !newModuleContent.trim()) return;
-
-    setModuleSubmitting(true);
-    setModuleSubmitError(null);
+    setIsSubmitting(true);
     try {
-      // Auto-calculate order_index based on the length of current modules list + 1
-      const orderIndex = modules.length + 1;
-      
-      await api.createModule(selectedCourse.id, {
-        title: newModuleTitle.trim(),
-        content_type: newModuleType,
-        content: newModuleContent.trim(),
-        order_index: orderIndex,
-      });
-
-      // Refresh modules list
-      await fetchModules(selectedCourse.id);
-
-      // Reset form
-      setNewModuleTitle("");
-      setNewModuleType("text");
-      setNewModuleContent("");
+      const updated = await api.updateCourse(selectedCourse.id, { title, description });
+      setSelectedCourse(updated);
+      setCourses(courses.map((c) => (c.id === updated.id ? updated : c)));
     } catch (err: any) {
-      setModuleSubmitError(err.message || "Failed to create module");
+      alert(err.message || "Failed to update course");
     } finally {
-      setModuleSubmitting(false);
+      setIsSubmitting(false);
     }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!selectedCourse) return;
+    setIsSubmitting(true);
+    try {
+      await api.deleteCourse(selectedCourse.id);
+      setSelectedCourse(null);
+      setSelectedModule(null);
+      setModules([]);
+      await fetchCourses();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete course");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Module Actions
+  const handleAddModule = async (title: string, type: "text" | "video") => {
+    if (!selectedCourse) return;
+    setIsSubmitting(true);
+    try {
+      const nextIndex = modules.length + 1;
+      const created = await api.createModule(selectedCourse.id, {
+        title,
+        content_type: type,
+        content: type === "video" ? "" : "## New Section\nWrite lesson details here...",
+        order_index: nextIndex,
+      });
+      await fetchModules(selectedCourse.id);
+      setSelectedModule(created);
+      setActiveTab("editor"); // Switch to editor directly
+    } catch (err: any) {
+      alert(err.message || "Failed to add module");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveModule = async (title: string, contentType: "text" | "video", content: string) => {
+    if (!selectedCourse || !selectedModule) return;
+    setIsSubmitting(true);
+    try {
+      const updated = await api.updateModule(selectedCourse.id, selectedModule.id, {
+        title,
+        content_type: contentType,
+        content,
+      });
+      await fetchModules(selectedCourse.id);
+      setSelectedModule(updated);
+    } catch (err: any) {
+      alert(err.message || "Failed to save module");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteModule = async (moduleId: string) => {
+    if (!selectedCourse) return;
+    setIsSubmitting(true);
+    try {
+      await api.deleteModule(selectedCourse.id, moduleId);
+      if (selectedModule?.id === moduleId) {
+        setSelectedModule(null);
+      }
+      await fetchModules(selectedCourse.id, true);
+    } catch (err: any) {
+      alert(err.message || "Failed to delete module");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMoveModule = async (mod: ModuleRead, direction: "up" | "down") => {
+    if (!selectedCourse) return;
+    const currIndex = modules.findIndex((m) => m.id === mod.id);
+    if (currIndex === -1) return;
+
+    const targetIndex = direction === "up" ? currIndex - 1 : currIndex + 1;
+    if (targetIndex < 0 || targetIndex >= modules.length) return;
+
+    setIsSubmitting(true);
+    try {
+      const targetMod = modules[targetIndex];
+      
+      // Swap order_indexes
+      await api.updateModule(selectedCourse.id, mod.id, { order_index: targetMod.order_index });
+      await api.updateModule(selectedCourse.id, targetMod.id, { order_index: mod.order_index });
+      
+      await fetchModules(selectedCourse.id);
+    } catch (err: any) {
+      alert("Failed to change module sorting order.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSelectModuleFromOutline = (mod: ModuleRead) => {
+    setSelectedModule(mod);
+    setActiveTab("editor"); // Auto focus on editor tab
   };
 
   return (
-    <div className="space-y-6 flex-grow flex flex-col">
-      {/* Welcome banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-white/5 gap-4">
+    <div className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Top Banner section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-accent-muted gap-4">
         <div>
-          <h1 className="font-outfit text-2xl font-bold text-white tracking-wide">
-            Educator Dashboard
+          <h1 className="font-heading text-xl font-extrabold text-text-heading tracking-wide">
+            Educator Workspace
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Manage your courses and learning materials.
+          <p className="text-xs text-accent-muted mt-0.5 font-bold">
+            Create syllabus templates, documentations, and upload links.
           </p>
         </div>
-        <div className="text-xs text-slate-500 font-medium bg-[#12131a] px-3 py-1.5 rounded-lg border border-white/5">
-          Logged in as <span className="text-indigo-400 font-semibold">{user?.full_name}</span>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="btn-primary text-xs"
+          >
+            + Create New Course
+          </button>
         </div>
       </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-grow">
-        
-        {/* Left Column: Courses list and creation */}
-        <div className="lg:col-span-4 space-y-6 flex flex-col">
-          
-          {/* Courses List Card */}
-          <div className="rounded-xl border border-white/5 bg-[#12131a]/60 p-6 flex flex-col flex-grow min-h-[300px]">
-            <h2 className="font-outfit text-sm font-semibold text-white uppercase tracking-wider mb-4">
-              My Courses
-            </h2>
+      {/* Course Creation Form (Popup/Toggle) */}
+      {showCreateForm && (
+        <div className="card max-w-lg mx-auto">
+          <h3 className="font-heading text-xs font-bold text-text-heading mb-3 uppercase tracking-wider border-b border-accent-muted pb-1">
+            Create Course
+          </h3>
+          <form onSubmit={handleCreateCourse} className="space-y-4">
+            {submitError && (
+              <div className="border border-accent-danger bg-surface-base p-3 rounded text-xs text-accent-danger font-bold">
+                {submitError}
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <label htmlFor="courseTitleIn" className="text-xs font-bold text-text-heading block uppercase tracking-wider">
+                Course Title
+              </label>
+              <input
+                id="courseTitleIn"
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                className="input-field"
+                placeholder="e.g. Science foundations"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="courseDescIn" className="text-xs font-bold text-text-heading block uppercase tracking-wider">
+                Course Description
+              </label>
+              <textarea
+                id="courseDescIn"
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                rows={3}
+                className="input-field resize-none"
+                placeholder="Summarize course goals..."
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCreateForm(false)}
+                className="btn-secondary py-1 px-3 text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || !newTitle.trim()}
+                className="btn-primary py-1 px-3 text-xs"
+              >
+                Create Course
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
-            {coursesLoading ? (
-              <div className="flex-1 flex flex-col items-center justify-center space-y-2 py-8">
-                <div className="h-6 w-6 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin"></div>
-                <span className="text-xs text-slate-500">Loading courses...</span>
+      {/* Course Selector Dropdown (Shown if no course selected or list loaded) */}
+      {!selectedCourse && (
+        <div className="card space-y-4">
+          <h3 className="font-heading text-xs font-bold text-text-heading uppercase tracking-wider border-b border-accent-muted pb-1">
+            Select Course to Edit
+          </h3>
+          {coursesLoading ? (
+            <div className="space-y-2">
+              <div className="h-8 w-full skeleton"></div>
+              <div className="h-8 w-full skeleton"></div>
+            </div>
+          ) : coursesError ? (
+            <div className="border border-accent-danger bg-surface-base p-3 rounded text-xs text-accent-danger font-bold">
+              {coursesError}
+            </div>
+          ) : courses.length === 0 ? (
+            <div className="text-center py-8 text-accent-muted">
+              <p className="font-bold text-sm">No courses found</p>
+              <p className="text-xs mt-1">Create a new course scaffolding using the button above.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {courses.map((course) => (
+                <button
+                  key={course.id}
+                  onClick={() => handleSelectCourse(course)}
+                  className="card text-left p-4 hover:border-accent-focus cursor-pointer flex flex-col justify-between"
+                >
+                  <div>
+                    <h4 className="font-heading text-xs font-bold text-text-heading line-clamp-1 mb-1">
+                      {course.title}
+                    </h4>
+                    <p className="text-[10px] text-accent-muted line-clamp-2 leading-relaxed">
+                      {course.description || "No description provided."}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-text-heading font-extrabold underline mt-3 block self-start">
+                    Edit Syllabus →
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Primary Workspace (Shown when course selected) */}
+      {selectedCourse && (
+        <div className="space-y-4">
+          {/* Active Course Banner */}
+          <div className="bg-surface-card p-3 rounded border border-accent-muted flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSelectedCourse(null)}
+                className="text-xs hover:text-accent-focus text-accent-muted font-bold cursor-pointer"
+              >
+                ← Back to Course list
+              </button>
+              <span className="text-accent-muted/40">|</span>
+              <h2 className="font-heading text-xs font-extrabold text-text-heading">
+                Editing: <span className="underline">{selectedCourse.title}</span>
+              </h2>
+            </div>
+            <div className="text-[10px] font-bold text-accent-muted uppercase bg-surface-base px-2 py-0.5 rounded border border-accent-muted">
+              ID: {selectedCourse.id.slice(0, 8)}
+            </div>
+          </div>
+
+          {/* Dynamic Tab Selector for Low Power / Older CPU support */}
+          <div className="flex border-b border-accent-muted gap-2 text-xs font-bold">
+            <button
+              onClick={() => setActiveTab("structure")}
+              className={`pb-2 px-2 border-b-2 cursor-pointer ${
+                activeTab === "structure" ? "border-accent-focus text-text-heading" : "border-transparent text-accent-muted"
+              }`}
+            >
+              1. Syllabus Outline ({modules.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("editor")}
+              className={`pb-2 px-2 border-b-2 cursor-pointer ${
+                activeTab === "editor" ? "border-accent-focus text-text-heading" : "border-transparent text-accent-muted"
+              }`}
+            >
+              2. Module content editor {selectedModule ? `(${selectedModule.order_index})` : ""}
+            </button>
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`pb-2 px-2 border-b-2 cursor-pointer ${
+                activeTab === "settings" ? "border-accent-focus text-text-heading" : "border-transparent text-accent-muted"
+              }`}
+            >
+              3. Course settings
+            </button>
+          </div>
+
+          {/* Render only active tab component to keep memory footprint and redraws minimal */}
+          <div className="grid grid-cols-1 gap-6">
+            {activeTab === "structure" && (
+              <div className="max-w-xl mx-auto w-full">
+                <CourseOutline
+                  modules={modules}
+                  selectedModule={selectedModule}
+                  onSelectModule={handleSelectModuleFromOutline}
+                  onAddModule={handleAddModule}
+                  onDeleteModule={handleDeleteModule}
+                  onMoveModule={handleMoveModule}
+                  isSubmitting={isSubmitting}
+                />
               </div>
-            ) : coursesError ? (
-              <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-4 text-xs text-rose-400 font-medium">
-                {coursesError}
+            )}
+
+            {activeTab === "editor" && (
+              <div className="w-full">
+                {selectedModule ? (
+                  <ModuleEditor
+                    module={selectedModule}
+                    onSaveModule={handleSaveModule}
+                    isSubmitting={isSubmitting}
+                    syncStatus={syncStatus}
+                  />
+                ) : (
+                  <div className="card py-12 text-center text-accent-muted min-h-[300px] flex flex-col justify-center items-center">
+                    <p className="font-bold text-sm text-text-heading">No Module Selected</p>
+                    <p className="text-xs mt-1 max-w-xs leading-relaxed">
+                      Select a module from the "Syllabus Outline" tab first to load details into this editor.
+                    </p>
+                  </div>
+                )}
               </div>
-            ) : courses.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-500">
-                <svg className="h-8 w-8 mb-2 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-                <p className="text-xs font-semibold">No courses created yet</p>
-                <p className="text-[10px] opacity-75 mt-0.5">Use the form below to publish your first course.</p>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                {courses.map((course) => (
-                  <button
-                    key={course.id}
-                    onClick={() => handleSelectCourse(course)}
-                    className={`w-full text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer ${
-                      selectedCourse?.id === course.id
-                        ? "border-indigo-500/35 bg-indigo-500/10 text-white"
-                        : "border-white/5 bg-black/20 text-slate-300 hover:bg-black/30 hover:border-white/10"
-                    }`}
-                  >
-                    <h3 className="font-semibold text-sm line-clamp-1">{course.title}</h3>
-                    {course.description && (
-                      <p className="text-xs text-slate-400 line-clamp-1 mt-1 font-normal">
-                        {course.description}
-                      </p>
-                    )}
-                  </button>
-                ))}
+            )}
+
+            {activeTab === "settings" && (
+              <div className="max-w-xl mx-auto w-full">
+                <CourseConfig
+                  course={selectedCourse}
+                  onUpdateCourse={handleUpdateCourse}
+                  onDeleteCourse={handleDeleteCourse}
+                  isSubmitting={isSubmitting}
+                  totalModules={modules.length}
+                />
               </div>
             )}
           </div>
-
-          {/* Create Course Card */}
-          <div className="rounded-xl border border-white/5 bg-[#12131a]/60 p-6">
-            <h2 className="font-outfit text-sm font-semibold text-white uppercase tracking-wider mb-4">
-              Create New Course
-            </h2>
-            <form onSubmit={handleCreateCourse} className="space-y-4">
-              {courseSubmitError && (
-                <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-3 text-xs text-rose-400 font-medium">
-                  {courseSubmitError}
-                </div>
-              )}
-              
-              <div className="space-y-1">
-                <label htmlFor="courseTitle" className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Course Title
-                </label>
-                <input
-                  id="courseTitle"
-                  type="text"
-                  value={newCourseTitle}
-                  onChange={(e) => setNewCourseTitle(e.target.value)}
-                  disabled={courseSubmitting}
-                  placeholder="e.g. Introduction to Physics"
-                  className="w-full px-3 py-2 rounded-lg border border-white/5 bg-black/30 text-white font-sans text-xs focus:outline-none focus:border-indigo-500"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="courseDesc" className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Description
-                </label>
-                <textarea
-                  id="courseDesc"
-                  value={newCourseDesc}
-                  onChange={(e) => setNewCourseDesc(e.target.value)}
-                  disabled={courseSubmitting}
-                  placeholder="Summarize course goals..."
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-lg border border-white/5 bg-black/30 text-white font-sans text-xs focus:outline-none focus:border-indigo-500 resize-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={courseSubmitting || !newCourseTitle.trim()}
-                className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold shadow-md shadow-indigo-600/15 cursor-pointer transition-colors duration-150"
-              >
-                {courseSubmitting ? "Creating..." : "Create Course"}
-              </button>
-            </form>
-          </div>
-
         </div>
-
-        {/* Right Column: Selected Course details, modules, and module creation */}
-        <div className="lg:col-span-8 space-y-6 flex flex-col">
-          
-          {selectedCourse ? (
-            <div className="rounded-xl border border-white/5 bg-[#12131a]/60 p-6 flex flex-col flex-grow">
-              
-              {/* Course Title & Details */}
-              <div className="pb-4 border-b border-white/5 space-y-1">
-                <h2 className="font-outfit text-xl font-bold text-white tracking-wide">
-                  {selectedCourse.title}
-                </h2>
-                {selectedCourse.description ? (
-                  <p className="text-xs text-slate-400">{selectedCourse.description}</p>
-                ) : (
-                  <p className="text-xs text-slate-500 italic">No description provided.</p>
-                )}
-              </div>
-
-              {/* Modules list section */}
-              <div className="py-6 flex-grow flex flex-col">
-                <h3 className="font-outfit text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
-                  Course Modules
-                </h3>
-
-                {modulesLoading ? (
-                  <div className="flex-grow flex flex-col items-center justify-center space-y-2 py-12">
-                    <div className="h-6 w-6 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin"></div>
-                    <span className="text-xs text-slate-500">Loading modules...</span>
-                  </div>
-                ) : modulesError ? (
-                  <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-4 text-xs text-rose-400 font-medium">
-                    {modulesError}
-                  </div>
-                ) : modules.length === 0 ? (
-                  <div className="flex-grow flex flex-col items-center justify-center text-center p-8 text-slate-500 bg-black/10 rounded-xl border border-dashed border-white/5">
-                    <svg className="h-6 w-6 mb-2 opacity-35" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    <p className="text-xs font-semibold">No modules inside this course</p>
-                    <p className="text-[10px] opacity-75 mt-0.5">Add reading content or video modules below.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
-                    {modules.map((mod) => (
-                      <div
-                        key={mod.id}
-                        className="p-4 rounded-xl border border-white/5 bg-black/15 hover:bg-black/25 transition-colors duration-150 space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                            <span className="flex items-center justify-center text-[10px] h-5 w-5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold">
-                              {mod.order_index}
-                            </span>
-                            {mod.title}
-                          </h4>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
-                            mod.content_type === "video"
-                              ? "bg-purple-500/10 border border-purple-500/20 text-purple-400"
-                              : "bg-teal-500/10 border border-teal-500/20 text-teal-400"
-                          }`}>
-                            {mod.content_type}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 leading-relaxed font-sans whitespace-pre-wrap">
-                          {mod.content}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Create Module Section */}
-              <div className="pt-6 border-t border-white/5">
-                <h3 className="font-outfit text-xs font-semibold text-white uppercase tracking-wider mb-4">
-                  Add New Module
-                </h3>
-                <form onSubmit={handleCreateModule} className="space-y-4">
-                  {moduleSubmitError && (
-                    <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-3 text-xs text-rose-400 font-medium">
-                      {moduleSubmitError}
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                    <div className="md:col-span-8 space-y-1">
-                      <label htmlFor="modTitle" className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                        Module Title
-                      </label>
-                      <input
-                        id="modTitle"
-                        type="text"
-                        value={newModuleTitle}
-                        onChange={(e) => setNewModuleTitle(e.target.value)}
-                        disabled={moduleSubmitting}
-                        placeholder="e.g. 1.1 Welcome and Setup"
-                        className="w-full px-3 py-2 rounded-lg border border-white/5 bg-black/30 text-white font-sans text-xs focus:outline-none focus:border-indigo-500"
-                        required
-                      />
-                    </div>
-                    <div className="md:col-span-4 space-y-1">
-                      <label htmlFor="modType" className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                        Media Type
-                      </label>
-                      <select
-                        id="modType"
-                        value={newModuleType}
-                        onChange={(e) => setNewModuleType(e.target.value as ContentType)}
-                        disabled={moduleSubmitting}
-                        className="w-full px-3 py-2 rounded-lg border border-white/5 bg-[#12131a] text-slate-300 font-sans text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
-                      >
-                        <option value="text">Text (Markdown)</option>
-                        <option value="video">Video URL / Embed</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label htmlFor="modContent" className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                      Module Content
-                    </label>
-                    <textarea
-                      id="modContent"
-                      value={newModuleContent}
-                      onChange={(e) => setNewModuleContent(e.target.value)}
-                      disabled={moduleSubmitting}
-                      placeholder={
-                        newModuleType === "video"
-                          ? "Enter the video url (e.g. https://www.youtube.com/embed/...)"
-                          : "Write the text lesson or markdown contents here..."
-                      }
-                      rows={4}
-                      className="w-full px-3 py-2 rounded-lg border border-white/5 bg-black/30 text-white font-sans text-xs focus:outline-none focus:border-indigo-500 resize-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
-                      Position: <span className="text-slate-400 font-bold">#{modules.length + 1}</span> (Auto-calculated)
-                    </span>
-                    <button
-                      type="submit"
-                      disabled={moduleSubmitting || !newModuleTitle.trim() || !newModuleContent.trim()}
-                      className="w-full sm:w-auto px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold shadow-md shadow-indigo-600/15 cursor-pointer transition-colors duration-150 text-center"
-                    >
-                      {moduleSubmitting ? "Adding..." : "Add Module"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-            </div>
-          ) : (
-            <div className="rounded-xl border border-white/5 bg-[#12131a]/40 p-12 text-center text-slate-500 flex flex-col items-center justify-center flex-grow min-h-[400px]">
-              <div className="h-12 w-12 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-center text-indigo-400/55 mb-4 animate-bounce">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-                </svg>
-              </div>
-              <h3 className="font-outfit text-sm font-semibold text-white tracking-wide">No course selected</h3>
-              <p className="text-xs text-slate-400 max-w-xs mt-1">
-                Select a course from the left pane to view its modules and publish new content.
-              </p>
-            </div>
-          )}
-
-        </div>
-
-      </div>
+      )}
     </div>
   );
 }
+export default EducatorDashboard;

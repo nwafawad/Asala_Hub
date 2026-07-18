@@ -18,9 +18,8 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex flex-col justify-center items-center py-12">
-        <div className="h-8 w-8 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin"></div>
-        <span className="text-xs text-slate-400 font-medium mt-3">Loading dashboard...</span>
+      <div style={{ padding: "50px", textAlign: "center" }}>
+        <p>Loading dashboard...</p>
       </div>
     );
   }
@@ -30,14 +29,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0b0c10]">
-      <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8 flex-grow flex flex-col">
-        {user.role === "educator" ? (
-          <EducatorDashboard />
-        ) : (
-          <StudentDashboard />
-        )}
-      </div>
+    <div style={{ padding: "20px" }}>
+      {user.role === "educator" ? (
+        <EducatorDashboard />
+      ) : (
+        <StudentDashboard />
+      )}
     </div>
   );
 }

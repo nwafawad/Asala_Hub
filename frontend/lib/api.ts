@@ -129,11 +129,23 @@ export interface CourseCreate {
   description?: string;
 }
 
+export interface CourseUpdate {
+  title?: string;
+  description?: string;
+}
+
 export interface ModuleCreate {
   title: string;
   content_type: ContentType;
   content: string;
   order_index: number;
+}
+
+export interface ModuleUpdate {
+  title?: string;
+  content_type?: ContentType;
+  content?: string;
+  order_index?: number;
 }
 
 export const api = {
@@ -200,6 +212,22 @@ export const api = {
     });
   },
 
+  async updateCourse(id: string, data: CourseUpdate): Promise<CourseRead> {
+    return request<CourseRead>(`/courses/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteCourse(id: string): Promise<void> {
+    return request<void>(`/courses/${id}`, {
+      method: "DELETE",
+    });
+  },
+
   // Modules API
   async getCourseModules(courseId: string): Promise<ModuleRead[]> {
     return request<ModuleRead[]>(`/courses/${courseId}/modules`);
@@ -212,6 +240,22 @@ export const api = {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
+    });
+  },
+
+  async updateModule(courseId: string, moduleId: string, data: ModuleUpdate): Promise<ModuleRead> {
+    return request<ModuleRead>(`/courses/${courseId}/modules/${moduleId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteModule(courseId: string, moduleId: string): Promise<void> {
+    return request<void>(`/courses/${courseId}/modules/${moduleId}`, {
+      method: "DELETE",
     });
   },
 };
