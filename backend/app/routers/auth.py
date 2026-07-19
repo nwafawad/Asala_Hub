@@ -55,7 +55,12 @@ def login(
     """
     # OAuth2 request form passes email via the 'username' form field
     user = crud_user.get_user_by_email(session, form_data.username)
-    if not user or not verify_password(form_data.password, user.password_hash):
+    user_hash = user.password_hash if user else None
+    
+    # Always verify password to mitigate timing attacks on non-existent users
+    password_correct = verify_password(form_data.password, user_hash)
+    
+    if not user or not password_correct:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -65,6 +70,7 @@ def login(
     # Generate and return user session access token
     access_token = create_access_token(subject=user.id, role=user.role)
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 
 @router.get("/me", response_model=UserRead)
