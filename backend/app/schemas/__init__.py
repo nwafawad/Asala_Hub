@@ -9,6 +9,7 @@ from app.schemas.modules import (
     ModuleCreate,
     ModuleUpdate,
     ModuleRead,
+    ModuleSyllabusRead,
 )
 
 __all__ = [
@@ -23,4 +24,6 @@ __all__ = [
     "ModuleCreate",
     "ModuleUpdate",
     "ModuleRead",
+    "ModuleSyllabusRead",
 ]
+

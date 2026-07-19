@@ -36,13 +36,14 @@ def get_user_by_id(session: Session, user_id: uuid.UUID) -> Optional[User]:
     """
     return session.get(User, user_id)
 
-def create_user(session: Session, user_in: UserRegister) -> User:
+def create_user(session: Session, user_in: UserRegister, commit: bool = True) -> User:
     """
     Create a new user, hash their password, and save to the database.
     
     Args:
         session (Session): The active database transaction session.
         user_in (UserRegister): User registration data schema.
+        commit (bool): If True, commits the transaction immediately.
     Returns:
         User: The newly created User model instance.
     """
@@ -55,7 +56,9 @@ def create_user(session: Session, user_in: UserRegister) -> User:
         preferred_language=user_in.preferred_language
     )
     session.add(new_user)
-    session.commit()
-    session.refresh(new_user)
+    if commit:
+        session.commit()
+        session.refresh(new_user)
     return new_user
+
 

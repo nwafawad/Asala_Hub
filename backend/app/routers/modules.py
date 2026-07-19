@@ -17,6 +17,7 @@ from app.schemas.modules import (
     ModuleCreate,
     ModuleUpdate,
     ModuleRead,
+    ModuleSyllabusRead,
 )
 from app.crud import courses as crud_courses
 from app.crud import modules as crud_modules
@@ -52,7 +53,7 @@ def create_module(
     return crud_modules.create_module(session, module_in, course_id)
 
 
-@router.get("/{course_id}/modules", response_model=List[ModuleRead])
+@router.get("/{course_id}/modules", response_model=List[ModuleSyllabusRead])
 def list_modules(
     course_id: uuid.UUID,
     skip: int = 0,
@@ -61,7 +62,7 @@ def list_modules(
     session: Session = Depends(get_session)
 ):
     """
-    List all modules for a specific course.
+    List all modules for a specific course (syllabus).
     
     Any authenticated user can read modules of a course.
     """
@@ -73,8 +74,9 @@ def list_modules(
             detail="Course not found"
         )
     
-    # Query ordered modules under the course
-    return crud_modules.get_modules_for_course(session, course_id, skip=skip, limit=limit)
+    # Query ordered modules under the course, deferring the heavy content field
+    return crud_modules.get_course_syllabus(session, course_id)
+
 
 
 @router.get("/{course_id}/modules/{module_id}", response_model=ModuleRead)

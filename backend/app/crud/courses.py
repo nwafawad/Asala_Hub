@@ -12,7 +12,9 @@ from sqlalchemy.orm import selectinload
 from app.models import Course
 from app.schemas.courses import CourseCreate, CourseUpdate
 
-def create_course(session: Session, course_in: CourseCreate, educator_id: uuid.UUID) -> Course:
+def create_course(
+    session: Session, course_in: CourseCreate, educator_id: uuid.UUID, commit: bool = True
+) -> Course:
     """
     Create a new course in the database.
     
@@ -20,6 +22,7 @@ def create_course(session: Session, course_in: CourseCreate, educator_id: uuid.U
         session (Session): The active database transaction session.
         course_in (CourseCreate): Course creation details.
         educator_id (UUID): Owner/Author educator ID.
+        commit (bool): If True, commits the transaction immediately.
     Returns:
         Course: The created Course database model instance.
     """
@@ -29,9 +32,11 @@ def create_course(session: Session, course_in: CourseCreate, educator_id: uuid.U
         educator_id=educator_id
     )
     session.add(course)
-    session.commit()
-    session.refresh(course)
+    if commit:
+        session.commit()
+        session.refresh(course)
     return course
+
 
 def get_courses(
     session: Session, skip: int = 0, limit: int = 100, educator_id: Optional[uuid.UUID] = None
@@ -80,7 +85,9 @@ def get_course_with_modules(session: Session, course_id: uuid.UUID) -> Optional[
         .options(selectinload(Course.modules))
     ).first()
 
-def update_course(session: Session, db_course: Course, course_in: CourseUpdate) -> Course:
+def update_course(
+    session: Session, db_course: Course, course_in: CourseUpdate, commit: bool = True
+) -> Course:
     """
     Update course attributes.
     
@@ -88,6 +95,7 @@ def update_course(session: Session, db_course: Course, course_in: CourseUpdate) 
         session (Session): The active database transaction session.
         db_course (Course): The existing Course model instance from database.
         course_in (CourseUpdate): The updated fields schema.
+        commit (bool): If True, commits the transaction immediately.
     Returns:
         Course: The updated Course database model instance.
     """
@@ -95,9 +103,11 @@ def update_course(session: Session, db_course: Course, course_in: CourseUpdate) 
     for key, value in update_data.items():
         setattr(db_course, key, value)
     session.add(db_course)
-    session.commit()
-    session.refresh(db_course)
+    if commit:
+        session.commit()
+        session.refresh(db_course)
     return db_course
+
 
 def delete_course(session: Session, db_course: Course) -> None:
     """

@@ -45,3 +45,22 @@ class ModuleRead(BaseModel):
         """Pydantic configuration settings."""
         from_attributes = True
 
+
+class ModuleSyllabusRead(BaseModel):
+    """
+    Schema representing lightweight Module data for syllabus views,
+    excluding the heavy content payload.
+    """
+    id: uuid.UUID
+    course_id: uuid.UUID
+    title: str
+    content_type: ContentType
+    order_index: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        """Pydantic configuration settings."""
+        from_attributes = True
+
+

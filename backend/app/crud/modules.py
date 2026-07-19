@@ -8,10 +8,13 @@ retrieval by parent course, single lookups, and updating/deleting.
 import uuid
 from typing import List, Optional
 from sqlmodel import Session, select
+from sqlalchemy.orm import defer
 from app.models import Module
 from app.schemas.modules import ModuleCreate, ModuleUpdate
 
-def create_module(session: Session, module_in: ModuleCreate, course_id: uuid.UUID) -> Module:
+def create_module(
+    session: Session, module_in: ModuleCreate, course_id: uuid.UUID, commit: bool = True
+) -> Module:
     """
     Create a new module inside a course.
     
@@ -19,6 +22,7 @@ def create_module(session: Session, module_in: ModuleCreate, course_id: uuid.UUI
         session (Session): The active database transaction session.
         module_in (ModuleCreate): Module creation details.
         course_id (UUID): The parent Course ID.
+        commit (bool): If True, commits the transaction immediately.
     Returns:
         Module: The created Module database model instance.
     """
@@ -30,8 +34,9 @@ def create_module(session: Session, module_in: ModuleCreate, course_id: uuid.UUI
         order_index=module_in.order_index
     )
     session.add(module)
-    session.commit()
-    session.refresh(module)
+    if commit:
+        session.commit()
+        session.refresh(module)
     return module
 
 def get_modules_for_course(
@@ -74,7 +79,9 @@ def get_module_by_id_and_course(
         .where(Module.id == module_id, Module.course_id == course_id)
     ).first()
 
-def update_module(session: Session, db_module: Module, module_in: ModuleUpdate) -> Module:
+def update_module(
+    session: Session, db_module: Module, module_in: ModuleUpdate, commit: bool = True
+) -> Module:
     """
     Update module attributes.
     
@@ -82,6 +89,7 @@ def update_module(session: Session, db_module: Module, module_in: ModuleUpdate) 
         session (Session): The active database transaction session.
         db_module (Module): The existing Module model instance.
         module_in (ModuleUpdate): The updated fields schema.
+        commit (bool): If True, commits the transaction immediately.
     Returns:
         Module: The updated Module database model instance.
     """
@@ -89,8 +97,9 @@ def update_module(session: Session, db_module: Module, module_in: ModuleUpdate) 
     for key, value in update_data.items():
         setattr(db_module, key, value)
     session.add(db_module)
-    session.commit()
-    session.refresh(db_module)
+    if commit:
+        session.commit()
+        session.refresh(db_module)
     return db_module
 
 def delete_module(session: Session, db_module: Module) -> None:
@@ -103,4 +112,22 @@ def delete_module(session: Session, db_module: Module) -> None:
     """
     session.delete(db_module)
     session.commit()
+
+
+def get_course_syllabus(session: Session, course_id: uuid.UUID) -> List[Module]:
+    """
+    Retrieve modules for a course syllabus, deferring loading of the heavy content field.
+    
+    Args:
+        session (Session): The active database transaction session.
+        course_id (UUID): The Course UUID to fetch syllabus for.
+    Returns:
+        List[Module]: List of modules with empty/deferred content.
+    """
+    return session.exec(
+        select(Module)
+        .where(Module.course_id == course_id)
+        .options(defer(Module.content))
+        .order_by(Module.order_index)
+    ).all()
 
