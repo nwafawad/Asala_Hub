@@ -1,6 +1,14 @@
+"""
+Database Module.
+
+Initializes the SQLModel database engine and connection pool parameters,
+and provides a session manager dependency for executing database transactions.
+"""
+
 from sqlmodel import create_engine, Session
 from app.core.config import settings
 
+# Initialize database engine with performance settings
 engine = create_engine(
     settings.DATABASE_URL,
     echo=settings.ECHO_SQL,
@@ -11,5 +19,10 @@ engine = create_engine(
 )
 
 def get_session():
+    """
+    Dependency generator to yield database sessions.
+    Automatically handles session creation, injection, and disposal.
+    """
     with Session(engine) as session:
         yield session
+

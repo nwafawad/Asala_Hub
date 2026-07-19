@@ -1,3 +1,9 @@
+"""
+Course Models.
+
+Defines the Course SQLModel, representing courses created by educators.
+"""
+
 import uuid
 from datetime import datetime
 from typing import List, TYPE_CHECKING
@@ -11,6 +17,10 @@ if TYPE_CHECKING:
     from app.models.assignment import Assignment
 
 class Course(SQLModel, table=True):
+    """
+    Database model representing a specific course of study.
+    Each course is authored/owned by an educator, and contains multiple modules and assignments.
+    """
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     title: str
     description: str
@@ -22,3 +32,4 @@ class Course(SQLModel, table=True):
     educator: "User" = Relationship(back_populates="courses")
     modules: List["Module"] = Relationship(back_populates="course", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     assignments: List["Assignment"] = Relationship(back_populates="course", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+

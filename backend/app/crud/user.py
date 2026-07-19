@@ -1,3 +1,10 @@
+"""
+User CRUD operations.
+
+Handles database queries and updates relating to User entities, such as registration,
+fetching profiles by ID, or looking up profiles by email.
+"""
+
 import uuid
 from typing import Optional
 from sqlmodel import Session, select
@@ -6,15 +13,39 @@ from app.schemas.auth import UserRegister
 from app.core.security import get_password_hash
 
 def get_user_by_email(session: Session, email: str) -> Optional[User]:
-    """Retrieve a user by their email address."""
+    """
+    Retrieve a user by their email address.
+    
+    Args:
+        session (Session): The active database transaction session.
+        email (str): The email address to look up.
+    Returns:
+        Optional[User]: The matching user model instance, or None.
+    """
     return session.exec(select(User).where(User.email == email)).first()
 
 def get_user_by_id(session: Session, user_id: uuid.UUID) -> Optional[User]:
-    """Retrieve a user by their UUID."""
+    """
+    Retrieve a user by their UUID.
+    
+    Args:
+        session (Session): The active database transaction session.
+        user_id (UUID): The UUID of the user to fetch.
+    Returns:
+        Optional[User]: The user instance, or None if not found.
+    """
     return session.get(User, user_id)
 
 def create_user(session: Session, user_in: UserRegister) -> User:
-    """Create a new user, hash their password, and save to the database."""
+    """
+    Create a new user, hash their password, and save to the database.
+    
+    Args:
+        session (Session): The active database transaction session.
+        user_in (UserRegister): User registration data schema.
+    Returns:
+        User: The newly created User model instance.
+    """
     hashed_password = get_password_hash(user_in.password)
     new_user = User(
         full_name=user_in.full_name,
@@ -27,3 +58,4 @@ def create_user(session: Session, user_in: UserRegister) -> User:
     session.commit()
     session.refresh(new_user)
     return new_user
+

@@ -1,3 +1,10 @@
+"""
+Module API Routers.
+
+Exposes endpoints for creating, list-reading, detail-reading, updating,
+and deleting course Modules. Enforces course ownership validations.
+"""
+
 import uuid
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -28,6 +35,7 @@ def create_module(
     
     Only the owning educator of the parent course is authorized to create a module.
     """
+    # Fetch course to check existence and ownership
     course = crud_courses.get_course_by_id(session, course_id)
     if not course:
         raise HTTPException(
@@ -40,6 +48,7 @@ def create_module(
             detail="You do not have permission to add modules to this course"
         )
     
+    # Save module under course_id
     return crud_modules.create_module(session, module_in, course_id)
 
 
@@ -56,6 +65,7 @@ def list_modules(
     
     Any authenticated user can read modules of a course.
     """
+    # Verify course exists
     course = crud_courses.get_course_by_id(session, course_id)
     if not course:
         raise HTTPException(
@@ -63,6 +73,7 @@ def list_modules(
             detail="Course not found"
         )
     
+    # Query ordered modules under the course
     return crud_modules.get_modules_for_course(session, course_id, skip=skip, limit=limit)
 
 
@@ -78,6 +89,7 @@ def get_module(
     
     Any authenticated user can view a module.
     """
+    # Fetch specific module and check assignment to course_id
     module = crud_modules.get_module_by_id_and_course(session, module_id, course_id)
     if not module:
         raise HTTPException(
@@ -100,18 +112,21 @@ def update_module(
     
     Only the owning educator of the course is authorized to modify its modules.
     """
+    # Fetch specific module
     module = crud_modules.get_module_by_id_and_course(session, module_id, course_id)
     if not module:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Module not found or does not belong to this course"
         )
+    # Check parent course creator ownership
     if module.course.educator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to modify modules in this course"
         )
     
+    # Commit changes
     return crud_modules.update_module(session, module, module_in)
 
 
@@ -127,17 +142,21 @@ def delete_module(
     
     Only the owning educator of the course is authorized to delete its modules.
     """
+    # Fetch specific module
     module = crud_modules.get_module_by_id_and_course(session, module_id, course_id)
     if not module:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Module not found or does not belong to this course"
         )
+    # Check parent course creator ownership
     if module.course.educator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to delete modules from this course"
         )
     
+    # Remove from database
     crud_modules.delete_module(session, module)
     return None
+

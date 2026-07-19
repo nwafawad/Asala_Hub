@@ -1,3 +1,9 @@
+"""
+Transaction Logging Models.
+
+Defines the TransactionLog SQLModel used to record offline mutations for client reconciliation.
+"""
+
 import uuid
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
@@ -9,6 +15,10 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 class TransactionLog(SQLModel, table=True):
+    """
+    Database model representing an append-only transaction log.
+    Records changes made on the client to allow syncing once internet connection is restored.
+    """
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, index=True)
     entity_type: str
@@ -21,3 +31,4 @@ class TransactionLog(SQLModel, table=True):
 
     # Relationships
     user: "User" = Relationship(back_populates="transaction_logs")
+

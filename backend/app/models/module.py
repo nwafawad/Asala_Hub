@@ -1,3 +1,10 @@
+"""
+Module Models.
+
+Defines the Module SQLModel representing modules within a course,
+and the ContentType enum representing the content formats (text/video).
+"""
+
 import uuid
 from datetime import datetime
 from enum import Enum
@@ -10,10 +17,17 @@ if TYPE_CHECKING:
     from app.models.course import Course
 
 class ContentType(str, Enum):
+    """
+    Format of course module content.
+    """
     text = "text"
     video = "video"
 
 class Module(SQLModel, table=True):
+    """
+    Database model representing a single study module inside a course.
+    Contains content and an order index to represent ordering inside a course list.
+    """
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     course_id: uuid.UUID = Field(foreign_key="course.id", nullable=False, index=True)
     title: str
@@ -25,3 +39,4 @@ class Module(SQLModel, table=True):
 
     # Relationships
     course: "Course" = Relationship(back_populates="modules")
+
