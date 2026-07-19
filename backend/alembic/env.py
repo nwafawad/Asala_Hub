@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from sqlmodel import SQLModel
 # Import all models to register them on SQLModel.metadata
 from app.models import * 
-from app.config import settings
+from app.core.config import settings
 
 # This is the Alembic Config object
 config = context.config

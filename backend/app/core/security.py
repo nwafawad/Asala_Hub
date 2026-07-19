@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Union
 from jose import jwt
 import bcrypt
-from app.config import settings
+from app.core.config import settings
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain-text password against a hashed password using bcrypt."""

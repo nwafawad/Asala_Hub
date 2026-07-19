@@ -4,6 +4,8 @@ from app.schemas.courses import (
     CourseUpdate,
     CourseRead,
     CourseReadWithModules,
+)
+from app.schemas.modules import (
     ModuleCreate,
     ModuleUpdate,
     ModuleRead,
@@ -22,4 +24,3 @@ __all__ = [
     "ModuleUpdate",
     "ModuleRead",
 ]
-

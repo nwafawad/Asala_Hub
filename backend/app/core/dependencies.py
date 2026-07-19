@@ -3,9 +3,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlmodel import Session
-from app.config import settings
-from app.database import get_session
-from app.models.entities import User, UserRole
+from app.core.config import settings
+from app.core.database import get_session
+from app.models import User, UserRole
 
 # Configures OAuth2 authentication flow pointing to login endpoint
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
