@@ -1,8 +1,8 @@
 import sys
 from sqlmodel import Session, select
-from app.database import engine
-from app.models.entities import User, Course, Module, UserRole, ContentType
-from app.security import get_password_hash
+from app.core.database import engine
+from app.models import User, Course, Module, UserRole, ContentType
+from app.core.security import get_password_hash
 
 def seed_db():
     print("Starting database seeding...")

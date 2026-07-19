@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from pydantic import BaseModel, EmailStr
-from app.models.entities import UserRole
+from app.models import UserRole
 
 class UserRegister(BaseModel):
     full_name: str

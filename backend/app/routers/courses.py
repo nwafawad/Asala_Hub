@@ -1,27 +1,20 @@
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
-from sqlalchemy.orm import selectinload
+from sqlmodel import Session
 
-from app.database import get_session
-from app.models.entities import User, Course, Module, UserRole
-from app.dependencies import get_current_user, require_role
+from app.core.database import get_session
+from app.models import User, Course, UserRole
+from app.core.dependencies import get_current_user, require_role
 from app.schemas.courses import (
     CourseCreate,
     CourseUpdate,
     CourseRead,
     CourseReadWithModules,
-    ModuleCreate,
-    ModuleUpdate,
-    ModuleRead,
 )
+from app.crud import courses as crud_courses
 
 router = APIRouter(prefix="/courses", tags=["courses"])
-
-# NOTE: The endpoints below are implemented synchronously to match the design of the database session
-# and dependencies in the existing codebase. If database.py is migrated to an async engine/session,
-# these routes and app/dependencies.py should be converted to async/await.
 
 @router.post("/", response_model=CourseRead, status_code=status.HTTP_201_CREATED)
 def create_course(
@@ -35,15 +28,7 @@ def create_course(
     Only authenticated users with the educator role are authorized to create courses.
     The educator creating the course is saved as the course owner.
     """
-    course = Course(
-        title=course_in.title,
-        description=course_in.description,
-        educator_id=current_user.id
-    )
-    session.add(course)
-    session.commit()
-    session.refresh(course)
-    return course
+    return crud_courses.create_course(session, course_in, current_user.id)
 
 
 @router.get("/", response_model=List[CourseRead])
@@ -60,11 +45,7 @@ def list_courses(
     Optional query parameter `educator_id` filters courses owned by a specific educator.
     Any authenticated user (students and educators) can read the list of courses.
     """
-    query = select(Course)
-    if educator_id is not None:
-        query = query.where(Course.educator_id == educator_id)
-    courses = session.exec(query.offset(skip).limit(limit)).all()
-    return courses
+    return crud_courses.get_courses(session, skip=skip, limit=limit, educator_id=educator_id)
 
 
 @router.get("/{course_id}", response_model=CourseReadWithModules)
@@ -78,11 +59,7 @@ def get_course(
     
     Any authenticated user can read details of a specific course.
     """
-    course = session.exec(
-        select(Course)
-        .where(Course.id == course_id)
-        .options(selectinload(Course.modules))
-    ).first()
+    course = crud_courses.get_course_with_modules(session, course_id)
     if not course:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -103,7 +80,7 @@ def update_course(
     
     Only the owning educator of the course is authorized to modify it.
     """
-    course = session.get(Course, course_id)
+    course = crud_courses.get_course_by_id(session, course_id)
     if not course:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -115,14 +92,7 @@ def update_course(
             detail="You do not have permission to modify this course"
         )
     
-    update_data = course_in.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(course, key, value)
-    
-    session.add(course)
-    session.commit()
-    session.refresh(course)
-    return course
+    return crud_courses.update_course(session, course, course_in)
 
 
 @router.delete("/{course_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -139,7 +109,7 @@ def delete_course(
     Note: Child Modules and Assignments are cascade-deleted automatically
     due to the `cascade="all, delete-orphan"` constraint on the Course relationships.
     """
-    course = session.get(Course, course_id)
+    course = crud_courses.get_course_by_id(session, course_id)
     if not course:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -151,172 +121,5 @@ def delete_course(
             detail="You do not have permission to delete this course"
         )
     
-    session.delete(course)
-    session.commit()
+    crud_courses.delete_course(session, course)
     return None
-
-
-# Module Endpoints
-
-@router.post("/{course_id}/modules", response_model=ModuleRead, status_code=status.HTTP_201_CREATED)
-def create_module(
-    course_id: uuid.UUID,
-    module_in: ModuleCreate,
-    current_user: User = Depends(require_role(UserRole.educator)),
-    session: Session = Depends(get_session)
-):
-    """
-    Create a module inside a course.
-    
-    Only the owning educator of the parent course is authorized to create a module.
-    """
-    course = session.get(Course, course_id)
-    if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course not found"
-        )
-    if course.educator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to add modules to this course"
-        )
-    
-    module = Module(
-        course_id=course_id,
-        title=module_in.title,
-        content_type=module_in.content_type,
-        content=module_in.content,
-        order_index=module_in.order_index
-    )
-    session.add(module)
-    session.commit()
-    session.refresh(module)
-    return module
-
-
-@router.get("/{course_id}/modules", response_model=List[ModuleRead])
-def list_modules(
-    course_id: uuid.UUID,
-    skip: int = 0,
-    limit: int = 100,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
-):
-    """
-    List all modules for a specific course.
-    
-    Any authenticated user can read modules of a course.
-    """
-    course = session.get(Course, course_id)
-    if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course not found"
-        )
-    
-    modules = session.exec(
-        select(Module)
-        .where(Module.course_id == course_id)
-        .order_by(Module.order_index)
-        .offset(skip)
-        .limit(limit)
-    ).all()
-    return modules
-
-
-@router.get("/{course_id}/modules/{module_id}", response_model=ModuleRead)
-def get_module(
-    course_id: uuid.UUID,
-    module_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
-):
-    """
-    Get details of a single module.
-    
-    Any authenticated user can view a module.
-    """
-    module = session.exec(
-        select(Module)
-        .where(Module.id == module_id, Module.course_id == course_id)
-    ).first()
-    if not module:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Module not found or does not belong to this course"
-        )
-    return module
-
-
-@router.put("/{course_id}/modules/{module_id}", response_model=ModuleRead)
-def update_module(
-    course_id: uuid.UUID,
-    module_id: uuid.UUID,
-    module_in: ModuleUpdate,
-    current_user: User = Depends(require_role(UserRole.educator)),
-    session: Session = Depends(get_session)
-):
-    """
-    Update a module's content or media type.
-    
-    Only the owning educator of the course is authorized to modify its modules.
-    """
-    module = session.exec(
-        select(Module)
-        .join(Course)
-        .where(Module.id == module_id, Module.course_id == course_id)
-    ).first()
-    if not module:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Module not found or does not belong to this course"
-        )
-    if module.course.educator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to modify modules in this course"
-        )
-    
-    update_data = module_in.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(module, key, value)
-    
-    session.add(module)
-    session.commit()
-    session.refresh(module)
-    return module
-
-
-@router.delete("/{course_id}/modules/{module_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_module(
-    course_id: uuid.UUID,
-    module_id: uuid.UUID,
-    current_user: User = Depends(require_role(UserRole.educator)),
-    session: Session = Depends(get_session)
-):
-    """
-    Delete a module.
-    
-    Only the owning educator of the course is authorized to delete its modules.
-    """
-    module = session.exec(
-        select(Module)
-        .join(Course)
-        .where(Module.id == module_id, Module.course_id == course_id)
-    ).first()
-    if not module:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Module not found or does not belong to this course"
-        )
-    if module.course.educator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to delete modules from this course"
-        )
-    
-    session.delete(module)
-    session.commit()
-    return None
-
