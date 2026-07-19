@@ -1,3 +1,10 @@
+"""
+Dependencies Module.
+
+Provides common dependencies injected into FastAPI route handlers,
+including OAuth2 bearer token authentication and Role-Based Access Control (RBAC).
+"""
+
 from typing import List
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -14,7 +21,14 @@ def get_current_user(
     token: str = Depends(oauth2_scheme),
     session: Session = Depends(get_session)
 ) -> User:
-    """Dependency to extract user from database using bearer token."""
+    """
+    FastAPI dependency to extract and authenticate the current user using a JWT bearer token.
+    
+    Raises:
+        HTTPException: 401 Unauthorized if the token is invalid or the user is not found.
+    Returns:
+        User: The authenticated User database model.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -36,11 +50,22 @@ def get_current_user(
     return user
 
 class RoleChecker:
-    """Callable dependency to check if current user matches allowed roles."""
+    """
+    Callable dependency to check if the authenticated user matches one of the allowed roles.
+    """
     def __init__(self, allowed_roles: List[UserRole]):
+        """
+        Initialize the RoleChecker with a list of permitted roles.
+        """
         self.allowed_roles = allowed_roles
 
     def __call__(self, current_user: User = Depends(get_current_user)) -> User:
+        """
+        Enforce the role restrictions against the currently logged-in user.
+        
+        Raises:
+            HTTPException: 403 Forbidden if the user's role is not allowed.
+        """
         if current_user.role not in self.allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -49,5 +74,11 @@ class RoleChecker:
         return current_user
 
 def require_role(*roles: UserRole):
-    """Factory helper to enforce endpoint RBAC policies."""
+    """
+    Factory helper to enforce endpoint RBAC (Role-Based Access Control) policies.
+    
+    Usage:
+        `Depends(require_role(UserRole.educator))`
+    """
     return RoleChecker(list(roles))
+

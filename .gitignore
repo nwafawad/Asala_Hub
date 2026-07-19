@@ -42,6 +42,9 @@ yarn-error.log*
 *.log
 asala-hub-3week-sprint-plan.md
 
+# Foglamp codebase scan (contains edit token)
+.foglamp/
+
 # IDEs and Editors
 .vscode/
 .idea/

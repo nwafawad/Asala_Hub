@@ -1,3 +1,10 @@
+"""
+Assignment and Submission Models.
+
+Defines the database models for assignments assigned to courses,
+student submissions for those assignments, and the sync statuses for offline-first replication.
+"""
+
 import uuid
 from datetime import datetime
 from enum import Enum
@@ -11,11 +18,17 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 class SyncStatus(str, Enum):
+    """
+    Status of resource synchronisation between client and server database.
+    """
     synced = "synced"
     pending = "pending"
     conflict = "conflict"
 
 class Assignment(SQLModel, table=True):
+    """
+    Database model representing an assignment assigned inside a specific course.
+    """
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     course_id: uuid.UUID = Field(foreign_key="course.id", nullable=False, index=True)
     title: str
@@ -30,6 +43,10 @@ class Assignment(SQLModel, table=True):
 
 
 class Submission(SQLModel, table=True):
+    """
+    Database model representing a student's submission to a particular assignment.
+    Tracks sync status for offline-first support.
+    """
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     assignment_id: uuid.UUID = Field(foreign_key="assignment.id", nullable=False, index=True)
     student_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, index=True)
@@ -43,3 +60,4 @@ class Submission(SQLModel, table=True):
     # Relationships
     assignment: Assignment = Relationship(back_populates="submissions")
     student: "User" = Relationship(back_populates="submissions")
+

@@ -1,3 +1,10 @@
+"""
+Course CRUD operations.
+
+Handles database queries and updates relating to Course entities, including creation,
+retrieval (single/list), eager loading of modules, and modification/deletion.
+"""
+
 import uuid
 from typing import List, Optional
 from sqlmodel import Session, select
@@ -6,7 +13,16 @@ from app.models import Course
 from app.schemas.courses import CourseCreate, CourseUpdate
 
 def create_course(session: Session, course_in: CourseCreate, educator_id: uuid.UUID) -> Course:
-    """Create a new course in the database."""
+    """
+    Create a new course in the database.
+    
+    Args:
+        session (Session): The active database transaction session.
+        course_in (CourseCreate): Course creation details.
+        educator_id (UUID): Owner/Author educator ID.
+    Returns:
+        Course: The created Course database model instance.
+    """
     course = Course(
         title=course_in.title,
         description=course_in.description,
@@ -20,18 +36,44 @@ def create_course(session: Session, course_in: CourseCreate, educator_id: uuid.U
 def get_courses(
     session: Session, skip: int = 0, limit: int = 100, educator_id: Optional[uuid.UUID] = None
 ) -> List[Course]:
-    """Retrieve a list of courses, optionally filtered by educator_id."""
+    """
+    Retrieve a list of courses, optionally filtered by educator_id.
+    
+    Args:
+        session (Session): The active database transaction session.
+        skip (int): Pagination offset count.
+        limit (int): Pagination maximum count limit.
+        educator_id (Optional[UUID]): Filter courses by owner educator ID.
+    Returns:
+        List[Course]: List of matching Course model instances.
+    """
     query = select(Course)
     if educator_id is not None:
         query = query.where(Course.educator_id == educator_id)
     return session.exec(query.offset(skip).limit(limit)).all()
 
 def get_course_by_id(session: Session, course_id: uuid.UUID) -> Optional[Course]:
-    """Retrieve a course by its UUID."""
+    """
+    Retrieve a course by its UUID.
+    
+    Args:
+        session (Session): The active database transaction session.
+        course_id (UUID): The UUID of the course to fetch.
+    Returns:
+        Optional[Course]: The Course instance, or None if not found.
+    """
     return session.get(Course, course_id)
 
 def get_course_with_modules(session: Session, course_id: uuid.UUID) -> Optional[Course]:
-    """Retrieve a course with its modules loaded eagerly."""
+    """
+    Retrieve a course with its child modules loaded eagerly.
+    
+    Args:
+        session (Session): The active database transaction session.
+        course_id (UUID): The UUID of the course to fetch.
+    Returns:
+        Optional[Course]: The Course instance with modules attribute loaded, or None.
+    """
     return session.exec(
         select(Course)
         .where(Course.id == course_id)
@@ -39,7 +81,16 @@ def get_course_with_modules(session: Session, course_id: uuid.UUID) -> Optional[
     ).first()
 
 def update_course(session: Session, db_course: Course, course_in: CourseUpdate) -> Course:
-    """Update course attributes."""
+    """
+    Update course attributes.
+    
+    Args:
+        session (Session): The active database transaction session.
+        db_course (Course): The existing Course model instance from database.
+        course_in (CourseUpdate): The updated fields schema.
+    Returns:
+        Course: The updated Course database model instance.
+    """
     update_data = course_in.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_course, key, value)
@@ -49,6 +100,13 @@ def update_course(session: Session, db_course: Course, course_in: CourseUpdate) 
     return db_course
 
 def delete_course(session: Session, db_course: Course) -> None:
-    """Delete a course from the database."""
+    """
+    Delete a course from the database.
+    
+    Args:
+        session (Session): The active database transaction session.
+        db_course (Course): The Course model instance to delete.
+    """
     session.delete(db_course)
     session.commit()
+
