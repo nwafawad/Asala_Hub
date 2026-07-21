@@ -1,6 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "./db";
+import { syncPendingTransactions } from "./sync";
 
 export type SyncStatusType = "synced" | "pending" | "syncing" | "error";
 
@@ -8,41 +11,45 @@ interface ConnectivityContextType {
   isOnline: boolean;
   lastOnlineAt: Date | null;
   syncStatus: SyncStatusType;
+  pendingSyncCount: number;
   triggerSync: () => Promise<void>;
 }
 
 const ConnectivityContext = createContext<ConnectivityContextType | undefined>(undefined);
 
 export function ConnectivityProvider({ children }: { children: React.ReactNode }) {
-  // Lazy state initialization to set the initial online state from navigator without useEffect
   const [isOnline, setIsOnline] = useState<boolean>(() =>
     typeof window !== "undefined" ? navigator.onLine : true
   );
   const [lastOnlineAt, setLastOnlineAt] = useState<Date | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatusType>("synced");
-  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Memoize checkConnection to avoid recreating it on every render
+  // Live query to track count of pending unsynced logs in IndexedDB
+  const pendingSyncCount =
+    useLiveQuery(
+      () => (typeof window !== "undefined" ? db.transactionLogs.filter((log) => log.synced_at == null).count() : 0),
+      []
+    ) ?? 0;
+
   const checkConnection = useCallback(async () => {
     if (typeof window !== "undefined" && !navigator.onLine) {
       setIsOnline(false);
       return;
     }
-    
+
     let timeoutId: NodeJS.Timeout | undefined;
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const controller = new AbortController();
-      
-      // Setup connection timeout
+
       timeoutId = setTimeout(() => controller.abort(), 4000);
-      
+
       const response = await fetch(`${apiBase}/health`, {
         method: "GET",
         signal: controller.signal,
         cache: "no-store",
       });
-      
+
       if (response.ok) {
         setIsOnline(true);
         setLastOnlineAt(new Date());
@@ -52,21 +59,19 @@ export function ConnectivityProvider({ children }: { children: React.ReactNode }
     } catch {
       setIsOnline(false);
     } finally {
-      // Ensure the timeout is cleared even if fetch throws/rejects
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
     }
   }, []);
 
-  // Event listener subscription and background heartbeat check
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const handleOnline = () => {
       checkConnection();
     };
-    
+
     const handleOffline = () => {
       setIsOnline(false);
     };
@@ -74,12 +79,10 @@ export function ConnectivityProvider({ children }: { children: React.ReactNode }
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
-    // Defer initial ping to next macrotask to avoid synchronous state updates during effect phase
     const initialCheckId = window.setTimeout(() => {
       checkConnection();
     }, 0);
 
-    // Setup heartbeat check every 30 seconds
     const intervalId = setInterval(checkConnection, 30000);
 
     return () => {
@@ -90,30 +93,32 @@ export function ConnectivityProvider({ children }: { children: React.ReactNode }
     };
   }, [checkConnection]);
 
-  // Memoize triggerSync to prevent referential changes from triggering child renders
   const triggerSync = useCallback(async () => {
-    if (!isOnline) return;
-    setSyncStatus("syncing");
-    
-    // Clear any existing sync simulation timer
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
-    }
+    if (typeof window === "undefined" || !navigator.onLine) return;
 
-    // Simulate sync time (Sprint 2/3 will implement the actual queue sync)
-    syncTimeoutRef.current = setTimeout(() => {
-      setSyncStatus("synced");
-      
-      // Dispatch a custom sync success event for banners
-      if (typeof window !== "undefined") {
+    setSyncStatus("syncing");
+
+    try {
+      const { syncedCount, errors } = await syncPendingTransactions();
+
+      if (errors > 0) {
+        setSyncStatus("error");
+      } else {
+        setSyncStatus("synced");
+      }
+
+      if (syncedCount > 0 && typeof window !== "undefined") {
         window.dispatchEvent(new Event("asala-sync-success"));
       }
-    }, 1500);
-  }, [isOnline]);
+    } catch (err) {
+      console.error("[ConnectivityContext] Failed to trigger sync:", err);
+      setSyncStatus("error");
+    }
+  }, []);
 
   const prevOnlineRef = useRef(isOnline);
 
-  // Automatically trigger sync only when transitioning from offline -> online (deferred to macrotask)
+  // Automatically trigger sync when transitioning from offline to online
   useEffect(() => {
     const wasOffline = !prevOnlineRef.current;
     prevOnlineRef.current = isOnline;
@@ -121,23 +126,33 @@ export function ConnectivityProvider({ children }: { children: React.ReactNode }
     if (wasOffline && isOnline) {
       const timeoutId = window.setTimeout(() => {
         triggerSync();
-      }, 0);
+      }, 500);
 
       return () => window.clearTimeout(timeoutId);
     }
   }, [isOnline, triggerSync]);
 
-  // Cleanup sync timeout on unmount
+  // Periodic background auto-sync check if online and there are pending items queued
   useEffect(() => {
-    return () => {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-    };
-  }, []);
+    if (typeof window === "undefined" || !isOnline || pendingSyncCount === 0) return;
+
+    const syncIntervalId = setInterval(() => {
+      triggerSync();
+    }, 60000);
+
+    return () => clearInterval(syncIntervalId);
+  }, [isOnline, pendingSyncCount, triggerSync]);
 
   return (
-    <ConnectivityContext.Provider value={{ isOnline, lastOnlineAt, syncStatus, triggerSync }}>
+    <ConnectivityContext.Provider
+      value={{
+        isOnline,
+        lastOnlineAt,
+        syncStatus,
+        pendingSyncCount,
+        triggerSync,
+      }}
+    >
       {children}
     </ConnectivityContext.Provider>
   );

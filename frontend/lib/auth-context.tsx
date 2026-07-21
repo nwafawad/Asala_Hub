@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api, getStoredToken, setStoredToken, UserRead, UserRegister } from "./api";
+import { clearUserOfflineData } from "./offline-store";
 
 interface AuthContextType {
   user: UserRead | null;
@@ -78,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    clearUserOfflineData().catch((err) => console.error("Error clearing user offline data", err));
     setStoredToken(null);
     setToken(null);
     setUser(null);

@@ -52,13 +52,20 @@ Additionally, the entire frontend was redesigned to be **minimal, elegant, and o
 ---
 
 ### Sprint 2 — Offline Sync Engine (Mon Jul 20 – Sun Jul 26)
-- [ ] **Mon 7/20**: Add Dexie.js; define local schema mirroring TransactionLog + a Course/Module cache table
-- [ ] **Tue 7/21**: Extend Workbox to runtime-cache Course/Module API responses; verify cached content renders with DevTools offline mode on
-- [ ] **Wed 7/22**: Offline-aware assignment submission: write straight to Dexie + create a timestamped TransactionLog entry regardless of connection state; "Saved — will sync when connected" UI
-- [ ] **Thu 7/23**: Network status detection (online/offline events + heartbeats); trigger `syncNow()` on reconnect
-- [ ] **Fri 7/24**: Build the delta payload from unsynced logs, batch into compressed JSON, POST to FastAPI `/sync` endpoint
-- [ ] **Sat 7/25**: Wire success/failure handling, status UI updates, retries
-- [ ] **Sun 7/26**: Sprint Review (Demonstrate offline submission to Postgres sync)
+- [x] **Mon 7/20**: Add Dexie.js; define local schema mirroring TransactionLog + a Course/Module cache table
+  - [x] Created `frontend/lib/db.ts` with versioned stores (`courses`, `modules`, `assignments`, `submissions`, `transactionLogs`).
+  - [x] Implemented `frontend/lib/offline-store.ts` for atomic offline writes and local cache management.
+- [x] **Tue 7/21**: Extend Workbox to runtime-cache Course/Module API responses; verify cached content renders with DevTools offline mode on
+  - [x] Extended `runtimeCaching` in `frontend/next.config.ts` with `NetworkFirst` strategy for API routes.
+- [x] **Wed 7/22**: Offline-aware assignment submission: write straight to Dexie + create a timestamped TransactionLog entry regardless of connection state; "Saved — will sync when connected" UI
+  - [x] Built reactive `AssignmentSubmission.tsx` form with Dexie `useLiveQuery` sync status badges.
+- [x] **Thu 7/23**: Network status detection (online/offline events + heartbeats); trigger `syncNow()` on reconnect
+  - [x] Connected real batch sync engine trigger in `frontend/lib/connectivity-context.tsx` with live pending transaction counter.
+- [x] **Fri 7/24**: Build the delta payload from unsynced logs, batch into compressed JSON, POST to FastAPI `/sync` endpoint
+  - [x] Created `backend/app/schemas/sync.py`, `backend/app/crud/sync.py`, and `backend/app/routers/sync.py` exposing `POST /sync` with idempotency guards.
+- [x] **Sat 7/25**: Wire success/failure handling, status UI updates, retries
+  - [x] Implemented batch synchronization manager in `frontend/lib/sync.ts` with retry limits and status updates.
+- [x] **Sun 7/26**: Sprint Review (Demonstrate offline submission to Postgres sync)
 
 ### Sprint 3 — Grading Loop, Polish, Triage (Mon Jul 27 – Sun Aug 2)
 - [ ] **Mon 7/27**: Educator: submissions list & grading UI

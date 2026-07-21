@@ -9,7 +9,7 @@ import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 function NavigationContent({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
-  const { isOnline } = useConnectivity();
+  const { isOnline, pendingSyncCount, triggerSync } = useConnectivity();
   const pathname = usePathname();
   
   const [showSyncSuccess, setShowSyncSuccess] = useState(false);
@@ -92,6 +92,17 @@ function NavigationContent({ children }: { children: React.ReactNode }) {
                 {isOnline ? "Online" : "Offline"}
               </div>
 
+              {/* Pending Queue Count Badge */}
+              {pendingSyncCount > 0 && (
+                <button
+                  onClick={() => triggerSync()}
+                  className="px-2.5 py-0.5 border border-accent-muted bg-surface-base text-text-heading text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer hover:bg-surface-card"
+                  title="Click to sync queued mutations now"
+                >
+                  <span>📦</span> {pendingSyncCount} Pending
+                </button>
+              )}
+
               {/* User authentication indicators */}
               {user ? (
                 <div className="flex items-center gap-2">
@@ -132,14 +143,14 @@ function NavigationContent({ children }: { children: React.ReactNode }) {
 
       {/* Sync Success Alert Banner */}
       {showSyncSuccess && (
-        <div className="bg-accent-highlight border-b border-accent-muted px-4 py-2 text-center text-xs text-text-on-highlight font-extrabold flex items-center justify-center gap-2">
+        <div role="status" aria-live="polite" className="bg-accent-highlight border-b border-accent-muted px-4 py-2 text-center text-xs text-text-on-highlight font-extrabold flex items-center justify-center gap-2">
           <span>✓</span> {syncMessage}
         </div>
       )}
 
       {/* Graceful Offline Warning Banner */}
       {!isOnline && (
-        <div className="bg-surface-card border-b border-accent-danger px-4 py-2 text-center text-xs text-accent-danger font-bold tracking-wide">
+        <div role="status" aria-live="polite" className="bg-surface-card border-b border-accent-danger px-4 py-2 text-center text-xs text-accent-danger font-bold tracking-wide">
           <span>⚠️</span> Offline Mode — Syllabus is loaded from local memory.
         </div>
       )}

@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import { api, CourseRead, ModuleSyllabusRead } from "@/lib/api";
+import { cacheCoursesLocally, cacheSyllabusLocally, getLocalCourses, getLocalSyllabus } from "@/lib/offline-store";
 import { useAuth } from "@/lib/auth-context";
 import { CourseCatalog } from "./student/CourseCatalog";
 import { CourseViewer } from "./student/CourseViewer";
 
 export function StudentDashboard() {
   const { user } = useAuth();
-  
+
   // View states: catalog vs classroom
   const [activeCourse, setActiveCourse] = useState<CourseRead | null>(null);
   const [modules, setModules] = useState<ModuleSyllabusRead[]>([]);
@@ -27,8 +28,16 @@ export function StudentDashboard() {
     try {
       const allCourses = await api.getCourses();
       setCourses(allCourses);
+      cacheCoursesLocally(allCourses);
     } catch (err: any) {
-      setCoursesError(err.message || "Failed to load courses");
+      // Fallback read from local Dexie storage
+      const cached = await getLocalCourses();
+      if (cached.length > 0) {
+        setCourses(cached);
+        setCoursesError(null);
+      } else {
+        setCoursesError(err.message || "Failed to load courses");
+      }
     } finally {
       setCoursesLoading(false);
     }
@@ -46,8 +55,15 @@ export function StudentDashboard() {
       const courseModules = await api.getCourseModules(course.id);
       const sorted = [...courseModules].sort((a, b) => a.order_index - b.order_index);
       setModules(sorted);
+      cacheSyllabusLocally(course.id, sorted);
     } catch (err: any) {
-      setModulesError(err.message || "Failed to load lessons");
+      const cachedModules = await getLocalSyllabus(course.id);
+      if (cachedModules.length > 0) {
+        setModules(cachedModules);
+        setModulesError(null);
+      } else {
+        setModulesError(err.message || "Failed to load lessons");
+      }
     } finally {
       setModulesLoading(false);
     }
@@ -114,4 +130,5 @@ export function StudentDashboard() {
     </div>
   );
 }
+
 export default StudentDashboard;

@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { api, CourseRead, ModuleRead, ModuleSyllabusRead } from "@/lib/api";
+import { cacheModuleLocally, cacheSyllabusLocally, getLocalModule, getLocalSyllabus } from "@/lib/offline-store";
 import { LessonNav } from "./LessonNav";
 import { LessonContent } from "./LessonContent";
+import { AssignmentSubmission } from "./AssignmentSubmission";
 
 interface CourseViewerProps {
   course: CourseRead;
@@ -13,19 +15,33 @@ interface CourseViewerProps {
 
 export function CourseViewer({
   course,
-  modules,
+  modules: initialModules,
   onBackToCatalog,
 }: CourseViewerProps) {
-  // The sidebar list uses lightweight syllabus data (no content)
-  // The selected module is fetched with full content from the detail endpoint
+  const [modules, setModules] = useState<ModuleSyllabusRead[]>(initialModules);
   const [selectedSyllabusItem, setSelectedSyllabusItem] = useState<ModuleSyllabusRead | null>(null);
   const [selectedModuleFull, setSelectedModuleFull] = useState<ModuleRead | null>(null);
   const [moduleLoading, setModuleLoading] = useState(false);
   const [moduleError, setModuleError] = useState<string | null>(null);
   const [completedModuleIds, setCompletedModuleIds] = useState<string[]>([]);
-  
-  // Prefetched next module state
   const [prefetchedModule, setPrefetchedModule] = useState<ModuleRead | null>(null);
+
+  // Cache initial syllabus items to Dexie and setup initial selection
+  useEffect(() => {
+    if (initialModules.length > 0) {
+      setModules(initialModules);
+      cacheSyllabusLocally(course.id, initialModules);
+      setSelectedSyllabusItem(initialModules[0]);
+    } else {
+      // Try fallback from Dexie if online modules list is empty/offline
+      getLocalSyllabus(course.id).then((cached) => {
+        if (cached.length > 0) {
+          setModules(cached);
+          setSelectedSyllabusItem(cached[0]);
+        }
+      });
+    }
+  }, [initialModules, course.id]);
 
   // Load completed modules list from localStorage on mount
   useEffect(() => {
@@ -35,12 +51,9 @@ export function CourseViewer({
         setCompletedModuleIds(JSON.parse(stored));
       }
     }
-    if (modules.length > 0) {
-      setSelectedSyllabusItem(modules[0]);
-    }
-  }, [modules, course.id]);
+  }, [course.id]);
 
-  // Fetch full module content whenever the selected syllabus item changes
+  // Fetch full module content whenever selected syllabus item changes, caching to/from Dexie
   useEffect(() => {
     if (!selectedSyllabusItem) {
       setSelectedModuleFull(null);
@@ -56,11 +69,19 @@ export function CourseViewer({
         const full = await api.getModule(course.id, selectedSyllabusItem!.id);
         if (!cancelled) {
           setSelectedModuleFull(full);
+          cacheModuleLocally(full);
         }
       } catch (err: any) {
         if (!cancelled) {
-          setModuleError(err.message || "Failed to load lesson content");
-          setSelectedModuleFull(null);
+          // Fallback read from local Dexie IndexedDB
+          const cachedModule = await getLocalModule(course.id, selectedSyllabusItem!.id);
+          if (cachedModule) {
+            setSelectedModuleFull(cachedModule);
+            setModuleError(null);
+          } else {
+            setModuleError(err.message || "Failed to load lesson content");
+            setSelectedModuleFull(null);
+          }
         }
       } finally {
         if (!cancelled) {
@@ -76,20 +97,20 @@ export function CourseViewer({
     };
   }, [selectedSyllabusItem, course.id]);
 
-  // Prefetch logic: Look ahead to the next module in sequence
+  // Prefetch look-ahead module content
   useEffect(() => {
     if (selectedSyllabusItem && modules.length > 0) {
       const currIdx = modules.findIndex((m) => m.id === selectedSyllabusItem.id);
       if (currIdx !== -1 && currIdx + 1 < modules.length) {
         const nextSyllabus = modules[currIdx + 1];
-        // Prefetch the next module's full content
         api.getModule(course.id, nextSyllabus.id)
           .then((full) => {
             setPrefetchedModule(full);
-            console.log(`[Prefetch Engine] Prefetched next module contents: "${full.title}" into local cache.`);
+            cacheModuleLocally(full);
           })
-          .catch(() => {
-            setPrefetchedModule(null);
+          .catch(async () => {
+            const cached = await getLocalModule(course.id, nextSyllabus.id);
+            setPrefetchedModule(cached);
           });
       } else {
         setPrefetchedModule(null);
@@ -103,14 +124,14 @@ export function CourseViewer({
 
   const handleMarkComplete = () => {
     if (!selectedSyllabusItem) return;
-    
+
     let updated: string[];
     if (completedModuleIds.includes(selectedSyllabusItem.id)) {
       updated = completedModuleIds.filter((id) => id !== selectedSyllabusItem.id);
     } else {
       updated = [...completedModuleIds, selectedSyllabusItem.id];
     }
-    
+
     setCompletedModuleIds(updated);
     if (typeof window !== "undefined") {
       localStorage.setItem(`asala_completed_${course.id}`, JSON.stringify(updated));
@@ -122,7 +143,6 @@ export function CourseViewer({
       const currIdx = modules.findIndex((m) => m.id === selectedSyllabusItem.id);
       if (currIdx !== -1 && currIdx + 1 < modules.length) {
         const nextSyllabus = modules[currIdx + 1];
-        // If we already prefetched this module, use it directly
         if (prefetchedModule && prefetchedModule.id === nextSyllabus.id) {
           setSelectedSyllabusItem(nextSyllabus);
           setSelectedModuleFull(prefetchedModule);
@@ -165,13 +185,13 @@ export function CourseViewer({
             Classroom: <span className="underline">{course.title}</span>
           </h2>
         </div>
-        
+
         {/* Course Progress Indicator */}
         {modules.length > 0 && (
           <div className="flex items-center gap-3 text-xs">
             <span className="text-accent-muted font-semibold">Progress:</span>
             <div className="w-32 bg-surface-base h-2 rounded-full overflow-hidden border border-accent-muted/10">
-              <div 
+              <div
                 className="h-full bg-accent-highlight transition-all duration-300"
                 style={{ width: `${(completedModuleIds.length / modules.length) * 100}%` }}
               />
@@ -193,7 +213,6 @@ export function CourseViewer({
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
           {/* Navigation Tree sidebar */}
           <div className="lg:col-span-4">
             <LessonNav
@@ -227,6 +246,13 @@ export function CourseViewer({
                   <LessonContent
                     module={selectedModuleFull}
                     isCompleted={isCurrentCompleted}
+                  />
+
+                  {/* Module Assignment Submission Section */}
+                  <AssignmentSubmission
+                    assignmentId={selectedModuleFull.id}
+                    assignmentTitle={`${selectedModuleFull.title} Practice Assignment`}
+                    assignmentDescription={`Submit your practical work or answers for ${selectedModuleFull.title}. Responses are saved locally and synced automatically when connected.`}
                   />
 
                   {/* Footer Navigation Bar */}
@@ -272,10 +298,10 @@ export function CourseViewer({
               </div>
             )}
           </div>
-
         </div>
       )}
     </div>
   );
 }
+
 export default CourseViewer;

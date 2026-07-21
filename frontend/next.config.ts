@@ -7,8 +7,20 @@ const withPWA = withPWAInit({
   register: true,
   workboxOptions: {
     disableDevLogs: true,
-    // Exclude /api/* routes from caching (sprint 2 scope)
-    runtimeCaching: [],
+    runtimeCaching: [
+      {
+        urlPattern: /^https?:\/\/.*\/courses/,
+        handler: "NetworkFirst",
+        options: {
+          cacheName: "api-course-cache",
+          expiration: {
+            maxEntries: 50,
+            maxAgeSeconds: 60 * 60 * 24, // 24 hours
+          },
+          networkTimeoutSeconds: 5,
+        },
+      },
+    ],
   },
 });
 

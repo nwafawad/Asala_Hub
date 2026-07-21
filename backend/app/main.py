@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.routers import auth, courses, modules
+from app.routers import auth, courses, modules, sync
 
 app = FastAPI(
     title="Asala Hub API",
@@ -35,3 +35,4 @@ def health_check():
 app.include_router(auth.router)
 app.include_router(courses.router)
 app.include_router(modules.router)
+app.include_router(sync.router)
