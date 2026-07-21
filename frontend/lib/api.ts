@@ -26,16 +26,51 @@ export const setStoredToken = (token: string | null) => {
   }
 };
 
+export type ApiDetail = string | Record<string, unknown> | unknown[];
+
 export class ApiError extends Error {
   status: number;
-  detail: any;
+  detail: ApiDetail;
 
-  constructor(status: number, detail: any, message?: string) {
-    super(message || (typeof detail === "string" ? detail : JSON.stringify(detail)));
+  constructor(status: number, detail: ApiDetail, message?: string) {
+    const formattedMessage =
+      message || (typeof detail === "string" ? detail : JSON.stringify(detail));
+    super(formattedMessage);
     this.status = status;
     this.detail = detail;
     this.name = "ApiError";
+    Object.setPrototypeOf(this, ApiError.prototype);
   }
+}
+
+/**
+ * Type-safe helper to extract user-facing error messages from catch blocks (unknown errors or ApiError instances).
+ */
+export function getErrorMessage(err: unknown, fallback = "An error occurred"): string {
+  if (err instanceof ApiError) {
+    if (typeof err.detail === "string") return err.detail;
+    if (Array.isArray(err.detail)) {
+      return err.detail
+        .map((item) => (typeof item === "object" && item && "msg" in item ? String((item as { msg: unknown }).msg) : JSON.stringify(item)))
+        .join("; ");
+    }
+    if (typeof err.detail === "object" && err.detail !== null) {
+      if ("detail" in err.detail && typeof err.detail.detail === "string") {
+        return err.detail.detail;
+      }
+      if ("message" in err.detail && typeof err.detail.message === "string") {
+        return err.detail.message;
+      }
+    }
+    return err.message;
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  if (typeof err === "string") {
+    return err;
+  }
+  return fallback;
 }
 
 async function request<T>(
@@ -55,12 +90,21 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    let errorDetail: any = "An error occurred";
+    let errorDetail: ApiDetail = "An error occurred";
     try {
-      const errorJson = await response.json();
-      errorDetail = errorJson.detail || errorJson;
+      const errorText = await response.text();
+      try {
+        const errorJson: unknown = JSON.parse(errorText);
+        if (typeof errorJson === "object" && errorJson !== null && "detail" in errorJson) {
+          errorDetail = (errorJson as { detail: ApiDetail }).detail;
+        } else if (typeof errorJson === "string" || typeof errorJson === "object") {
+          errorDetail = errorJson as ApiDetail;
+        }
+      } catch {
+        errorDetail = errorText || response.statusText || "An error occurred";
+      }
     } catch {
-      errorDetail = await response.text();
+      errorDetail = response.statusText || "An error occurred";
     }
     throw new ApiError(response.status, errorDetail);
   }
@@ -69,7 +113,16 @@ async function request<T>(
     return null as T;
   }
 
-  return response.json() as Promise<T>;
+  const text = await response.text();
+  if (!text) {
+    return null as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return text as unknown as T;
+  }
 }
 
 // Typings matching backend schemas

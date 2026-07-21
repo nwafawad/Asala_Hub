@@ -14,7 +14,10 @@ interface ConnectivityContextType {
 const ConnectivityContext = createContext<ConnectivityContextType | undefined>(undefined);
 
 export function ConnectivityProvider({ children }: { children: React.ReactNode }) {
-  const [isOnline, setIsOnline] = useState(true);
+  // Lazy state initialization to set the initial online state from navigator without useEffect
+  const [isOnline, setIsOnline] = useState<boolean>(() =>
+    typeof window !== "undefined" ? navigator.onLine : true
+  );
   const [lastOnlineAt, setLastOnlineAt] = useState<Date | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatusType>("synced");
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -56,33 +59,35 @@ export function ConnectivityProvider({ children }: { children: React.ReactNode }
     }
   }, []);
 
+  // Event listener subscription and background heartbeat check
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsOnline(navigator.onLine);
-      
-      const handleOnline = () => {
-        checkConnection();
-      };
-      
-      const handleOffline = () => {
-        setIsOnline(false);
-      };
+    if (typeof window === "undefined") return;
 
-      window.addEventListener("online", handleOnline);
-      window.addEventListener("offline", handleOffline);
-
-      // Perform initial check
+    const handleOnline = () => {
       checkConnection();
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
 
-      // Setup heartbeat check every 30 seconds
-      const interval = setInterval(checkConnection, 30000);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
-      return () => {
-        window.removeEventListener("online", handleOnline);
-        window.removeEventListener("offline", handleOffline);
-        clearInterval(interval);
-      };
-    }
+    // Defer initial ping to next macrotask to avoid synchronous state updates during effect phase
+    const initialCheckId = window.setTimeout(() => {
+      checkConnection();
+    }, 0);
+
+    // Setup heartbeat check every 30 seconds
+    const intervalId = setInterval(checkConnection, 30000);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      window.clearTimeout(initialCheckId);
+      clearInterval(intervalId);
+    };
   }, [checkConnection]);
 
   // Memoize triggerSync to prevent referential changes from triggering child renders
@@ -108,7 +113,7 @@ export function ConnectivityProvider({ children }: { children: React.ReactNode }
 
   const prevOnlineRef = useRef(isOnline);
 
-  // Automatically trigger sync only when transitioning from offline -> online
+  // Automatically trigger sync only when transitioning from offline -> online (deferred to macrotask)
   useEffect(() => {
     const wasOffline = !prevOnlineRef.current;
     prevOnlineRef.current = isOnline;
@@ -122,7 +127,7 @@ export function ConnectivityProvider({ children }: { children: React.ReactNode }
     }
   }, [isOnline, triggerSync]);
 
-  // Cleanup timeout on unmount
+  // Cleanup sync timeout on unmount
   useEffect(() => {
     return () => {
       if (syncTimeoutRef.current) {
