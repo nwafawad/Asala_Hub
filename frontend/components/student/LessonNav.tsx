@@ -1,13 +1,13 @@
 "use client";
 
 import React from "react";
-import { ModuleRead } from "@/lib/api";
+import { ModuleSyllabusRead } from "@/lib/api";
 
 interface LessonNavProps {
-  modules: ModuleRead[];
-  selectedModule: ModuleRead | null;
+  modules: ModuleSyllabusRead[];
+  selectedModule: ModuleSyllabusRead | null;
   completedModuleIds: string[];
-  onSelectModule: (module: ModuleRead) => void;
+  onSelectModule: (module: ModuleSyllabusRead) => void;
 }
 
 export function LessonNav({

@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { ModuleRead } from "@/lib/api";
+import { ModuleRead, ModuleSyllabusRead } from "@/lib/api";
 
 interface CourseOutlineProps {
-  modules: ModuleRead[];
+  modules: ModuleSyllabusRead[];
   selectedModule: ModuleRead | null;
-  onSelectModule: (module: ModuleRead) => void;
+  onSelectModule: (module: ModuleSyllabusRead) => void;
   onAddModule: (title: string, type: "text" | "video") => Promise<void>;
   onDeleteModule: (moduleId: string) => Promise<void>;
-  onMoveModule: (module: ModuleRead, direction: "up" | "down") => Promise<void>;
+  onMoveModule: (module: ModuleSyllabusRead, direction: "up" | "down") => Promise<void>;
   isSubmitting: boolean;
 }
 

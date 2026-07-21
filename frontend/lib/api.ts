@@ -112,6 +112,17 @@ export interface ModuleRead {
   updated_at: string;
 }
 
+// Lightweight module info returned by the syllabus/list endpoint (no content payload)
+export interface ModuleSyllabusRead {
+  id: string;
+  course_id: string;
+  title: string;
+  content_type: ContentType;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CourseReadWithModules extends CourseRead {
   modules: ModuleRead[];
 }
@@ -229,8 +240,12 @@ export const api = {
   },
 
   // Modules API
-  async getCourseModules(courseId: string): Promise<ModuleRead[]> {
-    return request<ModuleRead[]>(`/courses/${courseId}/modules`);
+  async getCourseModules(courseId: string): Promise<ModuleSyllabusRead[]> {
+    return request<ModuleSyllabusRead[]>(`/courses/${courseId}/modules`);
+  },
+
+  async getModule(courseId: string, moduleId: string): Promise<ModuleRead> {
+    return request<ModuleRead>(`/courses/${courseId}/modules/${moduleId}`);
   },
 
   async createModule(courseId: string, data: ModuleCreate): Promise<ModuleRead> {

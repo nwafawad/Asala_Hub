@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CourseRead, ModuleRead } from "@/lib/api";
+import { api, CourseRead, ModuleRead, ModuleSyllabusRead } from "@/lib/api";
 import { LessonNav } from "./LessonNav";
 import { LessonContent } from "./LessonContent";
 
 interface CourseViewerProps {
   course: CourseRead;
-  modules: ModuleRead[];
+  modules: ModuleSyllabusRead[];
   onBackToCatalog: () => void;
 }
 
@@ -16,7 +16,12 @@ export function CourseViewer({
   modules,
   onBackToCatalog,
 }: CourseViewerProps) {
-  const [selectedModule, setSelectedModule] = useState<ModuleRead | null>(null);
+  // The sidebar list uses lightweight syllabus data (no content)
+  // The selected module is fetched with full content from the detail endpoint
+  const [selectedSyllabusItem, setSelectedSyllabusItem] = useState<ModuleSyllabusRead | null>(null);
+  const [selectedModuleFull, setSelectedModuleFull] = useState<ModuleRead | null>(null);
+  const [moduleLoading, setModuleLoading] = useState(false);
+  const [moduleError, setModuleError] = useState<string | null>(null);
   const [completedModuleIds, setCompletedModuleIds] = useState<string[]>([]);
   
   // Prefetched next module state
@@ -31,36 +36,79 @@ export function CourseViewer({
       }
     }
     if (modules.length > 0) {
-      setSelectedModule(modules[0]);
+      setSelectedSyllabusItem(modules[0]);
     }
   }, [modules, course.id]);
 
+  // Fetch full module content whenever the selected syllabus item changes
+  useEffect(() => {
+    if (!selectedSyllabusItem) {
+      setSelectedModuleFull(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchFullModule() {
+      setModuleLoading(true);
+      setModuleError(null);
+      try {
+        const full = await api.getModule(course.id, selectedSyllabusItem!.id);
+        if (!cancelled) {
+          setSelectedModuleFull(full);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setModuleError(err.message || "Failed to load lesson content");
+          setSelectedModuleFull(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setModuleLoading(false);
+        }
+      }
+    }
+
+    fetchFullModule();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSyllabusItem, course.id]);
+
   // Prefetch logic: Look ahead to the next module in sequence
   useEffect(() => {
-    if (selectedModule && modules.length > 0) {
-      const currIdx = modules.findIndex((m) => m.id === selectedModule.id);
+    if (selectedSyllabusItem && modules.length > 0) {
+      const currIdx = modules.findIndex((m) => m.id === selectedSyllabusItem.id);
       if (currIdx !== -1 && currIdx + 1 < modules.length) {
-        const nextMod = modules[currIdx + 1];
-        setPrefetchedModule(nextMod);
-        console.log(`[Prefetch Engine] Prefetching next module contents: "${nextMod.title}" into local cache.`);
+        const nextSyllabus = modules[currIdx + 1];
+        // Prefetch the next module's full content
+        api.getModule(course.id, nextSyllabus.id)
+          .then((full) => {
+            setPrefetchedModule(full);
+            console.log(`[Prefetch Engine] Prefetched next module contents: "${full.title}" into local cache.`);
+          })
+          .catch(() => {
+            setPrefetchedModule(null);
+          });
       } else {
         setPrefetchedModule(null);
       }
     }
-  }, [selectedModule, modules]);
+  }, [selectedSyllabusItem, modules, course.id]);
 
-  const handleSelectModule = (mod: ModuleRead) => {
-    setSelectedModule(mod);
+  const handleSelectModule = (mod: ModuleSyllabusRead) => {
+    setSelectedSyllabusItem(mod);
   };
 
   const handleMarkComplete = () => {
-    if (!selectedModule) return;
+    if (!selectedSyllabusItem) return;
     
     let updated: string[];
-    if (completedModuleIds.includes(selectedModule.id)) {
-      updated = completedModuleIds.filter((id) => id !== selectedModule.id);
+    if (completedModuleIds.includes(selectedSyllabusItem.id)) {
+      updated = completedModuleIds.filter((id) => id !== selectedSyllabusItem.id);
     } else {
-      updated = [...completedModuleIds, selectedModule.id];
+      updated = [...completedModuleIds, selectedSyllabusItem.id];
     }
     
     setCompletedModuleIds(updated);
@@ -70,24 +118,36 @@ export function CourseViewer({
   };
 
   const handleNext = () => {
-    if (prefetchedModule) {
-      setSelectedModule(prefetchedModule);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (selectedModule) {
-      const currIdx = modules.findIndex((m) => m.id === selectedModule.id);
-      if (currIdx > 0) {
-        setSelectedModule(modules[currIdx - 1]);
+    if (selectedSyllabusItem) {
+      const currIdx = modules.findIndex((m) => m.id === selectedSyllabusItem.id);
+      if (currIdx !== -1 && currIdx + 1 < modules.length) {
+        const nextSyllabus = modules[currIdx + 1];
+        // If we already prefetched this module, use it directly
+        if (prefetchedModule && prefetchedModule.id === nextSyllabus.id) {
+          setSelectedSyllabusItem(nextSyllabus);
+          setSelectedModuleFull(prefetchedModule);
+          setModuleLoading(false);
+          setModuleError(null);
+        } else {
+          setSelectedSyllabusItem(nextSyllabus);
+        }
       }
     }
   };
 
-  const currentModuleIndex = selectedModule ? modules.findIndex((m) => m.id === selectedModule.id) : -1;
+  const handlePrevious = () => {
+    if (selectedSyllabusItem) {
+      const currIdx = modules.findIndex((m) => m.id === selectedSyllabusItem.id);
+      if (currIdx > 0) {
+        setSelectedSyllabusItem(modules[currIdx - 1]);
+      }
+    }
+  };
+
+  const currentModuleIndex = selectedSyllabusItem ? modules.findIndex((m) => m.id === selectedSyllabusItem.id) : -1;
   const isFirstModule = currentModuleIndex === 0;
   const isLastModule = currentModuleIndex === modules.length - 1;
-  const isCurrentCompleted = selectedModule ? completedModuleIds.includes(selectedModule.id) : false;
+  const isCurrentCompleted = selectedSyllabusItem ? completedModuleIds.includes(selectedSyllabusItem.id) : false;
 
   return (
     <div className="space-y-6">
@@ -138,7 +198,7 @@ export function CourseViewer({
           <div className="lg:col-span-4">
             <LessonNav
               modules={modules}
-              selectedModule={selectedModule}
+              selectedModule={selectedSyllabusItem}
               completedModuleIds={completedModuleIds}
               onSelectModule={handleSelectModule}
             />
@@ -146,48 +206,65 @@ export function CourseViewer({
 
           {/* Content Focus Area */}
           <div className="lg:col-span-8 space-y-6">
-            {selectedModule ? (
-              <>
-                <LessonContent
-                  module={selectedModule}
-                  isCompleted={isCurrentCompleted}
-                />
-
-                {/* Footer Navigation Bar */}
-                <div className="card p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <button
-                      onClick={handlePrevious}
-                      disabled={isFirstModule}
-                      className="btn-secondary py-2 text-xs flex-1 sm:flex-initial flex items-center justify-center gap-1"
-                    >
-                      <span>←</span> Previous
-                    </button>
-                    <button
-                      onClick={handleNext}
-                      disabled={isLastModule}
-                      className="btn-secondary py-2 text-xs flex-1 sm:flex-initial flex items-center justify-center gap-1"
-                    >
-                      Next <span>→</span>
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={handleMarkComplete}
-                    className={`w-full sm:w-auto py-2 px-6 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer text-center border ${
-                      isCurrentCompleted
-                        ? "bg-surface-base border-accent-muted/20 text-accent-muted"
-                        : "bg-accent-highlight border-accent-highlight/30 text-text-on-highlight"
-                    }`}
-                  >
-                    {isCurrentCompleted ? "✕ Unmark Complete" : "✓ Mark Lesson Complete"}
-                  </button>
-
-                  <div className="text-[10px] text-accent-muted uppercase font-bold tracking-wider shrink-0">
-                    Module {currentModuleIndex + 1} of {modules.length}
-                  </div>
+            {selectedSyllabusItem ? (
+              moduleLoading ? (
+                <div className="card py-16 text-center min-h-[400px] flex flex-col justify-center items-center">
+                  <div className="h-10 w-10 rounded-full border-4 border-accent-muted/20 border-t-text-heading animate-spin"></div>
+                  <p className="text-xs text-accent-muted font-semibold tracking-wide uppercase mt-3">Loading Lesson...</p>
                 </div>
-              </>
+              ) : moduleError ? (
+                <div className="card py-16 text-center min-h-[400px] flex flex-col justify-center items-center">
+                  <p className="text-xs text-accent-danger font-bold">{moduleError}</p>
+                  <button
+                    onClick={() => setSelectedSyllabusItem({ ...selectedSyllabusItem })}
+                    className="btn-secondary text-xs py-1.5 mt-3"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : selectedModuleFull ? (
+                <>
+                  <LessonContent
+                    module={selectedModuleFull}
+                    isCompleted={isCurrentCompleted}
+                  />
+
+                  {/* Footer Navigation Bar */}
+                  <div className="card p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={handlePrevious}
+                        disabled={isFirstModule}
+                        className="btn-secondary py-2 text-xs flex-1 sm:flex-initial flex items-center justify-center gap-1"
+                      >
+                        <span>←</span> Previous
+                      </button>
+                      <button
+                        onClick={handleNext}
+                        disabled={isLastModule}
+                        className="btn-secondary py-2 text-xs flex-1 sm:flex-initial flex items-center justify-center gap-1"
+                      >
+                        Next <span>→</span>
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={handleMarkComplete}
+                      className={`w-full sm:w-auto py-2 px-6 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer text-center border ${
+                        isCurrentCompleted
+                          ? "bg-surface-base border-accent-muted/20 text-accent-muted"
+                          : "bg-accent-highlight border-accent-highlight/30 text-text-on-highlight"
+                      }`}
+                    >
+                      {isCurrentCompleted ? "✕ Unmark Complete" : "✓ Mark Lesson Complete"}
+                    </button>
+
+                    <div className="text-[10px] text-accent-muted uppercase font-bold tracking-wider shrink-0">
+                      Module {currentModuleIndex + 1} of {modules.length}
+                    </div>
+                  </div>
+                </>
+              ) : null
             ) : (
               <div className="card py-16 text-center text-accent-muted min-h-[400px] flex flex-col justify-center items-center">
                 <p className="font-bold text-sm text-text-heading">No Module Selected</p>

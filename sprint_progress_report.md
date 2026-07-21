@@ -46,6 +46,8 @@ Additionally, the entire frontend was redesigned to be **minimal, elegant, and o
 - [x] **Sun 7/19**: Sprint Review & Online Demo Flow
   - [x] **Syllabus Outline Tree:** Drag-reorder and delete operations verified.
   - [x] **Classroom Viewer:** Responsive grid discovery, pre-fetching logic, and completion status indicator checks successfully passed.
+  - [x] **Backend Modularization & Optimizations:** Refactored backend architecture into distinct packages (core, models, schemas, crud, routers), resolved login timing attacks, standardized JWT epoch expirations, and optimized module syllabus queries using SQLAlchemy deferral.
+
 
 ---
 
@@ -72,11 +74,16 @@ Additionally, the entire frontend was redesigned to be **minimal, elegant, and o
 ## 🛠️ Summary of Active Codebase References
 
 ### Backend Services
-*   **Database Config:** [database.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/database.py)
-*   **Database Models:** [entities.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/models/entities.py)
-*   **Authentication Endpoints:** [auth.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/routers/auth.py)
-*   **Roles & Dependencies:** [dependencies.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/dependencies.py)
-*   **Crypto Helpers:** [security.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/security.py)
+*   **Infrastructure (Core Config, DB Connection, Security):**
+    *   Database Engine Setup: [database.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/core/database.py)
+    *   System Configurations: [config.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/core/config.py)
+    *   Security & JWT Cryptography: [security.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/core/security.py)
+    *   Auth Guards & Dependencies: [dependencies.py](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/core/dependencies.py)
+*   **Database Models Package:** [models/](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/models) (including `user.py`, `course.py`, `module.py`, `assignment.py`, `transaction.py`)
+*   **API Router Controllers:** [routers/](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/routers) (including `auth.py`, `courses.py`, `modules.py`)
+*   **Pydantic Validation Schemas:** [schemas/](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/schemas) (including `auth.py`, `courses.py`, `modules.py`)
+*   **Database CRUD Services:** [crud/](file:///Users/nawafawad/Desktop/Asala_Hub/backend/app/crud) (including `user.py`, `courses.py`, `modules.py`)
+
 
 ### Frontend Client
 *   **Root Layout:** [layout.tsx](file:///Users/nawafawad/Desktop/Asala_Hub/frontend/app/layout.tsx)

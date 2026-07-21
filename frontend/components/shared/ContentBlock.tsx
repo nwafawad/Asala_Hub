@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 
 interface ContentBlockProps {
-  content: string;
+  content?: string;
   contentType: "text" | "video";
 }
 
@@ -14,6 +14,17 @@ export function ContentBlock({ content, contentType }: ContentBlockProps) {
   useEffect(() => {
     setLoadVideo(false);
   }, [content]);
+
+  // Guard: content may be undefined when loaded from the syllabus endpoint
+  // which excludes the content payload for performance.
+  if (!content) {
+    return (
+      <div className="p-6 text-center text-accent-muted">
+        <p className="text-xs font-bold">Content not available</p>
+        <p className="text-[10px] mt-1">This lesson's content could not be loaded.</p>
+      </div>
+    );
+  }
 
   // If video format, try to extract and render embed
   if (contentType === "video") {

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { api, CourseRead, ModuleRead } from "@/lib/api";
+import { api, CourseRead, ModuleSyllabusRead } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { CourseCatalog } from "./student/CourseCatalog";
 import { CourseViewer } from "./student/CourseViewer";
@@ -11,7 +11,7 @@ export function StudentDashboard() {
   
   // View states: catalog vs classroom
   const [activeCourse, setActiveCourse] = useState<CourseRead | null>(null);
-  const [modules, setModules] = useState<ModuleRead[]>([]);
+  const [modules, setModules] = useState<ModuleSyllabusRead[]>([]);
   const [modulesLoading, setModulesLoading] = useState(false);
   const [modulesError, setModulesError] = useState<string | null>(null);
 

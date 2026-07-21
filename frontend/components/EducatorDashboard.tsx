@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { api, CourseRead, ModuleRead } from "@/lib/api";
+import { api, CourseRead, ModuleRead, ModuleSyllabusRead } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useConnectivity } from "@/lib/connectivity-context";
 import { CourseOutline } from "./educator/CourseOutline";
@@ -19,10 +19,12 @@ export function EducatorDashboard() {
 
   // Selected course context
   const [selectedCourse, setSelectedCourse] = useState<CourseRead | null>(null);
-  const [modules, setModules] = useState<ModuleRead[]>([]);
+  const [modules, setModules] = useState<ModuleSyllabusRead[]>([]);
   const [modulesLoading, setModulesLoading] = useState(false);
   const [modulesError, setModulesError] = useState<string | null>(null);
+  // Full module data (with content) fetched when selecting a module for editing
   const [selectedModule, setSelectedModule] = useState<ModuleRead | null>(null);
+  const [selectedModuleLoading, setSelectedModuleLoading] = useState(false);
 
   // Tab switching state to reduce DOM nodes on low-power devices
   const [activeTab, setActiveTab] = useState<"structure" | "editor" | "settings">("structure");
@@ -56,8 +58,8 @@ export function EducatorDashboard() {
     }
   }, [user]);
 
-  // Fetch modules for selected course
-  const fetchModules = async (courseId: string, selectFirst = false) => {
+  // Fetch modules syllabus for selected course
+  const fetchModules = async (courseId: string, selectFirstId?: string) => {
     setModulesLoading(true);
     setModulesError(null);
     try {
@@ -65,13 +67,26 @@ export function EducatorDashboard() {
       const sorted = [...courseModules].sort((a, b) => a.order_index - b.order_index);
       setModules(sorted);
       
-      if (selectFirst && sorted.length > 0) {
-        setSelectedModule(sorted[0]);
+      if (selectFirstId) {
+        // Select a specific module by id, or fall back to first
+        const target = sorted.find((m) => m.id === selectFirstId);
+        if (target) {
+          await fetchFullModule(courseId, target.id);
+        } else if (sorted.length > 0) {
+          await fetchFullModule(courseId, sorted[0].id);
+        }
       } else if (sorted.length === 0) {
         setSelectedModule(null);
       } else if (selectedModule) {
-        const updated = sorted.find((m) => m.id === selectedModule.id);
-        setSelectedModule(updated || sorted[0]);
+        // Refresh the currently selected module's content
+        const stillExists = sorted.find((m) => m.id === selectedModule.id);
+        if (stillExists) {
+          await fetchFullModule(courseId, stillExists.id);
+        } else if (sorted.length > 0) {
+          await fetchFullModule(courseId, sorted[0].id);
+        } else {
+          setSelectedModule(null);
+        }
       }
     } catch (err: any) {
       setModulesError(err.message || "Failed to load modules");
@@ -80,11 +95,25 @@ export function EducatorDashboard() {
     }
   };
 
+  // Fetch full module content for editing
+  const fetchFullModule = async (courseId: string, moduleId: string) => {
+    setSelectedModuleLoading(true);
+    try {
+      const full = await api.getModule(courseId, moduleId);
+      setSelectedModule(full);
+    } catch (err: any) {
+      console.error("Failed to fetch module content", err);
+      setSelectedModule(null);
+    } finally {
+      setSelectedModuleLoading(false);
+    }
+  };
+
   const handleSelectCourse = (course: CourseRead) => {
     setSelectedCourse(course);
     setSelectedModule(null);
     setActiveTab("structure");
-    fetchModules(course.id, true);
+    fetchModules(course.id);
   };
 
   const handleCreateCourse = async (e: React.FormEvent) => {
@@ -152,8 +181,7 @@ export function EducatorDashboard() {
         content: type === "video" ? "" : "## New Section\nWrite lesson details here...",
         order_index: nextIndex,
       });
-      await fetchModules(selectedCourse.id);
-      setSelectedModule(created);
+      await fetchModules(selectedCourse.id, created.id);
       setActiveTab("editor"); // Switch to editor directly
     } catch (err: any) {
       alert(err.message || "Failed to add module");
@@ -171,8 +199,7 @@ export function EducatorDashboard() {
         content_type: contentType,
         content,
       });
-      await fetchModules(selectedCourse.id);
-      setSelectedModule(updated);
+      await fetchModules(selectedCourse.id, updated.id);
     } catch (err: any) {
       alert(err.message || "Failed to save module");
     } finally {
@@ -188,7 +215,7 @@ export function EducatorDashboard() {
       if (selectedModule?.id === moduleId) {
         setSelectedModule(null);
       }
-      await fetchModules(selectedCourse.id, true);
+      await fetchModules(selectedCourse.id);
     } catch (err: any) {
       alert(err.message || "Failed to delete module");
     } finally {
@@ -196,7 +223,7 @@ export function EducatorDashboard() {
     }
   };
 
-  const handleMoveModule = async (mod: ModuleRead, direction: "up" | "down") => {
+  const handleMoveModule = async (mod: ModuleSyllabusRead, direction: "up" | "down") => {
     if (!selectedCourse) return;
     const currIndex = modules.findIndex((m) => m.id === mod.id);
     if (currIndex === -1) return;
@@ -220,8 +247,10 @@ export function EducatorDashboard() {
     }
   };
 
-  const handleSelectModuleFromOutline = (mod: ModuleRead) => {
-    setSelectedModule(mod);
+  const handleSelectModuleFromOutline = async (mod: ModuleSyllabusRead) => {
+    if (selectedCourse) {
+      await fetchFullModule(selectedCourse.id, mod.id);
+    }
     setActiveTab("editor"); // Auto focus on editor tab
   };
 
@@ -420,7 +449,12 @@ export function EducatorDashboard() {
 
             {activeTab === "editor" && (
               <div className="w-full">
-                {selectedModule ? (
+                {selectedModuleLoading ? (
+                  <div className="card py-12 text-center min-h-[300px] flex flex-col justify-center items-center">
+                    <div className="h-10 w-10 rounded-full border-4 border-accent-muted/20 border-t-text-heading animate-spin"></div>
+                    <p className="text-xs text-accent-muted font-semibold tracking-wide uppercase mt-3">Loading Module...</p>
+                  </div>
+                ) : selectedModule ? (
                   <ModuleEditor
                     module={selectedModule}
                     onSaveModule={handleSaveModule}
