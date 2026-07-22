@@ -53,3 +53,9 @@ asala-hub-3week-sprint-plan.md
 .project
 .classpath
 .settings/
+
+# Graphify & AI Agent Tooling
+graphify-out/
+**/graphify-out/
+.agents/
+**/.agents/

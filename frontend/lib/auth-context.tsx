@@ -5,16 +5,22 @@ import { useRouter } from "next/navigation";
 import { api, getStoredToken, setStoredToken, UserRead, UserRegister } from "./api";
 import { clearUserOfflineData } from "./offline-store";
 
-interface AuthContextType {
+export interface UserSessionContextType {
   user: UserRead | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: UserRegister) => Promise<void>;
-  logout: () => void;
   isLoading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export interface AuthActionsContextType {
+  login: (email: string, password: string) => Promise<void>;
+  register: (data: UserRegister) => Promise<void>;
+  logout: () => void;
+}
+
+interface AuthContextType extends UserSessionContextType, AuthActionsContextType {}
+
+const UserSessionContext = createContext<UserSessionContextType | undefined>(undefined);
+const AuthActionsContext = createContext<AuthActionsContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserRead | null>(null);
@@ -33,7 +39,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(profile);
         } catch (err) {
           console.error("Failed to load user profile with stored token", err);
-          // Token is likely invalid or expired; clear it
           setStoredToken(null);
           setToken(null);
           setUser(null);
@@ -86,17 +91,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/login");
   };
 
+  const sessionValue = React.useMemo(() => ({ user, token, isLoading }), [user, token, isLoading]);
+  const actionsValue = React.useMemo(() => ({ login, register, logout }), []);
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading }}>
-      {children}
-    </AuthContext.Provider>
+    <UserSessionContext.Provider value={sessionValue}>
+      <AuthActionsContext.Provider value={actionsValue}>
+        {children}
+      </AuthActionsContext.Provider>
+    </UserSessionContext.Provider>
   );
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
+export function useUserSession() {
+  const context = useContext(UserSessionContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useUserSession must be used within an AuthProvider");
   }
   return context;
 }
+
+export function useAuthActions() {
+  const context = useContext(AuthActionsContext);
+  if (context === undefined) {
+    throw new Error("useAuthActions must be used within an AuthProvider");
+  }
+  return context;
+}
+
+export function useAuth(): AuthContextType {
+  const session = useUserSession();
+  const actions = useAuthActions();
+  return { ...session, ...actions };
+}
+

@@ -1,13 +1,28 @@
 "use client";
 
 import React, { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
-import { EducatorDashboard } from "@/components/EducatorDashboard";
-import { StudentDashboard } from "@/components/StudentDashboard";
+import { useUserSession } from "@/lib/auth-context";
+
+const EducatorDashboard = dynamic(
+  () => import("@/components/EducatorDashboard").then((mod) => mod.EducatorDashboard),
+  {
+    loading: () => <p style={{ textAlign: "center", padding: "40px" }}>Loading Educator Portal...</p>,
+    ssr: false,
+  }
+);
+
+const StudentDashboard = dynamic(
+  () => import("@/components/StudentDashboard").then((mod) => mod.StudentDashboard),
+  {
+    loading: () => <p style={{ textAlign: "center", padding: "40px" }}>Loading Student Portal...</p>,
+    ssr: false,
+  }
+);
 
 export default function DashboardPage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading } = useUserSession();
   const router = useRouter();
 
   useEffect(() => {
@@ -38,3 +53,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

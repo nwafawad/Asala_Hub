@@ -34,9 +34,43 @@ export async function syncPendingTransactions(): Promise<{ syncedCount: number; 
       return { syncedCount: 0, errors: 0 };
     }
 
-    console.log(`[Sync Engine] Preparing to sync batch of ${pendingLogs.length} pending transaction(s)...`);
+    // Deduplicate transaction logs targeting the same entity_type and entity_id (Keep latest client_timestamp)
+    const latestLogsByEntity = new Map<string, typeof pendingLogs[0]>();
+    const obsoleteLogIds: string[] = [];
 
-    const payloadBatch = pendingLogs.map((log) => ({
+    for (const log of pendingLogs) {
+      const key = `${log.entity_type}:${log.entity_id}`;
+      const existing = latestLogsByEntity.get(key);
+      if (!existing) {
+        latestLogsByEntity.set(key, log);
+      } else {
+        if (new Date(log.client_timestamp) >= new Date(existing.client_timestamp)) {
+          obsoleteLogIds.push(existing.id);
+          latestLogsByEntity.set(key, log);
+        } else {
+          obsoleteLogIds.push(log.id);
+        }
+      }
+    }
+
+    // Mark superseded local logs as synced
+    if (obsoleteLogIds.length > 0) {
+      const nowStr = new Date().toISOString();
+      await db.transaction("rw", db.transactionLogs, async () => {
+        for (const obsId of obsoleteLogIds) {
+          await db.transactionLogs.update(obsId, {
+            synced_at: nowStr,
+            error_message: "Superseded by newer offline transaction",
+          });
+        }
+      });
+    }
+
+    const effectiveLogs = Array.from(latestLogsByEntity.values());
+
+    console.log(`[Sync Engine] Preparing to sync batch of ${effectiveLogs.length} deduplicated transaction(s)...`);
+
+    const payloadBatch = effectiveLogs.map((log) => ({
       transaction_id: log.id,
       entity_type: log.entity_type,
       entity_id: log.entity_id,
@@ -44,6 +78,7 @@ export async function syncPendingTransactions(): Promise<{ syncedCount: number; 
       payload: log.payload,
       client_timestamp: log.client_timestamp,
     }));
+
 
     const response = await fetch(`${API_BASE_URL}/sync`, {
       method: "POST",
