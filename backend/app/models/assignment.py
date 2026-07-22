@@ -54,10 +54,13 @@ class Submission(SQLModel, table=True):
     submitted_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False)
     sync_status: SyncStatus = Field(sa_column=Column(String, nullable=False, index=True))
     grade: Optional[float] = Field(default=None, nullable=True)
+    version: int = Field(default=1, nullable=False)
+    is_deleted: bool = Field(default=False, nullable=False, index=True)
     created_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False)
 
     # Relationships
     assignment: Assignment = Relationship(back_populates="submissions")
     student: "User" = Relationship(back_populates="submissions")
+
 

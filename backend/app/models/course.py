@@ -25,6 +25,8 @@ class Course(SQLModel, table=True):
     title: str
     description: str
     educator_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, index=True)
+    version: int = Field(default=1, nullable=False)
+    is_deleted: bool = Field(default=False, nullable=False, index=True)
     created_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False)
 
@@ -32,4 +34,5 @@ class Course(SQLModel, table=True):
     educator: "User" = Relationship(back_populates="courses")
     modules: List["Module"] = Relationship(back_populates="course", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     assignments: List["Assignment"] = Relationship(back_populates="course", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
 

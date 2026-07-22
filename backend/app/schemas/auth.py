@@ -50,3 +50,12 @@ class UserRead(BaseModel):
         """Pydantic configuration settings."""
         from_attributes = True
 
+class UserAuthClaims(BaseModel):
+    """
+    Lightweight schema representing decoded JWT claims for dependency injection.
+    """
+    user_id: uuid.UUID
+    role: UserRole
+    email: str | None = None
+
+
