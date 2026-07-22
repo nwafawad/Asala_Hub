@@ -59,3 +59,13 @@ graphify-out/
 **/graphify-out/
 .agents/
 **/.agents/
+.gemini/
+.claude/
+.anthropic/
+CLAUDE.md
+**/CLAUDE.md
+AGENTS.md
+**/AGENTS.md
+*.claude.md
+
+

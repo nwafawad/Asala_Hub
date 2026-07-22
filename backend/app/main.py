@@ -16,14 +16,23 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Request latency & logging middleware
+# Request latency, logging, and OWASP security headers middleware
 @app.middleware("http")
-async def log_requests_middleware(request, call_next):
+async def log_requests_and_security_headers_middleware(request, call_next):
     start_time = time.time()
     response = await call_next(request)
     process_time = (time.time() - start_time) * 1000
+
+    # Inject OWASP security headers
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+
     logger.info(f"[{request.method}] {request.url.path} -> {response.status_code} ({process_time:.2f}ms)")
     return response
+
 
 # CORS configuration
 origins = [

@@ -73,7 +73,13 @@ export class AsalaDatabase extends Dexie {
       submissions: "id, assignment_id, student_id, sync_status",
       transactionLogs: "id, user_id, entity_type, client_timestamp, synced_at",
     });
+
+    this.version(2).stores({
+      transactionLogs: "id, user_id, entity_type, entity_id, client_timestamp, synced_at, retry_count, [synced_at+retry_count], [entity_type+entity_id]",
+      submissions: "id, assignment_id, student_id, sync_status, [assignment_id+sync_status]",
+    });
   }
 }
+
 
 export const db = new AsalaDatabase();

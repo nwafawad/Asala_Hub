@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship, Column, String
+from sqlmodel import SQLModel, Field, Relationship, Column, String, Index
 
 from app.models.user import get_naive_utc_now
 
@@ -47,7 +47,12 @@ class Submission(SQLModel, table=True):
     Database model representing a student's submission to a particular assignment.
     Tracks sync status for offline-first support.
     """
+    __table_args__ = (
+        Index("idx_submission_assignment_student", "assignment_id", "student_id"),
+    )
+
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
+
     assignment_id: uuid.UUID = Field(foreign_key="assignment.id", nullable=False, index=True)
     student_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, index=True)
     content: str
