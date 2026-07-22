@@ -2,32 +2,39 @@
 
 import { useEffect } from "react";
 
+export function registerBackgroundSync(tag = "asala-background-sync") {
+  if (typeof window !== "undefined" && "serviceWorker" in navigator && "SyncManager" in window) {
+    navigator.serviceWorker.ready
+      .then((registration: any) => {
+        if (registration.sync) {
+          return registration.sync.register(tag);
+        }
+      })
+      .catch((err) => {
+        console.warn("[Background Sync] Registration failed:", err);
+      });
+  }
+}
+
 export function ServiceWorkerRegister() {
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      // In production or if testing offline features manually, register the worker
-      // We check a localStorage flag or allow registration in production only.
-      const isProd = process.env.NODE_ENV === "production";
-      const forceSW = localStorage.getItem("force-service-worker") === "true";
+      const register = () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((registration) => {
+            console.log("[PWA] Service Worker registered:", registration.scope);
+          })
+          .catch((error) => {
+            console.error("[PWA] Service Worker registration failed:", error);
+          });
+      };
 
-      if (isProd || forceSW) {
-        const register = () => {
-          navigator.serviceWorker
-            .register("/sw.js")
-            .then((registration) => {
-              console.log("Service Worker registered with scope:", registration.scope);
-            })
-            .catch((error) => {
-              console.error("Service Worker registration failed:", error);
-            });
-        };
-
-        if (document.readyState === "complete") {
-          register();
-        } else {
-          window.addEventListener("load", register);
-          return () => window.removeEventListener("load", register);
-        }
+      if (document.readyState === "complete") {
+        register();
+      } else {
+        window.addEventListener("load", register);
+        return () => window.removeEventListener("load", register);
       }
     }
   }, []);

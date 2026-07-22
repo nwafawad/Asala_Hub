@@ -13,8 +13,8 @@ const EducatorDashboard = dynamic(
   }
 );
 
-const StudentDashboard = dynamic(
-  () => import("@/components/StudentDashboard").then((mod) => mod.StudentDashboard),
+const InstitutionalStudent = dynamic(
+  () => import("@/components/student/InstitutionalStudent").then((mod) => mod.InstitutionalStudent),
   {
     loading: () => <p style={{ textAlign: "center", padding: "40px" }}>Loading Student Portal...</p>,
     ssr: false,
@@ -44,11 +44,11 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div>
       {user.role === "educator" ? (
         <EducatorDashboard />
       ) : (
-        <StudentDashboard />
+        <InstitutionalStudent />
       )}
     </div>
   );

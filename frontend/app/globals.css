@@ -1,137 +1,131 @@
 @import "tailwindcss";
 
 @theme {
-  --color-surface-base: #FAF9F6;
+  --color-surface-base: #EFF2F0;
   --color-surface-card: #FFFFFF;
-  --color-text-body: #2B2927;
-  --color-text-heading: #111111;
-  --color-accent-muted: #8C857B;
-  --color-accent-highlight: #D8E2DC;
-  --color-text-on-highlight: #1C2E24;
+  --color-border-card: #E4E7E4;
+  --color-border-input: #D6DCD9;
+  --color-text-primary: #1C2321;
+  --color-text-secondary: #5B6560;
+  --color-text-muted: #7A847E;
+  --color-text-muted-soft: #9AA39D;
+  --color-accent-teal: #2F6F63;
+  --color-accent-teal-hover: #265A50;
+  --color-accent-soft-bg: #E4EEEC;
+  --color-accent-soft-text: #1F4E45;
+  --color-status-offline-bg: #FBF1DE;
+  --color-status-offline-text: #8A5A05;
   --color-accent-danger: #990000;
-  --color-accent-focus: #4A607A;
 
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-heading: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Backward compatibility for existing educator/auth components */
+  --color-text-heading: #1C2321;
+  --color-text-body: #5B6560;
+  --color-accent-muted: #7A847E;
+  --color-accent-highlight: #E4EEEC;
+  --color-text-on-highlight: #1F4E45;
+  --color-accent-focus: #2F6F63;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-heading: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-rtl: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Custom Base Layer optimized for old hardware rendering (no shadows, blurs, or complex shifts) */
+/* Custom Base Layer */
 @layer base {
   html, body {
     background-color: var(--color-surface-base);
-    color: var(--color-text-body);
+    color: var(--color-text-primary);
     font-family: var(--font-sans);
     min-height: 100vh;
     margin: 0;
     padding: 0;
   }
 
+  [dir="rtl"] {
+    font-family: var(--font-rtl);
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
-    color: var(--color-text-heading);
-    font-weight: 700;
+    color: var(--color-text-primary);
+    font-weight: 600;
   }
 }
 
-/* Custom Component Utilities optimized for zero GPU cost */
+/* Custom Component Utilities matching 1px border flat aesthetic */
 @layer utilities {
   .card {
     background-color: var(--color-surface-card);
-    border: 1px solid var(--color-accent-muted);
-    border-radius: 4px; /* Standard simple corners */
+    border: 1px solid var(--color-border-card);
+    border-radius: 8px;
     padding: 16px;
-    /* Removed all shadows, translate-y hover offsets, and transition classes */
-  }
-
-  .badge-success {
-    background-color: var(--color-accent-highlight);
-    color: var(--color-text-on-highlight);
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 2px;
-    display: inline-flex;
-    align-items: center;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .badge-type {
-    background-color: rgba(140, 133, 123, 0.15);
-    color: var(--color-text-body);
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 2px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border: 1px solid rgba(140, 133, 123, 0.25);
   }
 
   .input-field {
     width: 100%;
-    padding: 8px 12px;
-    border-radius: 4px;
-    border: 1px solid var(--color-accent-muted);
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border-input);
     background-color: var(--color-surface-card);
-    color: var(--color-text-body);
-    font-size: 0.85rem;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
     box-sizing: border-box;
   }
 
   .input-field:focus {
-    outline: 2px solid var(--color-accent-focus);
+    outline: none;
+    border-color: var(--color-accent-teal);
+    box-shadow: 0 0 0 2px rgba(47, 111, 99, 0.2);
   }
 
   .btn-primary {
-    background-color: var(--color-text-heading);
+    background-color: var(--color-accent-teal);
     color: #FFFFFF;
-    font-weight: 700;
-    font-size: 0.85rem;
+    font-weight: 500;
+    font-size: 0.875rem;
     padding: 8px 16px;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    border: 1px solid var(--color-text-heading);
-    display: inline-block;
+    border: 1px solid var(--color-accent-teal);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease;
   }
 
   .btn-primary:hover {
-    background-color: var(--color-accent-focus);
-    border-color: var(--color-accent-focus);
+    background-color: var(--color-accent-teal-hover);
+    border-color: var(--color-accent-teal-hover);
   }
 
   .btn-primary:disabled {
-    background-color: var(--color-accent-muted);
-    border-color: var(--color-accent-muted);
+    background-color: var(--color-text-muted-soft);
+    border-color: var(--color-text-muted-soft);
     color: #FFFFFF;
     opacity: 0.6;
     cursor: not-allowed;
   }
 
   .btn-secondary {
-    background-color: transparent;
-    color: var(--color-text-body);
-    border: 1px solid var(--color-accent-muted);
-    font-weight: 700;
-    font-size: 0.85rem;
+    background-color: #FFFFFF;
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border-input);
+    font-weight: 500;
+    font-size: 0.875rem;
     padding: 8px 16px;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .btn-secondary:hover {
-    background-color: rgba(140, 133, 123, 0.1);
+    border-color: var(--color-accent-teal);
   }
 
-  .btn-secondary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  /* Static solid loading bar replacing GPU redraw loops */
   .skeleton {
-    background-color: #EAEAEA;
-    border-radius: 2px;
+    background-color: #E4E7E4;
+    border-radius: 4px;
   }
 }
