@@ -3,6 +3,11 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
+class SubmissionPayloadSchema(BaseModel):
+    assignment_id: uuid.UUID
+    content: str = ""
+    version: Optional[int] = 1
+
 class SyncTransactionIn(BaseModel):
     transaction_id: uuid.UUID
     entity_type: str = Field(..., description="Entity type being mutated (e.g., 'submission')")

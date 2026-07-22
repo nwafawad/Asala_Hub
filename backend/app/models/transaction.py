@@ -7,7 +7,7 @@ Defines the TransactionLog SQLModel used to record offline mutations for client 
 import uuid
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship, Column, JSON
+from sqlmodel import SQLModel, Field, Relationship, Column, JSON, Index
 
 from app.models.user import get_naive_utc_now
 
@@ -19,6 +19,10 @@ class TransactionLog(SQLModel, table=True):
     Database model representing an append-only transaction log.
     Records changes made on the client to allow syncing once internet connection is restored.
     """
+    __table_args__ = (
+        Index("idx_tx_log_user_synced_time", "user_id", "synced_at", "client_timestamp"),
+    )
+
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, index=True)
     entity_type: str

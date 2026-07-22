@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 
 from app.models.transaction import TransactionLog
 from app.models.assignment import Submission, SyncStatus
-from app.schemas.sync import SyncBatchRequest, SyncBatchResponse, SyncTransactionResult
+from app.schemas.sync import SyncBatchRequest, SyncBatchResponse, SyncTransactionResult, SubmissionPayloadSchema
 
 def get_utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -64,20 +64,16 @@ def process_sync_batch(
         try:
             with session.begin_nested():
                 if tx.entity_type == "submission":
-                    assignment_id_str = tx.payload.get("assignment_id")
-                    content = tx.payload.get("content", "")
-                    
-                    if not assignment_id_str:
-                        raise ValueError("Missing assignment_id in submission payload")
-
-                    assignment_id = uuid.UUID(str(assignment_id_str))
+                    payload_data = SubmissionPayloadSchema.model_validate(tx.payload)
+                    assignment_id = payload_data.assignment_id
+                    content = payload_data.content
 
                     # Check pre-fetched existing submission
                     existing_submission = existing_submissions.get(tx.entity_id)
 
                     if existing_submission:
                         # Version-based conflict detection with Last-Write-Wins fallback
-                        client_version = tx.payload.get("version", 1)
+                        client_version = payload_data.version or 1
                         if isinstance(client_version, int) and client_version < existing_submission.version:
                             # Flag conflict if client version is behind server version
                             existing_submission.sync_status = SyncStatus.conflict
@@ -108,7 +104,7 @@ def process_sync_batch(
                             content=content,
                             submitted_at=tx.client_timestamp.replace(tzinfo=None) if tx.client_timestamp else now,
                             sync_status=SyncStatus.synced,
-                            version=tx.payload.get("version", 1),
+                            version=payload_data.version or 1,
                             created_at=now,
                             updated_at=now
                         )

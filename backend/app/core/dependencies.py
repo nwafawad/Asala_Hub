@@ -6,8 +6,8 @@ including OAuth2 bearer token authentication and Role-Based Access Control (RBAC
 """
 
 import uuid
-from typing import List, Union
-from fastapi import Depends, HTTPException, status
+from typing import List, Union, Optional
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlmodel import Session
@@ -17,10 +17,27 @@ from app.models import User, UserRole
 from app.schemas.auth import UserAuthClaims
 
 # Configures OAuth2 authentication flow pointing to login endpoint
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+
+def get_token_from_request(
+    request: Request,
+    header_token: Optional[str] = Depends(oauth2_scheme)
+) -> str:
+    """
+    Extract JWT token from HttpOnly cookie or Authorization header.
+    """
+    cookie_token = request.cookies.get("access_token")
+    token = cookie_token or header_token
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return token
 
 def get_current_user_claims(
-    token: str = Depends(oauth2_scheme)
+    token: str = Depends(get_token_from_request)
 ) -> UserAuthClaims:
     """
     FastAPI dependency to extract JWT claims without forcing a database query.
@@ -46,7 +63,7 @@ def get_current_user_claims(
         raise credentials_exception
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(get_token_from_request),
     session: Session = Depends(get_session)
 ) -> User:
     """

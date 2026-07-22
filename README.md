@@ -1,12 +1,13 @@
 # Asala Hub — Offline-First E-Learning PWA
 
-Asala Hub is a Progressive Web Application (PWA) designed to provide continuous learning resilience. It allows educators to create structured courses and modules, and students to browse materials and submit assignments—completely offline.
+Asala Hub is a Progressive Web Application (PWA) designed to provide continuous learning resilience. It allows educators to create structured courses and modules, and students to browse materials, work offline, and automatically synchronize submissions when connectivity is restored.
 
-## System Features (Sprint 1 Completed)
+## System Features
 
 - **Containerized Stack**: Multi-container environment running PostgreSQL, FastAPI, and Next.js (App Router + Tailwind CSS).
-- **Secure Authentication**: JWT-based user registration and login with Role-Based Access Control (Educators vs. Students).
-- **Course & Module Management**: Full CRUD capabilities for creating courses and modules.
+- **Secure Authentication**: JWT-based user registration and login with Role-Based Access Control (Educators vs. Students) and HttpOnly cookies / bearer tokens.
+- **Course & Module Management**: Full CRUD capabilities for courses, modules, and assignment content.
+- **Offline Sync Engine (Sprint 2)**: Client-side Dexie IndexedDB queue for offline action staging, conflict-resilient batch synchronization API (`/api/v1/sync/`), and transactional mutation processing.
 - **Web App Manifest & Precaching**: Natively integrated PWA Manifest and Workbox service worker precaching of the app shell (JS, CSS, HTML, fonts, and assets).
 - **Graceful Offline UI**: Dynamic network status listeners (`navigator.onLine` + browser events) with connection indicator dots and warning banners when offline.
 - **Mobile-Responsive Sizing**: Fully optimized layouts across common smartphone screen widths (375px – 428px).
@@ -17,7 +18,8 @@ Asala Hub is a Progressive Web Application (PWA) designed to provide continuous 
 
 ```
 Asala_Hub/
-├── docker-compose.yml       # DB, Backend, and Frontend containers
+├── docker-compose.yml       # DB, Backend, and Frontend containers (Development)
+├── docker-compose.prod.yml  # Production multi-container composition
 ├── .env.example             # Template environment variables
 ├── README.md                # System documentation
 ├── sprint_progress_report.md# Sprint tracker checklist
@@ -26,13 +28,19 @@ Asala_Hub/
 │   ├── requirements.txt
 │   ├── alembic.ini          # Alembic migrations configuration
 │   ├── alembic/             # Migration history versions
-│   └── app/                 # FastAPI router and schema controllers
+│   └── app/                 # FastAPI routers, schemas, CRUD, and models
+│       ├── core/            # Config, security, and auth dependencies
+│       ├── crud/            # CRUD helper controllers & sync processors
+│       ├── models/          # SQLModel database schemas
+│       ├── routers/         # REST API endpoints
+│       └── schemas/         # Pydantic request/response schemas
 └── frontend/                # Next.js App Router client app
     ├── Dockerfile
     ├── package.json
     ├── next.config.ts       # next-pwa compiler configurations
-    ├── app/                 # Main routers (with manifest.ts)
-    └── components/          # Shell and dashboard layout views
+    ├── app/                 # Main page routes & layouts (with manifest.ts)
+    ├── components/          # Shell, dashboard, and editor views
+    └── lib/                 # IndexedDB client database & sync worker (`sync.ts`)
 ```
 
 ---
@@ -102,3 +110,4 @@ To test service worker caching, installability, and full offline capabilities, r
    - Open DevTools > Network tab, and check the **Offline** checkbox.
    - Reload the page. The app shell will continue to render.
    - The layout banner will notify you: *You're offline — some data may not be available*.
+

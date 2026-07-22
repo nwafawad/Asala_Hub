@@ -42,7 +42,7 @@ def get_courses(
     session: Session, skip: int = 0, limit: int = 100, educator_id: Optional[uuid.UUID] = None
 ) -> List[Course]:
     """
-    Retrieve a list of courses, optionally filtered by educator_id.
+    Retrieve a list of active non-deleted courses, optionally filtered by educator_id.
     
     Args:
         session (Session): The active database transaction session.
@@ -52,26 +52,28 @@ def get_courses(
     Returns:
         List[Course]: List of matching Course model instances.
     """
-    query = select(Course)
+    query = select(Course).where(Course.is_deleted == False)
     if educator_id is not None:
         query = query.where(Course.educator_id == educator_id)
     return session.exec(query.offset(skip).limit(limit)).all()
 
 def get_course_by_id(session: Session, course_id: uuid.UUID) -> Optional[Course]:
     """
-    Retrieve a course by its UUID.
+    Retrieve an active non-deleted course by its UUID.
     
     Args:
         session (Session): The active database transaction session.
         course_id (UUID): The UUID of the course to fetch.
     Returns:
-        Optional[Course]: The Course instance, or None if not found.
+        Optional[Course]: The Course instance, or None if not found or deleted.
     """
-    return session.get(Course, course_id)
+    return session.exec(
+        select(Course).where(Course.id == course_id, Course.is_deleted == False)
+    ).first()
 
 def get_course_with_modules(session: Session, course_id: uuid.UUID) -> Optional[Course]:
     """
-    Retrieve a course with its child modules loaded eagerly.
+    Retrieve an active non-deleted course with its child modules loaded eagerly.
     
     Args:
         session (Session): The active database transaction session.
@@ -81,7 +83,7 @@ def get_course_with_modules(session: Session, course_id: uuid.UUID) -> Optional[
     """
     return session.exec(
         select(Course)
-        .where(Course.id == course_id)
+        .where(Course.id == course_id, Course.is_deleted == False)
         .options(selectinload(Course.modules))
     ).first()
 
