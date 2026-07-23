@@ -1,59 +1,144 @@
-import Dexie, { Table } from "dexie";
-import { ContentType } from "./api";
+import Dexie, { Table } from 'dexie';
 
+// Institutional tables
 export interface LocalCourse {
   id: string;
   title: string;
   description: string;
-  educator_id: string;
-  created_at: string;
-  updated_at: string;
+  educatorId: string;
+  colorIndex: number; // 0-5 for flat color header
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LocalModule {
   id: string;
-  course_id: string;
+  courseId: string;
   title: string;
-  content_type: ContentType;
+  contentType: 'text' | 'video' | 'audio';
   content: string;
-  order_index: number;
-  created_at: string;
-  updated_at: string;
+  orderIndex: number;
+  isCached: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LocalAssignment {
   id: string;
-  course_id: string;
+  courseId: string;
   title: string;
   description: string;
-  due_date: string;
-  created_at: string;
-  updated_at: string;
+  dueDate: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LocalSubmission {
   id: string;
-  assignment_id: string;
-  student_id: string;
+  assignmentId: string;
+  studentId: string;
   content: string;
-  submitted_at: string;
-  sync_status: "synced" | "pending" | "conflict";
-  grade?: number | null;
-  created_at: string;
-  updated_at: string;
+  submittedAt: string;
+  syncStatus: 'synced' | 'pending' | 'conflict' | 'draft' | 'queued';
+  grade: number | null;
+  gradedBy: 'instructor' | 'system' | null;
+  versions: { content: string; savedAt: string }[];
+  createdAt: string;
+  updatedAt: string;
 }
 
+export interface LocalLesson {
+  id: string;
+  courseId: string;
+  title: string;
+  status: 'draft' | 'published';
+  blocks: LessonBlock[];
+  orderIndex: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LessonBlock {
+  id: string;
+  type: 'text' | 'audio' | 'quiz';
+  content: string;
+  options?: string[]; // for quiz
+  correctAnswer?: number; // for quiz
+}
+
+export interface LocalGrade {
+  id: string;
+  assignmentId: string;
+  studentId: string;
+  studentName: string;
+  score: number | null;
+  syncStatus: 'synced' | 'pending' | 'conflict';
+  conflictValue?: number;
+  updatedAt: string;
+}
+
+// Marketplace tables
+export interface LocalMasterclass {
+  id: string;
+  title: string;
+  description: string;
+  creatorId: string;
+  creatorName: string;
+  creatorBio: string;
+  category: 'history' | 'music' | 'crafts' | 'storytelling';
+  price: number;
+  currency: string;
+  colorIndex: number;
+  status: 'draft' | 'published';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LocalCartItem {
+  id: string;
+  masterclassId: string;
+  addedAt: string;
+}
+
+export interface LocalOrder {
+  id: string;
+  items: { masterclassId: string; title: string; price: number; currency: string }[];
+  total: number;
+  currency: string;
+  referenceNumber: string;
+  status: 'completed' | 'pending' | 'refunded';
+  createdAt: string;
+}
+
+export interface LocalTransaction {
+  id: string;
+  masterclassId: string;
+  masterclassTitle: string;
+  buyerName: string;
+  amount: number;
+  currency: string;
+  status: 'completed' | 'pending' | 'refunded';
+  createdAt: string;
+}
+
+// Sync tables
 export interface LocalTransactionLog {
   id: string;
-  user_id: string;
-  entity_type: "submission" | "module_progress" | "course";
-  entity_id: string;
-  action: "CREATE" | "UPDATE" | "DELETE";
-  payload: Record<string, any>;
-  client_timestamp: string;
-  synced_at?: string | null;
-  retry_count: number;
-  error_message?: string | null;
+  userId: string;
+  entityType: string;
+  entityId: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  payload: Record<string, unknown>;
+  clientTimestamp: string;
+  syncedAt: string | null;
+  retryCount: number;
+  errorMessage: string | null;
+}
+
+// App state
+export interface AppStateEntry {
+  key: string;
+  value: string;
 }
 
 export class AsalaDatabase extends Dexie {
@@ -61,25 +146,32 @@ export class AsalaDatabase extends Dexie {
   modules!: Table<LocalModule, string>;
   assignments!: Table<LocalAssignment, string>;
   submissions!: Table<LocalSubmission, string>;
+  lessons!: Table<LocalLesson, string>;
+  grades!: Table<LocalGrade, string>;
+  masterclasses!: Table<LocalMasterclass, string>;
+  cartItems!: Table<LocalCartItem, string>;
+  orders!: Table<LocalOrder, string>;
+  transactions!: Table<LocalTransaction, string>;
   transactionLogs!: Table<LocalTransactionLog, string>;
+  appState!: Table<AppStateEntry, string>;
 
   constructor() {
-    super("AsalaHubDB");
-
+    super('AsalaHubDB');
     this.version(1).stores({
-      courses: "id, title, updated_at",
-      modules: "id, course_id, order_index, updated_at",
-      assignments: "id, course_id, due_date",
-      submissions: "id, assignment_id, student_id, sync_status",
-      transactionLogs: "id, user_id, entity_type, client_timestamp, synced_at",
-    });
-
-    this.version(2).stores({
-      transactionLogs: "id, user_id, entity_type, entity_id, client_timestamp, synced_at, retry_count, [synced_at+retry_count], [entity_type+entity_id]",
-      submissions: "id, assignment_id, student_id, sync_status, [assignment_id+sync_status]",
+      courses: 'id, title, updatedAt',
+      modules: 'id, courseId, orderIndex, updatedAt',
+      assignments: 'id, courseId, dueDate',
+      submissions: 'id, assignmentId, studentId, syncStatus',
+      lessons: 'id, courseId, orderIndex, status',
+      grades: 'id, assignmentId, studentId, syncStatus',
+      masterclasses: 'id, category, creatorId, status',
+      cartItems: 'id, masterclassId',
+      orders: 'id, status, createdAt',
+      transactions: 'id, masterclassId, status, createdAt',
+      transactionLogs: 'id, userId, entityType, entityId, clientTimestamp, syncedAt',
+      appState: 'key',
     });
   }
 }
-
 
 export const db = new AsalaDatabase();
