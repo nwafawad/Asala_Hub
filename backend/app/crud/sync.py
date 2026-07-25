@@ -13,6 +13,8 @@ from app.schemas.sync import (
     SyncBatchResponse,
     SyncTransactionResult,
     SubmissionPayloadSchema,
+    CURRENT_SCHEMA_VERSION,
+    MIN_SUPPORTED_SCHEMA_VERSION,
 )
 
 def _to_naive_utc(dt: Optional[datetime], fallback: datetime) -> datetime:
@@ -21,6 +23,21 @@ def _to_naive_utc(dt: Optional[datetime], fallback: datetime) -> datetime:
         return fallback
     return dt.replace(tzinfo=None)
 
+def normalize_payload(payload: dict, schema_version: int, entity_type: str) -> dict:
+    """
+    Normalize older payload shapes into the current internal schema shape.
+    Allows backward-compatible handling of older client payload versions (FR-20).
+    """
+    normalized = dict(payload)
+    if schema_version <= 1:
+        if entity_type == "submission":
+            # Map legacy field names if present in older payloads
+            if "body" in normalized and "content" not in normalized:
+                normalized["content"] = normalized.pop("body")
+            if "ver" in normalized and "version" not in normalized:
+                normalized["version"] = normalized.pop("ver")
+    return normalized
+
 def process_sync_batch(
     session: Session,
     user_id: uuid.UUID,
@@ -28,7 +45,7 @@ def process_sync_batch(
 ) -> SyncBatchResponse:
     """
     Process a batch of offline mutation transactions idempotently.
-    Applies submission updates, version conflict detection, and append-only transaction logging.
+    Applies schema versioning (FR-20), submission updates, version conflict detection, and transaction logging.
     """
     results: List[SyncTransactionResult] = []
     synced_count = 0
@@ -62,6 +79,19 @@ def process_sync_batch(
     now = get_naive_utc_now()
 
     for tx in batch.transactions:
+        # Rejection path: check schema_version compatibility (FR-20)
+        if tx.schema_version < MIN_SUPPORTED_SCHEMA_VERSION or tx.schema_version > CURRENT_SCHEMA_VERSION:
+            results.append(
+                SyncTransactionResult(
+                    transaction_id=tx.transaction_id,
+                    status="unsupported_schema_version",
+                    synced_at=None,
+                    error=f"Unsupported schema_version {tx.schema_version}. Supported range is {MIN_SUPPORTED_SCHEMA_VERSION} to {CURRENT_SCHEMA_VERSION}."
+                )
+            )
+            error_count += 1
+            continue
+
         # Idempotency check: verify if transaction log was already recorded
         existing_log = existing_tx_logs.get(tx.transaction_id)
         if existing_log:
@@ -78,9 +108,11 @@ def process_sync_batch(
 
         try:
             client_time = _to_naive_utc(tx.client_timestamp, now)
+            normalized_payload = normalize_payload(tx.payload, tx.schema_version, tx.entity_type)
+
             with session.begin_nested():
                 if tx.entity_type == "submission":
-                    payload_data = SubmissionPayloadSchema.model_validate(tx.payload)
+                    payload_data = SubmissionPayloadSchema.model_validate(normalized_payload)
                     assignment_id = payload_data.assignment_id
                     content = payload_data.content
 
@@ -119,7 +151,6 @@ def process_sync_batch(
                             session.add(existing_submission)
                     else:
                         new_submission = Submission(
-
                             id=tx.entity_id,
                             assignment_id=assignment_id,
                             student_id=user_id,
@@ -133,13 +164,14 @@ def process_sync_batch(
                         session.add(new_submission)
                         existing_submissions[tx.entity_id] = new_submission
 
-                # Record transaction log entry
+                # Record transaction log entry with schema_version
                 log_entry = TransactionLog(
                     id=tx.transaction_id,
                     user_id=user_id,
                     entity_type=tx.entity_type,
                     entity_id=tx.entity_id,
-                    payload=tx.payload,
+                    payload=normalized_payload,
+                    schema_version=tx.schema_version,
                     client_timestamp=client_time,
                     synced_at=now,
                     created_at=now,
@@ -178,5 +210,6 @@ def process_sync_batch(
         synced_count=synced_count,
         error_count=error_count
     )
+
 
 
