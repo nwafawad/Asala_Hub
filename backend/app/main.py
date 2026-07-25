@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, text
 from app.core.config import settings
 from app.core.database import get_session
-from app.routers import auth, courses, modules, sync
+from app.routers import auth, courses, modules, assignments, sync
+
 
 logger = logging.getLogger("asala_hub")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -76,5 +77,5 @@ def healthz_check(response: Response, session: Session = Depends(get_session)):
 app.include_router(auth.router)
 app.include_router(courses.router)
 app.include_router(modules.router)
+app.include_router(assignments.router)
 app.include_router(sync.router)
-

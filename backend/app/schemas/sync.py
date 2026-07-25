@@ -9,10 +9,25 @@ from pydantic import BaseModel, Field
 CURRENT_SCHEMA_VERSION = 1
 MIN_SUPPORTED_SCHEMA_VERSION = 1
 
-class SubmissionPayloadSchema(BaseModel):
+class SubmissionContentPayload(BaseModel):
+    """
+    Student-facing payload schema for submitting or updating assignment content.
+    Does NOT contain a grade field, preventing clients from smuggling grade modifications (BR-4).
+    """
     assignment_id: uuid.UUID
     content: str = ""
     version: Optional[int] = 1
+
+class GradePayload(BaseModel):
+    """
+    Educator-facing payload schema for offline grade writes.
+    """
+    grade: float = Field(..., ge=0.0, le=100.0, description="Grade percentage value (0.0 to 100.0)")
+    version: Optional[int] = 1
+
+# Backward-compatibility alias
+SubmissionPayloadSchema = SubmissionContentPayload
+
 
 class SyncTransactionIn(BaseModel):
     transaction_id: uuid.UUID

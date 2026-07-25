@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Optional
 from sqlmodel import Session, select, func, text
 
-from app.models.user import get_naive_utc_now
+from app.models.user import User, UserRole, get_naive_utc_now
 from app.models.transaction import TransactionLog
 from app.models.assignment import Submission, SyncStatus
 from pydantic import ValidationError
@@ -14,7 +14,8 @@ from app.schemas.sync import (
     SyncBatchRequest,
     SyncBatchResponse,
     SyncTransactionResult,
-    SubmissionPayloadSchema,
+    SubmissionContentPayload,
+    GradePayload,
     CURRENT_SCHEMA_VERSION,
     MIN_SUPPORTED_SCHEMA_VERSION,
 )
@@ -62,7 +63,8 @@ def process_sync_batch(
 ) -> SyncBatchResponse:
     """
     Process a batch of offline mutation transactions idempotently.
-    Enforces server-authoritative sequence ordering (FR-15) and schema versioning (FR-20).
+    Enforces BR-4 grade-write priority rules, server-authoritative sequence ordering (FR-15),
+    and schema versioning (FR-20).
     """
     results: List[SyncTransactionResult] = []
     synced_count = 0
@@ -70,6 +72,9 @@ def process_sync_batch(
 
     if not batch.transactions:
         return SyncBatchResponse(results=[], synced_count=0, error_count=0)
+
+    # Fetch acting user instance to verify role permissions (e.g. educator vs student)
+    acting_user = session.get(User, user_id)
 
     # Bulk pre-fetch existing transaction IDs to avoid N+1 queries
     all_tx_ids = [tx.transaction_id for tx in batch.transactions]
@@ -134,14 +139,35 @@ def process_sync_batch(
                 server_seq = _get_next_server_sequence(session)
 
                 if tx.entity_type == "submission":
-                    payload_data = SubmissionPayloadSchema.model_validate(normalized_payload)
-                    assignment_id = payload_data.assignment_id
-                    content = payload_data.content
-
-                    # Check pre-fetched existing submission
                     existing_submission = existing_submissions.get(tx.entity_id)
+                    is_grade_write = "grade" in normalized_payload
 
-                    if tx.action.upper() == "DELETE":
+                    if is_grade_write:
+                        # BR-4 Priority Rule: Only educators are authorized to submit grade writes via sync
+                        if not acting_user or acting_user.role != UserRole.educator:
+                            results.append(
+                                SyncTransactionResult(
+                                    transaction_id=tx.transaction_id,
+                                    status="rejected",
+                                    server_sequence=server_seq,
+                                    synced_at=None,
+                                    error="Unauthorized: Only educators can submit grade mutations (BR-4 requirement)"
+                                )
+                            )
+                            error_count += 1
+                            continue
+
+                        grade_data = GradePayload.model_validate(normalized_payload)
+
+                        # BR-4 Priority Rule: Educator grade writes ALWAYS WIN regardless of client_version or LWW.
+                        # Grade writes must NOT be routed through the same version-conflict rejection as content edits.
+                        if existing_submission:
+                            existing_submission.grade = grade_data.grade
+                            existing_submission.sync_status = SyncStatus.synced
+                            existing_submission.updated_at = now
+                            session.add(existing_submission)
+                            existing_submissions[tx.entity_id] = existing_submission
+                    elif tx.action.upper() == "DELETE":
                         if existing_submission:
                             existing_submission.is_deleted = True
                             existing_submission.sync_status = SyncStatus.synced
@@ -149,6 +175,26 @@ def process_sync_batch(
                             session.add(existing_submission)
                             existing_submissions[tx.entity_id] = existing_submission
                     elif existing_submission:
+                        # Student content edit branch
+                        payload_data = SubmissionContentPayload.model_validate(normalized_payload)
+
+                        # BR-4 Priority Rule: A student content edit arriving AFTER a submission has already been graded
+                        # must NOT clobber the grade or silently modify the graded submission state.
+                        if existing_submission.grade is not None:
+                            existing_submission.sync_status = SyncStatus.conflict
+                            session.add(existing_submission)
+                            results.append(
+                                SyncTransactionResult(
+                                    transaction_id=tx.transaction_id,
+                                    status="rejected",
+                                    server_sequence=server_seq,
+                                    synced_at=None,
+                                    error="Cannot modify content of an already-graded submission (BR-4 violation)"
+                                )
+                            )
+                            error_count += 1
+                            continue
+
                         # Version-based conflict detection (primary authoritative signal)
                         client_version = payload_data.version or 1
                         if isinstance(client_version, int) and client_version < existing_submission.version:
@@ -167,18 +213,19 @@ def process_sync_batch(
                             continue
 
                         # Server-authoritative sequence ordering (FR-15): Write is applied in server sequence arrival order
-                        existing_submission.content = content
+                        existing_submission.content = payload_data.content
                         existing_submission.sync_status = SyncStatus.synced
                         existing_submission.version = max(existing_submission.version + 1, client_version)
                         existing_submission.updated_at = now
                         session.add(existing_submission)
                         existing_submissions[tx.entity_id] = existing_submission
                     else:
+                        payload_data = SubmissionContentPayload.model_validate(normalized_payload)
                         new_submission = Submission(
                             id=tx.entity_id,
-                            assignment_id=assignment_id,
+                            assignment_id=payload_data.assignment_id,
                             student_id=user_id,
-                            content=content,
+                            content=payload_data.content,
                             submitted_at=client_time,  # Client timestamp stored strictly for audit/display
                             sync_status=SyncStatus.synced,
                             version=payload_data.version or 1,
@@ -187,6 +234,7 @@ def process_sync_batch(
                         )
                         session.add(new_submission)
                         existing_submissions[tx.entity_id] = new_submission
+
 
                 # Record transaction log entry with server_sequence and server_received_at
                 log_entry = TransactionLog(
