@@ -10,6 +10,8 @@ from app.models.user import get_naive_utc_now
 if TYPE_CHECKING:
     from app.models.user import User
 
+import sqlalchemy as sa
+
 class TransactionLog(SQLModel, table=True):
     """
     Database model representing an append-only transaction log.
@@ -25,7 +27,17 @@ class TransactionLog(SQLModel, table=True):
     entity_id: uuid.UUID
     payload: dict = Field(sa_column=Column(JSON, nullable=False))
     schema_version: int = Field(default=1, nullable=False)
+    server_sequence: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            sa.BigInteger,
+            sa.Sequence("tx_log_server_seq"),
+            nullable=False
+        )
+    )
+    server_received_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False, index=True)
     client_timestamp: datetime = Field(index=True)
+
 
     synced_at: Optional[datetime] = Field(default=None, nullable=True, index=True)
     created_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False)

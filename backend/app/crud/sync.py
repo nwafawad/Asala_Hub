@@ -3,11 +3,13 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import List, Optional
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func, text
 
 from app.models.user import get_naive_utc_now
 from app.models.transaction import TransactionLog
 from app.models.assignment import Submission, SyncStatus
+from pydantic import ValidationError
+
 from app.schemas.sync import (
     SyncBatchRequest,
     SyncBatchResponse,
@@ -23,11 +25,26 @@ def _to_naive_utc(dt: Optional[datetime], fallback: datetime) -> datetime:
         return fallback
     return dt.replace(tzinfo=None)
 
+def _get_next_server_sequence(session: Session) -> int:
+    """
+    Fetch monotonically increasing server sequence number.
+    Uses Postgres nextval('tx_log_server_seq') in production and a max() fallback for SQLite in unit tests.
+    """
+    bind = session.get_bind()
+    if bind and bind.dialect.name == "postgresql":
+        return session.scalar(text("SELECT nextval('tx_log_server_seq')"))
+    max_seq = session.exec(select(func.max(TransactionLog.server_sequence))).first()
+    return (max_seq or 0) + 1
+
 def normalize_payload(payload: dict, schema_version: int, entity_type: str) -> dict:
     """
     Normalize older payload shapes into the current internal schema shape.
     Allows backward-compatible handling of older client payload versions (FR-20).
     """
+    # Fast path: no dict copying needed if payload is already current schema version
+    if schema_version >= CURRENT_SCHEMA_VERSION:
+        return payload
+
     normalized = dict(payload)
     if schema_version <= 1:
         if entity_type == "submission":
@@ -45,7 +62,7 @@ def process_sync_batch(
 ) -> SyncBatchResponse:
     """
     Process a batch of offline mutation transactions idempotently.
-    Applies schema versioning (FR-20), submission updates, version conflict detection, and transaction logging.
+    Enforces server-authoritative sequence ordering (FR-15) and schema versioning (FR-20).
     """
     results: List[SyncTransactionResult] = []
     synced_count = 0
@@ -85,6 +102,7 @@ def process_sync_batch(
                 SyncTransactionResult(
                     transaction_id=tx.transaction_id,
                     status="unsupported_schema_version",
+                    server_sequence=None,
                     synced_at=None,
                     error=f"Unsupported schema_version {tx.schema_version}. Supported range is {MIN_SUPPORTED_SCHEMA_VERSION} to {CURRENT_SCHEMA_VERSION}."
                 )
@@ -92,13 +110,14 @@ def process_sync_batch(
             error_count += 1
             continue
 
-        # Idempotency check: verify if transaction log was already recorded
+        # Idempotency check: verify if transaction log was already recorded (supports intra-batch duplicates)
         existing_log = existing_tx_logs.get(tx.transaction_id)
         if existing_log:
             results.append(
                 SyncTransactionResult(
                     transaction_id=tx.transaction_id,
                     status="accepted",
+                    server_sequence=existing_log.server_sequence,
                     synced_at=existing_log.synced_at or existing_log.created_at,
                     error=None
                 )
@@ -111,6 +130,9 @@ def process_sync_batch(
             normalized_payload = normalize_payload(tx.payload, tx.schema_version, tx.entity_type)
 
             with session.begin_nested():
+                # Server-authoritative sequence assignment (FR-15)
+                server_seq = _get_next_server_sequence(session)
+
                 if tx.entity_type == "submission":
                     payload_data = SubmissionPayloadSchema.model_validate(normalized_payload)
                     assignment_id = payload_data.assignment_id
@@ -125,17 +147,18 @@ def process_sync_batch(
                             existing_submission.sync_status = SyncStatus.synced
                             existing_submission.updated_at = now
                             session.add(existing_submission)
+                            existing_submissions[tx.entity_id] = existing_submission
                     elif existing_submission:
-                        # Version-based conflict detection with Last-Write-Wins fallback
+                        # Version-based conflict detection (primary authoritative signal)
                         client_version = payload_data.version or 1
                         if isinstance(client_version, int) and client_version < existing_submission.version:
-                            # Flag conflict if client version is behind server version
                             existing_submission.sync_status = SyncStatus.conflict
                             session.add(existing_submission)
                             results.append(
                                 SyncTransactionResult(
                                     transaction_id=tx.transaction_id,
                                     status="rejected",
+                                    server_sequence=server_seq,
                                     synced_at=None,
                                     error=f"Version conflict: server has v{existing_submission.version}, client sent v{client_version}"
                                 )
@@ -143,19 +166,20 @@ def process_sync_batch(
                             error_count += 1
                             continue
 
-                        if client_time >= existing_submission.updated_at:
-                            existing_submission.content = content
-                            existing_submission.sync_status = SyncStatus.synced
-                            existing_submission.version += 1
-                            existing_submission.updated_at = now
-                            session.add(existing_submission)
+                        # Server-authoritative sequence ordering (FR-15): Write is applied in server sequence arrival order
+                        existing_submission.content = content
+                        existing_submission.sync_status = SyncStatus.synced
+                        existing_submission.version = max(existing_submission.version + 1, client_version)
+                        existing_submission.updated_at = now
+                        session.add(existing_submission)
+                        existing_submissions[tx.entity_id] = existing_submission
                     else:
                         new_submission = Submission(
                             id=tx.entity_id,
                             assignment_id=assignment_id,
                             student_id=user_id,
                             content=content,
-                            submitted_at=client_time,
+                            submitted_at=client_time,  # Client timestamp stored strictly for audit/display
                             sync_status=SyncStatus.synced,
                             version=payload_data.version or 1,
                             created_at=now,
@@ -164,7 +188,7 @@ def process_sync_batch(
                         session.add(new_submission)
                         existing_submissions[tx.entity_id] = new_submission
 
-                # Record transaction log entry with schema_version
+                # Record transaction log entry with server_sequence and server_received_at
                 log_entry = TransactionLog(
                     id=tx.transaction_id,
                     user_id=user_id,
@@ -172,6 +196,8 @@ def process_sync_batch(
                     entity_id=tx.entity_id,
                     payload=normalized_payload,
                     schema_version=tx.schema_version,
+                    server_sequence=server_seq,
+                    server_received_at=now,
                     client_timestamp=client_time,
                     synced_at=now,
                     created_at=now,
@@ -180,26 +206,45 @@ def process_sync_batch(
                 session.add(log_entry)
                 session.flush()
 
+                # Update in-memory log cache to handle duplicate transactions within the same batch
+                existing_tx_logs[tx.transaction_id] = log_entry
+
             results.append(
                 SyncTransactionResult(
                     transaction_id=tx.transaction_id,
                     status="accepted",
+                    server_sequence=server_seq,
                     synced_at=now,
                     error=None
                 )
             )
             synced_count += 1
 
+        except ValidationError as ve:
+            error_count += 1
+            error_msg = ve.errors()[0]["msg"] if ve.errors() else str(ve)
+            results.append(
+                SyncTransactionResult(
+                    transaction_id=tx.transaction_id,
+                    status="rejected",
+                    server_sequence=None,
+                    synced_at=None,
+                    error=f"Invalid payload format: {error_msg}"
+                )
+            )
         except Exception as e:
             error_count += 1
             results.append(
                 SyncTransactionResult(
                     transaction_id=tx.transaction_id,
                     status="rejected",
+                    server_sequence=None,
                     synced_at=None,
                     error=str(e)
                 )
             )
+
+
 
     # Commit all accepted savepoints in a single atomic database commit
     if synced_count > 0:
