@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useI18n } from '@/context/I18nContext';
-import { LayoutDashboard, BookOpen, FileCheck, RefreshCw, Settings, Layers } from 'lucide-react';
+import { LayoutDashboard, BookOpen, FileCheck, Activity, RefreshCw, Settings, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -10,16 +10,20 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiveTab }) => {
   const { t } = useI18n();
 
-  const navItems = [
-    { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard },
-    { id: 'courses', label: t.nav.courses, icon: BookOpen },
-    { id: 'assignments', label: t.nav.assignments, icon: FileCheck },
-    { id: 'syncQueue', label: t.nav.syncQueue, icon: RefreshCw },
-    { id: 'settings', label: t.nav.settings, icon: Settings },
-  ];
+  const navItems = React.useMemo(
+    () => [
+      { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard },
+      { id: 'courses', label: t.nav.courses, icon: BookOpen },
+      { id: 'assignments', label: t.nav.assignments, icon: FileCheck },
+      { id: 'progress', label: t.nav.progress, icon: Activity },
+      { id: 'syncQueue', label: t.nav.syncQueue, icon: RefreshCw },
+      { id: 'settings', label: t.nav.settings, icon: Settings },
+    ],
+    [t]
+  );
 
   return (
     <aside className="w-64 border-r rtl:border-r-0 rtl:border-l border-border bg-card flex flex-col justify-between shrink-0 transition-colors">
@@ -72,4 +76,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       </div>
     </aside>
   );
-};
+});
+
+Sidebar.displayName = 'Sidebar';

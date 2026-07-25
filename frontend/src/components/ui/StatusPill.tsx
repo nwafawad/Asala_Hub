@@ -33,7 +33,7 @@ const variantStyles: Record<StatusVariant, { pill: string; dot: string }> = {
   },
 };
 
-export const StatusPill: React.FC<StatusPillProps> = ({
+export const StatusPill: React.FC<StatusPillProps> = React.memo(({
   label,
   variant = 'neutral',
   className,
@@ -58,4 +58,6 @@ export const StatusPill: React.FC<StatusPillProps> = ({
       {label}
     </span>
   );
-};
+});
+
+StatusPill.displayName = 'StatusPill';
