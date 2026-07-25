@@ -32,8 +32,10 @@ class SyncBatchRequest(BaseModel):
 class SyncTransactionResult(BaseModel):
     transaction_id: uuid.UUID
     status: str = Field(..., description="'accepted', 'rejected', 'skipped', or 'unsupported_schema_version'")
+    server_sequence: Optional[int] = Field(default=None, description="Authoritative server-assigned sequence number")
     synced_at: Optional[datetime] = None
     error: Optional[str] = None
+
 
 
 class SyncBatchResponse(BaseModel):
