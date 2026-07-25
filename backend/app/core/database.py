@@ -5,11 +5,12 @@ Initializes the SQLModel database engine and connection pool parameters,
 and provides a session manager dependency for executing database transactions.
 """
 
+from typing import Any
 from sqlmodel import create_engine, Session
 from app.core.config import settings
 
 is_sqlite = settings.DATABASE_URL.startswith("sqlite")
-engine_kwargs = {
+engine_kwargs: dict[str, Any] = {
     "echo": settings.ECHO_SQL,
 }
 
