@@ -1,15 +1,27 @@
-# OS files
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
-db.sqlite3
 
-# Environments
+# Databases & Local Storage
+db.sqlite3
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# Environment variables & secrets
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 *.env
+!.env.example
 
 # Python
 __pycache__/
@@ -23,11 +35,15 @@ env/
 .coverage
 htmlcov/
 .mypy_cache/
+.ruff_cache/
 .ipynb_checkpoints/
+*.egg-info/
+.eggs/
 
-# Node/Next.js
+# Node / Next.js / Frontend
 node_modules/
 /out/
+out/
 /.next/
 .next/
 dist/
@@ -36,25 +52,32 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.turbo/
+.vercel/
 
-# Docker
+# Docker & Logs
 .docker/
 *.log
+logs/
+
+# Documentation & Sprint Plans
 asala-hub-3week-sprint-plan.md
 
-# Foglamp codebase scan (contains edit token)
-.foglamp/
-
-# IDEs and Editors
+# IDEs, Editors & AI Assistants
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 .project
 .classpath
 .settings/
+.kilo/
+.cursor/
+.windsurf/
 
 # Graphify & AI Agent Tooling
+.foglamp/
 graphify-out/
 **/graphify-out/
 .agents/
@@ -67,5 +90,3 @@ CLAUDE.md
 AGENTS.md
 **/AGENTS.md
 *.claude.md
-
-

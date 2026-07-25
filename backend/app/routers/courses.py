@@ -19,9 +19,23 @@ from app.schemas.courses import (
     CourseRead,
     CourseReadWithModules,
 )
-from app.crud import courses as crud_courses
-
 router = APIRouter(prefix="/courses", tags=["courses"])
+
+def _get_course_or_raise(session: Session, course_id: uuid.UUID, user_id: Optional[uuid.UUID] = None) -> Course:
+
+    """Fetch course by ID or raise 404 Not Found, checking educator ownership if user_id is provided."""
+    course = crud_courses.get_course_by_id(session, course_id)
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found"
+        )
+    if user_id is not None and course.educator_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to modify this course"
+        )
+    return course
 
 @router.post("/", response_model=CourseRead, status_code=status.HTTP_201_CREATED)
 def create_course(
@@ -35,7 +49,6 @@ def create_course(
     Only authenticated users with the educator role are authorized to create courses.
     The educator creating the course is saved as the course owner.
     """
-    # Create the course using the Courses CRUD layer
     return crud_courses.create_course(session, course_in, current_user.id)
 
 
@@ -53,7 +66,6 @@ def list_courses(
     Optional query parameter `educator_id` filters courses owned by a specific educator.
     Any authenticated user (students and educators) can read the list of courses.
     """
-    # Query list of courses with pagination parameters
     return crud_courses.get_courses(session, skip=skip, limit=limit, educator_id=educator_id)
 
 
@@ -68,7 +80,6 @@ def get_course(
     
     Any authenticated user can read details of a specific course.
     """
-    # Fetch course and load nested child modules
     course = crud_courses.get_course_with_modules(session, course_id)
     if not course:
         raise HTTPException(
@@ -90,20 +101,7 @@ def update_course(
     
     Only the owning educator of the course is authorized to modify it.
     """
-    course = crud_courses.get_course_by_id(session, course_id)
-    if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course not found"
-        )
-    # Ensure current user is the course creator
-    if course.educator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to modify this course"
-        )
-    
-    # Save updates using CRUD layer
+    course = _get_course_or_raise(session, course_id, current_user.id)
     return crud_courses.update_course(session, course, course_in)
 
 
@@ -117,24 +115,9 @@ def delete_course(
     Delete a course.
     
     Only the owning educator of the course is authorized to delete it.
-    
-    Note: Child Modules and Assignments are cascade-deleted automatically
-    due to the `cascade="all, delete-orphan"` constraint on the Course relationships.
     """
-    course = crud_courses.get_course_by_id(session, course_id)
-    if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course not found"
-        )
-    # Verify course ownership
-    if course.educator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to delete this course"
-        )
-    
-    # Remove course from database
+    course = _get_course_or_raise(session, course_id, current_user.id)
     crud_courses.delete_course(session, course)
     return None
+
 

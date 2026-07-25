@@ -10,7 +10,7 @@ from app.core.security import get_password_hash
 
 def get_user_by_email(session: Session, email: str) -> Optional[User]:
     """
-    Retrieve a user by their email address.
+    Retrieve a user by their email address (case-insensitive).
     
     Args:
         session (Session): The active database transaction session.
@@ -18,7 +18,8 @@ def get_user_by_email(session: Session, email: str) -> Optional[User]:
     Returns:
         Optional[User]: The matching user model instance, or None.
     """
-    return session.exec(select(User).where(User.email == email)).first()
+    normalized_email = email.strip().lower()
+    return session.exec(select(User).where(User.email == normalized_email)).first()
 
 def get_user_by_id(session: Session, user_id: uuid.UUID) -> Optional[User]:
     """
@@ -45,8 +46,8 @@ def create_user(session: Session, user_in: UserRegister, commit: bool = True) ->
     """
     hashed_password = get_password_hash(user_in.password)
     new_user = User(
-        full_name=user_in.full_name,
-        email=user_in.email,
+        full_name=user_in.full_name.strip(),
+        email=user_in.email.strip().lower(),
         password_hash=hashed_password,
         role=user_in.role,
         preferred_language=user_in.preferred_language
@@ -56,5 +57,6 @@ def create_user(session: Session, user_in: UserRegister, commit: bool = True) ->
         session.commit()
         session.refresh(new_user)
     return new_user
+
 
 

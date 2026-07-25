@@ -87,7 +87,13 @@ def process_sync_batch(
                     # Check pre-fetched existing submission
                     existing_submission = existing_submissions.get(tx.entity_id)
 
-                    if existing_submission:
+                    if tx.action.upper() == "DELETE":
+                        if existing_submission:
+                            existing_submission.is_deleted = True
+                            existing_submission.sync_status = SyncStatus.synced
+                            existing_submission.updated_at = now
+                            session.add(existing_submission)
+                    elif existing_submission:
                         # Version-based conflict detection with Last-Write-Wins fallback
                         client_version = payload_data.version or 1
                         if isinstance(client_version, int) and client_version < existing_submission.version:
@@ -113,6 +119,7 @@ def process_sync_batch(
                             session.add(existing_submission)
                     else:
                         new_submission = Submission(
+
                             id=tx.entity_id,
                             assignment_id=assignment_id,
                             student_id=user_id,
