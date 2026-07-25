@@ -1,9 +1,4 @@
-"""
-Dependencies Module.
-
-Provides common dependencies injected into FastAPI route handlers,
-including OAuth2 bearer token authentication and Role-Based Access Control (RBAC).
-"""
+from __future__ import annotations
 
 import uuid
 from typing import List, Union, Optional
@@ -94,14 +89,17 @@ class RoleChecker:
         """
         self.allowed_roles = allowed_roles
 
-    def __call__(self, current_user: Union[User, UserAuthClaims] = Depends(get_current_user_claims)) -> Union[User, UserAuthClaims]:
+    def __call__(
+        self,
+        current_user: Union[User, UserAuthClaims] = Depends(get_current_user_claims)
+    ) -> Union[User, UserAuthClaims]:
         """
         Enforce the role restrictions against the currently logged-in user.
         
         Raises:
             HTTPException: 403 Forbidden if the user's role is not allowed.
         """
-        user_role = current_user.role if isinstance(current_user, (User, UserAuthClaims)) else getattr(current_user, 'role', None)
+        user_role = getattr(current_user, "role", None)
         if user_role not in self.allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -117,5 +115,6 @@ def require_role(*roles: UserRole):
         `Depends(require_role(UserRole.educator))`
     """
     return RoleChecker(list(roles))
+
 
 

@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
+
 
 class SubmissionPayloadSchema(BaseModel):
     assignment_id: uuid.UUID

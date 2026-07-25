@@ -1,13 +1,9 @@
-"""
-Course Models.
-
-Defines the Course SQLModel, representing courses created by educators.
-"""
-
 import uuid
 from datetime import datetime
 from typing import List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
+
+
 
 from app.models.user import get_naive_utc_now
 

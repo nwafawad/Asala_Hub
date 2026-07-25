@@ -11,7 +11,8 @@ from sqlmodel import Session
 from app.core.database import get_session
 from app.models import User
 from app.schemas.auth import UserRegister, TokenResponse, UserRead
-from app.core.security import verify_password, create_access_token
+from app.core.security import verify_password, create_access_token, set_auth_cookie
+
 from app.core.dependencies import get_current_user
 from app.crud import user as crud_user
 
@@ -40,13 +41,7 @@ def register(
     # Store the user entity and generate a session token
     new_user = crud_user.create_user(session, user_in)
     access_token = create_access_token(subject=new_user.id, role=new_user.role)
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        samesite="lax",
-        max_age=86400 * 7
-    )
+    set_auth_cookie(response, access_token)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -78,14 +73,9 @@ def login(
         
     # Generate and return user session access token
     access_token = create_access_token(subject=user.id, role=user.role)
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        samesite="lax",
-        max_age=86400 * 7
-    )
+    set_auth_cookie(response, access_token)
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 
 

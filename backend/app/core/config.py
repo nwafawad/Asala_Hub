@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     POOL_RECYCLE: int = 1800
     POOL_TIMEOUT: int = 30
 
+    # Cookie configuration parameters
+    COOKIE_MAX_AGE: int = 86400 * 7  # 7 days
+    COOKIE_SECURE: bool = False
+    COOKIE_SAMESITE: str = "lax"
+
     class Config:
         """Pydantic configuration settings."""
         env_file = ".env"
@@ -37,4 +42,5 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
+
 

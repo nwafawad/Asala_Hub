@@ -1,12 +1,8 @@
-"""
-Authentication Schemas.
-
-Defines Pydantic schemas for registering users, authenticating credentials,
-generating JWT responses, and returning serialized profile information.
-"""
+from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, EmailStr
 from app.models import UserRole
 
@@ -56,6 +52,13 @@ class UserAuthClaims(BaseModel):
     """
     user_id: uuid.UUID
     role: UserRole
-    email: str | None = None
+    email: Optional[str] = None
+
+    @property
+    def id(self) -> uuid.UUID:
+        """Alias for user_id to maintain interface parity with User model."""
+        return self.user_id
+
+
 
 

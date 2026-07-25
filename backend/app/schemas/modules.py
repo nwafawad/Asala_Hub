@@ -1,14 +1,11 @@
-"""
-Module Schemas.
-
-Defines Pydantic schemas for creating, updating, and reading Course Module data.
-"""
+from __future__ import annotations
 
 import uuid
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 from app.models import ContentType
+
 
 class ModuleCreate(BaseModel):
     """

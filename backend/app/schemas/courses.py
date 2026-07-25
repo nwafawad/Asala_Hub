@@ -1,14 +1,11 @@
-"""
-Course Schemas.
-
-Defines Pydantic schemas for creating, updating, and reading Course data.
-"""
+from __future__ import annotations
 
 import uuid
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel
 from app.schemas.modules import ModuleRead
+
 
 class CourseCreate(BaseModel):
     """

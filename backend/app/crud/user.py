@@ -1,9 +1,4 @@
-"""
-User CRUD operations.
-
-Handles database queries and updates relating to User entities, such as registration,
-fetching profiles by ID, or looking up profiles by email.
-"""
+from __future__ import annotations
 
 import uuid
 from typing import Optional
@@ -11,6 +6,7 @@ from sqlmodel import Session, select
 from app.models import User
 from app.schemas.auth import UserRegister
 from app.core.security import get_password_hash
+
 
 def get_user_by_email(session: Session, email: str) -> Optional[User]:
     """

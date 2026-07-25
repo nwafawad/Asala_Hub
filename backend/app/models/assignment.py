@@ -1,15 +1,10 @@
-"""
-Assignment and Submission Models.
-
-Defines the database models for assignments assigned to courses,
-student submissions for those assignments, and the sync statuses for offline-first replication.
-"""
-
 import uuid
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, String, Index
+
+
 
 from app.models.user import get_naive_utc_now
 

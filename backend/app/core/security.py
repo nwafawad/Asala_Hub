@@ -1,12 +1,8 @@
-"""
-Security Module.
-
-Provides cryptographic helpers for hashing/verifying user passwords via bcrypt,
-and generating secure JWT access tokens for user authentication and authorization.
-"""
+from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union, Optional
+from fastapi import Response
 from jose import jwt
 import bcrypt
 from app.core.config import settings
@@ -71,6 +67,20 @@ def decode_access_token(token: str) -> dict[str, Any]:
     Decode and validate a signed JWT access token.
     """
     return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+
+def set_auth_cookie(response: Response, token: str) -> None:
+    """
+    Helper function to set the HttpOnly authentication cookie consistently across endpoints.
+    """
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        samesite=settings.COOKIE_SAMESITE,
+        secure=settings.COOKIE_SECURE,
+        max_age=settings.COOKIE_MAX_AGE
+    )
+
 
 
 

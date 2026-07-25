@@ -1,9 +1,4 @@
-"""
-Course CRUD operations.
-
-Handles database queries and updates relating to Course entities, including creation,
-retrieval (single/list), eager loading of modules, and modification/deletion.
-"""
+from __future__ import annotations
 
 import uuid
 from typing import List, Optional
@@ -11,6 +6,7 @@ from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 from app.models import Course
 from app.schemas.courses import CourseCreate, CourseUpdate
+
 
 def create_course(
     session: Session, course_in: CourseCreate, educator_id: uuid.UUID, commit: bool = True

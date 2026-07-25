@@ -8,15 +8,23 @@ and provides a session manager dependency for executing database transactions.
 from sqlmodel import create_engine, Session
 from app.core.config import settings
 
-# Initialize database engine with performance settings
-engine = create_engine(
-    settings.DATABASE_URL,
-    echo=settings.ECHO_SQL,
-    pool_size=settings.POOL_SIZE,
-    max_overflow=settings.MAX_OVERFLOW,
-    pool_recycle=settings.POOL_RECYCLE,
-    pool_timeout=settings.POOL_TIMEOUT
-)
+is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+engine_kwargs = {
+    "echo": settings.ECHO_SQL,
+}
+
+if is_sqlite:
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    engine_kwargs.update({
+        "pool_size": settings.POOL_SIZE,
+        "max_overflow": settings.MAX_OVERFLOW,
+        "pool_recycle": settings.POOL_RECYCLE,
+        "pool_timeout": settings.POOL_TIMEOUT,
+    })
+
+# Initialize database engine
+engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
 
 def get_session():
     """
@@ -25,4 +33,5 @@ def get_session():
     """
     with Session(engine) as session:
         yield session
+
 

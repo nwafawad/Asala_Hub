@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import time
 import logging
-from fastapi import FastAPI, Depends, Response, status
+from fastapi import FastAPI, Depends, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session, select, text
+from sqlmodel import Session, text
 from app.core.config import settings
 from app.core.database import get_session
 from app.routers import auth, courses, modules, sync
@@ -18,9 +20,9 @@ app = FastAPI(
 
 # Request latency, logging, and OWASP security headers middleware
 @app.middleware("http")
-async def log_requests_and_security_headers_middleware(request, call_next):
+async def log_requests_and_security_headers_middleware(request: Request, call_next):
     start_time = time.time()
-    response = await call_next(request)
+    response: Response = await call_next(request)
     process_time = (time.time() - start_time) * 1000
 
     # Inject OWASP security headers
@@ -32,6 +34,7 @@ async def log_requests_and_security_headers_middleware(request, call_next):
 
     logger.info(f"[{request.method}] {request.url.path} -> {response.status_code} ({process_time:.2f}ms)")
     return response
+
 
 
 # CORS configuration

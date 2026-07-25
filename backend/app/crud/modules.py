@@ -8,7 +8,7 @@ retrieval by parent course, single lookups, and updating/deleting.
 import uuid
 from typing import List, Optional
 from sqlmodel import Session, select
-from sqlalchemy.orm import defer
+from sqlalchemy.orm import defer, joinedload
 from app.models import Module
 from app.schemas.modules import ModuleCreate, ModuleUpdate
 
@@ -62,7 +62,7 @@ def get_modules_for_course(
     ).all()
 
 def get_module_by_id_and_course(
-    session: Session, module_id: uuid.UUID, course_id: uuid.UUID
+    session: Session, module_id: uuid.UUID, course_id: uuid.UUID, load_course: bool = False
 ) -> Optional[Module]:
     """
     Retrieve a single module by its ID and course ID.
@@ -71,13 +71,14 @@ def get_module_by_id_and_course(
         session (Session): The active database transaction session.
         module_id (UUID): The Module UUID to fetch.
         course_id (UUID): The parent Course UUID.
+        load_course (bool): If True, eagerly loads the parent Course relationship to eliminate N+1 queries.
     Returns:
         Optional[Module]: The Module instance, or None if not found.
     """
-    return session.exec(
-        select(Module)
-        .where(Module.id == module_id, Module.course_id == course_id)
-    ).first()
+    query = select(Module).where(Module.id == module_id, Module.course_id == course_id)
+    if load_course:
+        query = query.options(joinedload(Module.course))
+    return session.exec(query).first()
 
 def update_module(
     session: Session, db_module: Module, module_in: ModuleUpdate, commit: bool = True

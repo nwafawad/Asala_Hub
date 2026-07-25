@@ -1,14 +1,10 @@
-"""
-User Models.
-
-Defines the User SQLModel and the UserRole enumeration used throughout the system.
-"""
-
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from typing import List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, String
+
+
 
 if TYPE_CHECKING:
     from app.models.course import Course

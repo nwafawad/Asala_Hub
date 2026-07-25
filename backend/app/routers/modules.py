@@ -114,8 +114,8 @@ def update_module(
     
     Only the owning educator of the course is authorized to modify its modules.
     """
-    # Fetch specific module
-    module = crud_modules.get_module_by_id_and_course(session, module_id, course_id)
+    # Fetch specific module eagerly with its parent course to eliminate N+1 query
+    module = crud_modules.get_module_by_id_and_course(session, module_id, course_id, load_course=True)
     if not module:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -144,8 +144,8 @@ def delete_module(
     
     Only the owning educator of the course is authorized to delete its modules.
     """
-    # Fetch specific module
-    module = crud_modules.get_module_by_id_and_course(session, module_id, course_id)
+    # Fetch specific module eagerly with its parent course to eliminate N+1 query
+    module = crud_modules.get_module_by_id_and_course(session, module_id, course_id, load_course=True)
     if not module:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -161,4 +161,5 @@ def delete_module(
     # Remove from database
     crud_modules.delete_module(session, module)
     return None
+
 

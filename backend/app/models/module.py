@@ -1,15 +1,10 @@
-"""
-Module Models.
-
-Defines the Module SQLModel representing modules within a course,
-and the ContentType enum representing the content formats (text/video).
-"""
-
 import uuid
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, String, Index
+
+
 
 from app.models.user import get_naive_utc_now
 

@@ -1,13 +1,9 @@
-"""
-Transaction Logging Models.
-
-Defines the TransactionLog SQLModel used to record offline mutations for client reconciliation.
-"""
-
 import uuid
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, JSON, Index
+
+
 
 from app.models.user import get_naive_utc_now
 

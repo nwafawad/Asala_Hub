@@ -1,20 +1,35 @@
+from __future__ import annotations
+
 import uuid
-from datetime import datetime, timezone
-from typing import List
+from datetime import datetime
+from typing import List, Optional
 from sqlmodel import Session, select
 
+from app.models.user import get_naive_utc_now
 from app.models.transaction import TransactionLog
 from app.models.assignment import Submission, SyncStatus
-from app.schemas.sync import SyncBatchRequest, SyncBatchResponse, SyncTransactionResult, SubmissionPayloadSchema
+from app.schemas.sync import (
+    SyncBatchRequest,
+    SyncBatchResponse,
+    SyncTransactionResult,
+    SubmissionPayloadSchema,
+)
 
-def get_utc_now() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+def _to_naive_utc(dt: Optional[datetime], fallback: datetime) -> datetime:
+    """Convert an optional datetime to a naive UTC datetime, falling back to a default value."""
+    if dt is None:
+        return fallback
+    return dt.replace(tzinfo=None)
 
 def process_sync_batch(
     session: Session,
     user_id: uuid.UUID,
     batch: SyncBatchRequest
 ) -> SyncBatchResponse:
+    """
+    Process a batch of offline mutation transactions idempotently.
+    Applies submission updates, version conflict detection, and append-only transaction logging.
+    """
     results: List[SyncTransactionResult] = []
     synced_count = 0
     error_count = 0
@@ -35,7 +50,7 @@ def process_sync_batch(
     submission_entity_ids = [
         tx.entity_id for tx in batch.transactions if tx.entity_type == "submission"
     ]
-    existing_submissions = {}
+    existing_submissions: dict[uuid.UUID, Submission] = {}
     if submission_entity_ids:
         existing_submissions = {
             sub.id: sub
@@ -44,7 +59,7 @@ def process_sync_batch(
             ).all()
         }
 
-    now = get_utc_now()
+    now = get_naive_utc_now()
 
     for tx in batch.transactions:
         # Idempotency check: verify if transaction log was already recorded
@@ -62,6 +77,7 @@ def process_sync_batch(
             continue
 
         try:
+            client_time = _to_naive_utc(tx.client_timestamp, now)
             with session.begin_nested():
                 if tx.entity_type == "submission":
                     payload_data = SubmissionPayloadSchema.model_validate(tx.payload)
@@ -89,7 +105,6 @@ def process_sync_batch(
                             error_count += 1
                             continue
 
-                        client_time = tx.client_timestamp.replace(tzinfo=None) if tx.client_timestamp else now
                         if client_time >= existing_submission.updated_at:
                             existing_submission.content = content
                             existing_submission.sync_status = SyncStatus.synced
@@ -102,7 +117,7 @@ def process_sync_batch(
                             assignment_id=assignment_id,
                             student_id=user_id,
                             content=content,
-                            submitted_at=tx.client_timestamp.replace(tzinfo=None) if tx.client_timestamp else now,
+                            submitted_at=client_time,
                             sync_status=SyncStatus.synced,
                             version=payload_data.version or 1,
                             created_at=now,
@@ -111,7 +126,6 @@ def process_sync_batch(
                         session.add(new_submission)
                         existing_submissions[tx.entity_id] = new_submission
 
-
                 # Record transaction log entry
                 log_entry = TransactionLog(
                     id=tx.transaction_id,
@@ -119,7 +133,7 @@ def process_sync_batch(
                     entity_type=tx.entity_type,
                     entity_id=tx.entity_id,
                     payload=tx.payload,
-                    client_timestamp=tx.client_timestamp.replace(tzinfo=None) if tx.client_timestamp else now,
+                    client_timestamp=client_time,
                     synced_at=now,
                     created_at=now,
                     updated_at=now
@@ -157,4 +171,5 @@ def process_sync_batch(
         synced_count=synced_count,
         error_count=error_count
     )
+
 
