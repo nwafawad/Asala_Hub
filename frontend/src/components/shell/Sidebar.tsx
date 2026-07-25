@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useI18n } from '@/context/I18nContext';
+import { useAuth } from '@/context/AuthContext';
 import { LayoutDashboard, BookOpen, FileCheck, Activity, RefreshCw, Settings, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -12,18 +13,19 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiveTab }) => {
   const { t } = useI18n();
+  const { user } = useAuth();
 
-  const navItems = React.useMemo(
-    () => [
+  const navItems = React.useMemo(() => {
+    const isEducator = user?.role === 'educator';
+    return [
       { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard },
       { id: 'courses', label: t.nav.courses, icon: BookOpen },
-      { id: 'assignments', label: t.nav.assignments, icon: FileCheck },
-      { id: 'progress', label: t.nav.progress, icon: Activity },
+      { id: 'assignments', label: isEducator ? 'Submissions & Grading' : t.nav.assignments, icon: FileCheck },
+      { id: 'progress', label: isEducator ? 'Course Analytics' : t.nav.progress, icon: Activity },
       { id: 'syncQueue', label: t.nav.syncQueue, icon: RefreshCw },
       { id: 'settings', label: t.nav.settings, icon: Settings },
-    ],
-    [t]
-  );
+    ];
+  }, [t, user?.role]);
 
   return (
     <aside className="w-64 border-r rtl:border-r-0 rtl:border-l border-border bg-card flex flex-col justify-between shrink-0 transition-colors">
@@ -65,12 +67,16 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
 
       <div className="p-4 border-t border-border bg-muted/30">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
-            AH
+          <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold uppercase">
+            {user?.fullName?.substring(0, 2) || 'AH'}
           </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-foreground">Asala Educator</span>
-            <span className="text-[10px] text-muted-foreground">educator@asala.edu</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-semibold text-foreground truncate">
+              {user?.fullName || 'Asala User'}
+            </span>
+            <span className="text-[10px] text-muted-foreground truncate">
+              {user?.email || 'user@asalahub.dev'} ({user?.role || 'student'})
+            </span>
           </div>
         </div>
       </div>

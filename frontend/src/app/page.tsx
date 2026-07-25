@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/shell/AppShell';
+import { LoginForm } from '@/components/auth/LoginForm';
 import { StatCard } from '@/components/ui/StatCard';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SkeletonCard, SkeletonList } from '@/components/ui/Skeletons';
@@ -10,30 +11,46 @@ import { AssignmentWorkspace } from '@/components/student/AssignmentWorkspace';
 import { ProgressTracker } from '@/components/student/ProgressTracker';
 import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
+import { useAuth } from '@/context/AuthContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { BookOpen, FileText, Database, ShieldCheck, Plus, RefreshCw, Layers } from 'lucide-react';
 
 export default function Home() {
   const { t } = useI18n();
+  const { isAuthenticated, user } = useAuth();
   const { pendingCount, isOnline, syncState, addMockOfflineTransaction, syncNow } = useSync();
   const { showToast } = useOverlay();
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [overrideTab, setOverrideTab] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);
 
+  if (!isAuthenticated) {
+    return (
+      <LoginForm
+        onSuccess={role => {
+          showToast('Authentication Successful', 'success', `Welcome back, ${role}!`);
+          setOverrideTab(role === 'student' ? 'courses' : 'dashboard');
+        }}
+      />
+    );
+  }
+
   return (
     <AppShell>
-      {(activeTab) => {
-        if (activeTab === 'courses') {
+      {(activeTab, setActiveTab) => {
+        const currentTab = overrideTab || activeTab;
+
+        if (currentTab === 'courses') {
           return <CourseBrowser />;
         }
-        if (activeTab === 'assignments') {
+        if (currentTab === 'assignments') {
           return <AssignmentWorkspace />;
         }
-        if (activeTab === 'progress') {
+        if (currentTab === 'progress') {
           return <ProgressTracker />;
         }
 
@@ -45,7 +62,7 @@ export default function Home() {
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <h2 className="text-2xl font-bold font-heading text-foreground">
-                    {t.appName} — Phase 2 Institutional Student
+                    {t.appName} — {user?.role === 'educator' ? 'Educator Control Center' : 'Student Portal'}
                   </h2>
                   <StatusPill
                     label={isOnline ? 'Network Connected' : 'Campus Intranet Offline'}
@@ -53,7 +70,7 @@ export default function Home() {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  IndexedDB offline engine · 2s draft auto-save · Binary Blob attachments · BackgroundSync
+                  Signed in as <strong className="text-foreground">{user?.fullName}</strong> ({user?.email}) · Role: <strong className="uppercase text-primary">{user?.role}</strong>
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -65,7 +82,7 @@ export default function Home() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Simulate Offline Draft</span>
+                  <span>Simulate Offline Log</span>
                 </button>
                 <button
                   onClick={async () => {
@@ -122,57 +139,34 @@ export default function Home() {
               )}
             </div>
 
-            {/* Foundation Shell & Phase 2 Overview */}
+            {/* Overview Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Active Navigation Preview */}
               <div className="p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-4">
                 <div className="flex items-center justify-between border-b border-border pb-3">
                   <h3 className="text-base font-semibold font-heading text-foreground flex items-center gap-2">
                     <Layers className="w-4 h-4 text-primary" />
-                    Active Student View
+                    Active Navigation View
                   </h3>
-                  <StatusPill label={activeTab} variant="info" />
+                  <StatusPill label={currentTab} variant="info" />
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Use sidebar links to explore Course Browser, Assignment Workspace with 2s Auto-Save, and Progress Sync Tracker.
+                  Use the navigation sidebar to explore enrolled courses, offline assignment workspace, and progress sync tracker.
                 </p>
-                <div className="p-4 rounded-xl bg-muted/40 border border-border flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Current Language:</span>
-                    <span className="font-semibold text-foreground">
-                      {t.actions.switchLanguage === 'English' ? 'العربية (Arabic)' : 'English'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Text Direction:</span>
-                    <span className="font-semibold text-foreground">
-                      {t.actions.switchLanguage === 'English' ? 'RTL' : 'LTR'}
-                    </span>
-                  </div>
-                </div>
               </div>
 
-              {/* Skeleton & Phase 2 Capabilities Preview */}
               <div className="p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-4 lg:col-span-2">
                 <div className="flex items-center justify-between border-b border-border pb-3">
                   <h3 className="text-base font-semibold font-heading text-foreground">
-                    Phase 2 — Institutional Student Engine
+                    Phase 1 & Phase 2 Integrated Engine
                   </h3>
                   <span className="text-xs text-muted-foreground">Offline LMS Features</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <StatusPill label="2s IndexedDB Auto-Save" variant="success" />
-                  <StatusPill label="IndexedDB Blob Attachments" variant="info" />
-                  <StatusPill label="Offline Markdown Editor" variant="warning" />
-                  <StatusPill label="BackgroundSync API" variant="info" dotAnimation />
+                  <StatusPill label="Auth Gate & Role Auto-Route" variant="success" />
+                  <StatusPill label="2s IndexedDB Auto-Save" variant="info" />
+                  <StatusPill label="Offline Blob Attachments" variant="warning" />
+                  <StatusPill label="In-Place Re-Auth Modal" variant="info" dotAnimation />
                   <StatusPill label="Printable Submission Receipts" variant="neutral" />
-                </div>
-
-                <div className="mt-2">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Hydration Loading State
-                  </h4>
-                  <SkeletonList count={2} />
                 </div>
               </div>
             </div>

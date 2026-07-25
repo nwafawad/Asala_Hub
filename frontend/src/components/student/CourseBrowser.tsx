@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { db, seedInitialMockData, type CachedCourse } from '@/lib/db';
+import { api } from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { StatusPill } from '@/components/ui/StatusPill';
@@ -22,6 +23,28 @@ export const CourseBrowser: React.FC = () => {
   const loadCourses = useCallback(async () => {
     try {
       await seedInitialMockData();
+
+      if (navigator.onLine) {
+        try {
+          const res = await api.get('/courses/');
+          if (res.data && Array.isArray(res.data)) {
+            const apiCourses: CachedCourse[] = res.data.map((c: any) => ({
+              id: c.id,
+              title: c.title,
+              code: c.code || `CS${Math.floor(Math.random() * 899 + 100)}`,
+              educatorName: c.educator_name || 'Asala Educator',
+              moduleCount: c.module_count || 3,
+              isCachedOffline: true,
+              sizeMb: 14.5,
+              updatedAt: c.updated_at || new Date().toISOString(),
+            }));
+            await db.cachedCourses.bulkPut(apiCourses);
+          }
+        } catch (apiErr) {
+          console.warn('Backend courses API offline, reading from IndexedDB');
+        }
+      }
+
       const allCourses = await db.cachedCourses.toArray();
       setCourses(allCourses);
 
@@ -35,7 +58,7 @@ export const CourseBrowser: React.FC = () => {
         }
       }
     } catch (err) {
-      console.error('Error loading courses from IndexedDB:', err);
+      console.error('Error loading courses:', err);
     } finally {
       setLoading(false);
     }

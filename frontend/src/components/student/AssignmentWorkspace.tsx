@@ -5,6 +5,7 @@ import { db, seedInitialMockData, type AttachmentFile } from '@/lib/db';
 import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
 import { useOverlay } from '@/context/OverlayContext';
+import { useAuth } from '@/context/AuthContext';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { FileCheck, Save, Paperclip, Send, Eye, Edit3, Clock, Award, FileText, CheckCircle } from 'lucide-react';
 
@@ -13,6 +14,7 @@ export const AssignmentWorkspace: React.FC = () => {
   const { addMockOfflineTransaction } = useSync();
   const { showToast } = useOverlay();
 
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'write' | 'preview'>('write');
   const [content, setContent] = useState<string>(
     '# Binary Search Tree Implementation\n\n## Overview\nI implemented BST insertion, deletion, and tree traversals in C++.\n\n```cpp\nvoid insert(Node*& root, int val) {\n    if (!root) root = new Node(val);\n    else if (val < root->val) insert(root->left, val);\n    else insert(root->right, val);\n}\n```\n\nAll tests pass locally.'
@@ -43,7 +45,7 @@ export const AssignmentWorkspace: React.FC = () => {
           id: 'sub-102',
           assignmentId: 'assign-2',
           assignmentTitle: 'Offline Transaction Log Architecture',
-          studentName: 'Asala Student',
+          studentName: user?.fullName || 'Asala Student',
           content,
           attachments,
           submittedAt: new Date().toISOString(),
@@ -56,7 +58,7 @@ export const AssignmentWorkspace: React.FC = () => {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [content, attachments]);
+  }, [content, attachments, user]);
 
   // Handle File Uploads & Conversion to IndexedDB Base64 / Blob DataUrl
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,8 +67,8 @@ export const AssignmentWorkspace: React.FC = () => {
 
     Array.from(files).forEach(file => {
       const reader = new FileReader();
-      reader.onload = e => {
-        const dataUrl = e.target?.result as string;
+      reader.onload = evt => {
+        const dataUrl = evt.target?.result as string;
         const newAttachment: AttachmentFile = {
           name: file.name,
           size: file.size,
@@ -78,6 +80,7 @@ export const AssignmentWorkspace: React.FC = () => {
       };
       reader.readAsDataURL(file);
     });
+    e.target.value = '';
   };
 
   // Submit Assignment Action
@@ -167,18 +170,16 @@ export const AssignmentWorkspace: React.FC = () => {
           <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-xl border border-border">
             <button
               onClick={() => setActiveTab('write')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'write' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'write' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                }`}
             >
               <Edit3 className="w-3.5 h-3.5 text-primary" />
               {t.assignmentPage.writeTab}
             </button>
             <button
               onClick={() => setActiveTab('preview')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'preview' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'preview' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                }`}
             >
               <Eye className="w-3.5 h-3.5 text-primary" />
               {t.assignmentPage.previewTab}

@@ -4,6 +4,7 @@ import { ThemeProvider } from 'next-themes';
 import { I18nProvider } from '@/context/I18nContext';
 import { SyncProvider } from '@/context/SyncContext';
 import { OverlayProvider } from '@/context/OverlayContext';
+import { AuthProvider } from '@/context/AuthContext';
 import { ServiceWorkerRegister } from '@/components/shell/ServiceWorkerRegister';
 import './globals.css';
 
@@ -42,12 +43,14 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <I18nProvider>
-            <SyncProvider>
-              <OverlayProvider>
-                <ServiceWorkerRegister />
-                {children}
-              </OverlayProvider>
-            </SyncProvider>
+            <OverlayProvider>
+              <AuthProvider>
+                <SyncProvider>
+                  <ServiceWorkerRegister />
+                  {children}
+                </SyncProvider>
+              </AuthProvider>
+            </OverlayProvider>
           </I18nProvider>
         </ThemeProvider>
       </body>
