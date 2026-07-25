@@ -6,6 +6,9 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 
+CURRENT_SCHEMA_VERSION = 1
+MIN_SUPPORTED_SCHEMA_VERSION = 1
+
 class SubmissionPayloadSchema(BaseModel):
     assignment_id: uuid.UUID
     content: str = ""
@@ -18,15 +21,20 @@ class SyncTransactionIn(BaseModel):
     action: str = Field(..., description="Mutation action: CREATE, UPDATE, DELETE")
     payload: Dict[str, Any]
     client_timestamp: datetime
+    schema_version: int = Field(
+        default=CURRENT_SCHEMA_VERSION,
+        description="Schema version of the transaction payload for backward compatibility"
+    )
 
 class SyncBatchRequest(BaseModel):
     transactions: List[SyncTransactionIn]
 
 class SyncTransactionResult(BaseModel):
     transaction_id: uuid.UUID
-    status: str = Field(..., description="'accepted', 'rejected', or 'skipped'")
+    status: str = Field(..., description="'accepted', 'rejected', 'skipped', or 'unsupported_schema_version'")
     synced_at: Optional[datetime] = None
     error: Optional[str] = None
+
 
 class SyncBatchResponse(BaseModel):
     results: List[SyncTransactionResult]

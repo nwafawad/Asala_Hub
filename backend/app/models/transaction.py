@@ -24,7 +24,9 @@ class TransactionLog(SQLModel, table=True):
     entity_type: str
     entity_id: uuid.UUID
     payload: dict = Field(sa_column=Column(JSON, nullable=False))
+    schema_version: int = Field(default=1, nullable=False)
     client_timestamp: datetime = Field(index=True)
+
     synced_at: Optional[datetime] = Field(default=None, nullable=True, index=True)
     created_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False)
