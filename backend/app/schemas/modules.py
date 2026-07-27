@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from app.models import ContentType
 
 
@@ -39,9 +39,7 @@ class ModuleRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        """Pydantic configuration settings."""
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ModuleSyllabusRead(BaseModel):
@@ -57,8 +55,6 @@ class ModuleSyllabusRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        """Pydantic configuration settings."""
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
