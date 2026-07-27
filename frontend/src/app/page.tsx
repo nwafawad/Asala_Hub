@@ -52,7 +52,11 @@ export default function Home() {
           );
         }
         if (currentTab === 'assignments') {
-          return <AssignmentWorkspace />;
+          return (
+            <AssignmentWorkspace
+              onBack={() => setOverrideTab('courses')}
+            />
+          );
         }
         if (currentTab === 'progress') {
           return <ProgressTracker />;

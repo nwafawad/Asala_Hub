@@ -47,6 +47,14 @@ export interface AttachmentFile {
   dataUrl: string;
 }
 
+export interface DraftSnapshot {
+  id: string;
+  timestamp: string;
+  content: string;
+  wordCount: number;
+  sizeKb: number;
+}
+
 export interface CachedSubmission {
   id: string;
   assignmentId: string;
@@ -58,6 +66,7 @@ export interface CachedSubmission {
   syncStatus: 'synced' | 'pending' | 'failed';
   conflictStatus?: 'none' | 'resolved_lww';
   receiptHash?: string;
+  draftHistory?: DraftSnapshot[];
 }
 
 export interface IndexedDBUser {
