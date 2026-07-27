@@ -1,20 +1,43 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { db, seedInitialMockData, type CachedCourse } from '@/lib/db';
+import { db, seedInitialMockData, type CachedCourse, type CachedModule } from '@/lib/db';
 import { api } from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SkeletonCard } from '@/components/ui/Skeletons';
-import { BookOpen, HardDrive, Download, Trash2, CheckCircle2, Search, User } from 'lucide-react';
+import { CourseDetail } from '@/components/student/CourseDetail';
+import { ModuleViewerModal } from '@/components/student/ModuleViewerModal';
+import {
+  BookOpen,
+  HardDrive,
+  Download,
+  Trash2,
+  Search,
+  User,
+  FolderOpen,
+  RefreshCw,
+  Layers,
+  ChevronRight,
+  ChevronLeft,
+} from 'lucide-react';
 
-export const CourseBrowser: React.FC = () => {
+interface CourseBrowserProps {
+  onOpenAssignment?: (assignmentId: string) => void;
+}
+
+export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }) => {
   const { t, language } = useI18n();
   const { showToast } = useOverlay();
   const [courses, setCourses] = useState<CachedCourse[]>([]);
+  const [modulesMap, setModulesMap] = useState<Record<string, CachedModule[]>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [activeModule, setActiveModule] = useState<CachedModule | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState<boolean>(false);
+
   const [storageEstimate, setStorageEstimate] = useState<{ usedMb: number; quotaMb: number }>({
     usedMb: 18.4,
     quotaMb: 2048,
@@ -24,7 +47,7 @@ export const CourseBrowser: React.FC = () => {
     try {
       await seedInitialMockData();
 
-      if (navigator.onLine) {
+      if (typeof window !== 'undefined' && navigator.onLine) {
         try {
           const res = await api.get('/courses/');
           if (res.data && Array.isArray(res.data)) {
@@ -33,20 +56,32 @@ export const CourseBrowser: React.FC = () => {
               title: c.title,
               code: c.code || `CS${Math.floor(Math.random() * 899 + 100)}`,
               educatorName: c.educator_name || 'Asala Educator',
-              moduleCount: c.module_count || 3,
-              isCachedOffline: true,
+              moduleCount: c.module_count || 4,
+              isCachedOffline: false,
               sizeMb: 14.5,
               updatedAt: c.updated_at || new Date().toISOString(),
             }));
             await db.cachedCourses.bulkPut(apiCourses);
           }
         } catch (apiErr) {
-          console.warn('Backend courses API offline, reading from IndexedDB');
+          console.warn('Backend courses API offline, using IndexedDB local store');
         }
       }
 
-      const allCourses = await db.cachedCourses.toArray();
+      // Offline Cold Start: Read instantly from IndexedDB cache
+      const [allCourses, allModules] = await Promise.all([
+        db.cachedCourses.toArray(),
+        db.cachedModules.toArray(),
+      ]);
+
+      const grouped: Record<string, CachedModule[]> = {};
+      allModules.forEach(mod => {
+        if (!grouped[mod.courseId]) grouped[mod.courseId] = [];
+        grouped[mod.courseId].push(mod);
+      });
+
       setCourses(allCourses);
+      setModulesMap(grouped);
 
       if (typeof window !== 'undefined' && 'storage' in navigator && 'estimate' in navigator.storage) {
         const estimate = await navigator.storage.estimate();
@@ -58,8 +93,8 @@ export const CourseBrowser: React.FC = () => {
         }
       }
     } catch (err) {
-      console.error('Error loading courses:', err);
-    } finally {
+      console.error('Error loading courses from IndexedDB:', err);
+    } fontinally: {
       setLoading(false);
     }
   }, []);
@@ -68,15 +103,53 @@ export const CourseBrowser: React.FC = () => {
     loadCourses();
   }, [loadCourses]);
 
-  const toggleCacheStatus = async (course: CachedCourse) => {
+  const toggleCourseCache = async (course: CachedCourse) => {
     const newStatus = !course.isCachedOffline;
     await db.cachedCourses.update(course.id, { isCachedOffline: newStatus });
+
+    // Also update all modules for this course
+    const courseMods = modulesMap[course.id] || [];
+    await Promise.all(
+      courseMods.map(m => db.cachedModules.update(m.id, { isCachedOffline: newStatus }))
+    );
+
     await loadCourses();
 
     if (newStatus) {
-      showToast(t.coursesPage.cachedOffline, 'success', `${course.code} package saved to IndexedDB.`);
+      showToast(t.coursesPage.cachedOffline, 'success', `${course.code} package and modules saved to IndexedDB.`);
     } else {
-      showToast('Cache Evicted', 'info', `${course.code} package removed to free space.`);
+      showToast('Cache Evicted', 'info', `${course.code} package removed to free local space.`);
+    }
+  };
+
+  const toggleModuleCache = async (moduleItem: CachedModule) => {
+    const newStatus = !moduleItem.isCachedOffline;
+    await db.cachedModules.update(moduleItem.id, { isCachedOffline: newStatus });
+
+    // Update active module state if currently open in modal
+    if (activeModule && activeModule.id === moduleItem.id) {
+      setActiveModule({ ...activeModule, isCachedOffline: newStatus });
+    }
+
+    await loadCourses();
+
+    if (newStatus) {
+      showToast('Module Downloaded', 'success', `${moduleItem.title} cached offline.`);
+    } else {
+      showToast('Module Evicted', 'info', `${moduleItem.title} removed from offline cache.`);
+    }
+  };
+
+  const handleSelectModule = (mod: CachedModule) => {
+    if (mod.type === 'assignment') {
+      if (onOpenAssignment) {
+        onOpenAssignment(mod.assignmentId || 'assign-1');
+      } else {
+        showToast('Assignment Selected', 'info', `Navigating to ${mod.title}`);
+      }
+    } else {
+      setActiveModule(mod);
+      setIsViewerOpen(true);
     }
   };
 
@@ -91,8 +164,37 @@ export const CourseBrowser: React.FC = () => {
     [courses, searchQuery]
   );
 
+  const selectedCourse = courses.find(c => c.id === selectedCourseId);
+  const selectedCourseModules = selectedCourseId ? modulesMap[selectedCourseId] || [] : [];
+
+  // Detail View Mode
+  if (selectedCourse) {
+    return (
+      <>
+        <CourseDetail
+          course={selectedCourse}
+          modules={selectedCourseModules}
+          onBack={() => setSelectedCourseId(null)}
+          onSelectModule={handleSelectModule}
+          onToggleModuleCache={toggleModuleCache}
+          onToggleCourseCache={toggleCourseCache}
+        />
+        <ModuleViewerModal
+          module={activeModule}
+          isOpen={isViewerOpen}
+          onClose={() => {
+            setIsViewerOpen(false);
+            setActiveModule(null);
+          }}
+          onDownloadModule={toggleModuleCache}
+        />
+      </>
+    );
+  }
+
+  // Grid View Mode
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto animate-in fade-in duration-200">
       {/* Header Banner & Storage Meter */}
       <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex flex-col gap-1">
@@ -123,80 +225,160 @@ export const CourseBrowser: React.FC = () => {
         </div>
       </div>
 
-      {/* Search Input Bar */}
-      <div className="relative w-full max-w-md">
-        <Search className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Filter courses by name or code..."
-          className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-        />
+      {/* Search Input Bar & Refresh */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative w-full max-w-md">
+          <Search className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder={t.searchPlaceholder}
+            className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+          />
+        </div>
       </div>
 
-      {/* Course Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
-          <>
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </>
-        ) : (
-          filteredCourses.map(course => (
-            <div
-              key={course.id}
-              className="p-5 rounded-2xl border border-border bg-card shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-5 group"
-            >
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary uppercase tracking-wider">
-                    {course.code}
-                  </span>
-                  <StatusPill
-                    label={course.isCachedOffline ? `${course.sizeMb} MB Offline` : t.coursesPage.onlineOnly}
-                    variant={course.isCachedOffline ? 'success' : 'neutral'}
-                  />
-                </div>
+      {/* Zero Enrolled Courses Empty State */}
+      {!loading && filteredCourses.length === 0 ? (
+        <div className="p-12 rounded-2xl bg-card border border-border flex flex-col items-center justify-center text-center gap-4 my-8">
+          <div className="p-4 rounded-full bg-muted text-muted-foreground">
+            <FolderOpen className="w-10 h-10" />
+          </div>
+          <div className="flex flex-col gap-1 max-w-sm">
+            <h3 className="text-lg font-bold font-heading text-foreground">
+              {t.coursesPage.emptyTitle}
+            </h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {t.coursesPage.emptySubtitle}
+            </p>
+          </div>
+          <button
+            onClick={() => loadCourses()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs mt-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Re-Sync Enrolled Courses</span>
+          </button>
+        </div>
+      ) : (
+        /* Course Cards Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loading ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            filteredCourses.map(course => {
+              const mods = modulesMap[course.id] || [];
+              const cachedModsCount = mods.filter(m => m.isCachedOffline).length;
+              const totalModsCount = mods.length || course.moduleCount || 1;
+              const cachePct = Math.round((cachedModsCount / totalModsCount) * 100);
 
-                <div>
-                  <h3 className="text-base font-bold font-heading text-foreground group-hover:text-primary transition-colors">
-                    {language === 'ar' && course.titleAr ? course.titleAr : course.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5" />
-                    {course.educatorName}
-                  </p>
-                </div>
-              </div>
+              const ChevronIcon = language === 'ar' ? ChevronLeft : ChevronRight;
 
-              <div className="pt-4 border-t border-border flex items-center justify-between">
-                <span className="text-xs text-muted-foreground font-medium">
-                  {course.moduleCount} {t.coursesPage.modules}
-                </span>
-
-                <button
-                  onClick={() => toggleCacheStatus(course)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+              return (
+                <div
+                  key={course.id}
+                  onClick={() => setSelectedCourseId(course.id)}
+                  className="p-5 rounded-2xl border border-border bg-card shadow-xs hover:shadow-md hover:border-primary/40 transition-all flex flex-col justify-between gap-5 group cursor-pointer"
                 >
-                  {course.isCachedOffline ? (
-                    <>
-                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                      <span>{t.coursesPage.evictCache}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-3.5 h-3.5 text-primary" />
-                      <span>{t.coursesPage.downloadOffline}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary uppercase tracking-wider">
+                        {course.code}
+                      </span>
+                      <StatusPill
+                        label={
+                          cachePct === 100
+                            ? t.coursesPage.cachedOffline
+                            : cachePct > 0
+                            ? `${cachedModsCount}/${totalModsCount} ${t.coursesPage.partiallySynced}`
+                            : t.coursesPage.onlineOnly
+                        }
+                        variant={
+                          cachePct === 100
+                            ? 'success'
+                            : cachePct > 0
+                            ? 'warning'
+                            : 'neutral'
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <h3 className="text-base font-bold font-heading text-foreground group-hover:text-primary transition-colors flex items-center justify-between">
+                        <span>{language === 'ar' && course.titleAr ? course.titleAr : course.title}</span>
+                        <ChevronIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5" />
+                        {course.educatorName}
+                      </p>
+                    </div>
+
+                    {/* Partial Offline Cache Progress Meter on Card */}
+                    <div className="flex flex-col gap-1.5 pt-2">
+                      <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Layers className="w-3 h-3 text-primary" />
+                          {cachedModsCount} of {totalModsCount} Modules Ready
+                        </span>
+                        <span className="font-mono">{cachePct}%</span>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all duration-300"
+                          style={{ width: `${cachePct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-border flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {totalModsCount} {t.coursesPage.modules}
+                    </span>
+
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        toggleCourseCache(course);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+                    >
+                      {course.isCachedOffline ? (
+                        <>
+                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                          <span>{t.coursesPage.evictCache}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-3.5 h-3.5 text-primary" />
+                          <span>{t.coursesPage.downloadOffline}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Module Viewer Modal when opened from Grid or Detail */}
+      <ModuleViewerModal
+        module={activeModule}
+        isOpen={isViewerOpen}
+        onClose={() => {
+          setIsViewerOpen(false);
+          setActiveModule(null);
+        }}
+        onDownloadModule={toggleModuleCache}
+      />
     </div>
   );
 };

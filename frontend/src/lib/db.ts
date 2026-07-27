@@ -23,6 +23,23 @@ export interface CachedCourse {
   updatedAt: string;
 }
 
+export interface CachedModule {
+  id: string;
+  courseId: string;
+  title: string;
+  titleAr?: string;
+  type: 'reading' | 'audio' | 'syllabus' | 'assignment';
+  sequenceOrder: number;
+  isCachedOffline: boolean;
+  sizeMb: number;
+  content?: string;
+  audioUrl?: string;
+  durationMinutes?: number;
+  assignmentId?: string;
+  dueDate?: string;
+  points?: number;
+}
+
 export interface AttachmentFile {
   name: string;
   size: number;
@@ -67,15 +84,17 @@ export class AsalaHubDatabase extends Dexie {
   cachedSubmissions!: Table<CachedSubmission, string>;
   users!: Table<IndexedDBUser, string>;
   userSession!: Table<UserSession, string>;
+  cachedModules!: Table<CachedModule, string>;
 
   constructor() {
     super('AsalaHubDB');
-    this.version(2).stores({
+    this.version(3).stores({
       transactionLogs: '++id, action, entityType, entityId, timestamp, status',
       cachedCourses: 'id, title, code, educatorName',
       cachedSubmissions: 'id, assignmentId, studentName, syncStatus',
       users: 'id, email, role',
       userSession: 'id, token, rememberMe, expiresAt',
+      cachedModules: 'id, courseId, type, sequenceOrder, isCachedOffline',
     });
   }
 }
@@ -84,10 +103,11 @@ export const db = new AsalaHubDatabase();
 
 export async function seedInitialMockData() {
   try {
-    const [courseCount, subCount, userCount] = await Promise.all([
+    const [courseCount, subCount, userCount, moduleCount] = await Promise.all([
       db.cachedCourses.count(),
       db.cachedSubmissions.count(),
       db.users.count(),
+      db.cachedModules.count(),
     ]);
 
     if (userCount === 0) {
@@ -117,8 +137,8 @@ export async function seedInitialMockData() {
           titleAr: 'مقدمة في علوم الحاسوب',
           code: 'CS101',
           educatorName: 'Layla Al-Rashidi',
-          moduleCount: 3,
-          isCachedOffline: true,
+          moduleCount: 4,
+          isCachedOffline: false,
           sizeMb: 18.5,
           updatedAt: new Date().toISOString(),
         },
@@ -132,6 +152,107 @@ export async function seedInitialMockData() {
           isCachedOffline: true,
           sizeMb: 12.2,
           updatedAt: new Date().toISOString(),
+        },
+      ]);
+    }
+
+    if (moduleCount === 0) {
+      await db.cachedModules.bulkAdd([
+        {
+          id: 'cs101-m1',
+          courseId: 'cs101',
+          title: 'Course Syllabus & Offline Policies',
+          titleAr: 'خطة المقرر وسياسات العمل بدون إنترنت',
+          type: 'syllabus',
+          sequenceOrder: 1,
+          isCachedOffline: true,
+          sizeMb: 1.2,
+          content: 'Welcome to CS101. This course covers core algorithms, computational thinking, and offline LMS data synchronization patterns.',
+        },
+        {
+          id: 'cs101-m2',
+          courseId: 'cs101',
+          title: 'Lecture 1: Computing & Data Structures',
+          titleAr: 'المحاضرة 1: أساسيات الحاسوب وهياكل البيانات',
+          type: 'audio',
+          sequenceOrder: 2,
+          isCachedOffline: true,
+          sizeMb: 8.5,
+          durationMinutes: 45,
+          audioUrl: '/audio/cs101-lec1.mp3',
+          content: 'Audio lecture covering binary trees, graph algorithms, and flat JSON delta storage.',
+        },
+        {
+          id: 'cs101-m3',
+          courseId: 'cs101',
+          title: 'Reading: Algorithmic Logic & P vs NP',
+          titleAr: 'قراءة: المنطق الخوارزمي وتعقيد الحسابات',
+          type: 'reading',
+          sequenceOrder: 3,
+          isCachedOffline: false,
+          sizeMb: 3.4,
+          content: 'Detailed analysis of P vs NP computational complexity classes and heuristic search methods.',
+        },
+        {
+          id: 'cs101-m4',
+          courseId: 'cs101',
+          title: 'Assignment 1: Foundations of Aqeedah Homework',
+          titleAr: 'التكليف 1: واجب التفكير الخوارزمي والمعاملات',
+          type: 'assignment',
+          sequenceOrder: 4,
+          isCachedOffline: false,
+          sizeMb: 5.4,
+          assignmentId: 'assign-1',
+          dueDate: '2026-08-15',
+          points: 100,
+        },
+        {
+          id: 'se202-m1',
+          courseId: 'se202',
+          title: 'SE202 Syllabus & Architectural Principles',
+          titleAr: 'خطة مقرر SE202 ومبادئ المعمارية',
+          type: 'syllabus',
+          sequenceOrder: 1,
+          isCachedOffline: true,
+          sizeMb: 1.5,
+          content: 'Syllabus outlining domain-driven design, repository patterns, and IndexedDB local caching.',
+        },
+        {
+          id: 'se202-m2',
+          courseId: 'se202',
+          title: 'Reading: Clean Architecture & SOLID',
+          titleAr: 'قراءة: المعمارية النظيفة ومبادئ SOLID',
+          type: 'reading',
+          sequenceOrder: 2,
+          isCachedOffline: true,
+          sizeMb: 2.8,
+          content: 'Overview of Single Responsibility, Open-Closed, and Dependency Inversion principles.',
+        },
+        {
+          id: 'se202-m3',
+          courseId: 'se202',
+          title: 'Audio Lecture: Event-Driven Systems & CQRS',
+          titleAr: 'محاضرة صوتية: الأنظمة المعتمدة على الأحداث',
+          type: 'audio',
+          sequenceOrder: 3,
+          isCachedOffline: true,
+          sizeMb: 12.0,
+          durationMinutes: 52,
+          audioUrl: '/audio/se202-lec3.mp3',
+          content: 'Deep dive into transaction outbox patterns and asynchronous synchronization queues.',
+        },
+        {
+          id: 'se202-m4',
+          courseId: 'se202',
+          title: 'Assignment 2: Offline Transaction Log Architecture',
+          titleAr: 'التكليف 2: معمارية سجل المعاملات المحلي',
+          type: 'assignment',
+          sequenceOrder: 4,
+          isCachedOffline: false,
+          sizeMb: 4.2,
+          assignmentId: 'assign-2',
+          dueDate: '2026-08-20',
+          points: 100,
         },
       ]);
     }
@@ -166,3 +287,4 @@ export async function seedInitialMockData() {
     console.error('Error seeding initial mock data:', err);
   }
 }
+

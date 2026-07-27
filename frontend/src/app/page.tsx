@@ -45,7 +45,11 @@ export default function Home() {
         const currentTab = overrideTab || activeTab;
 
         if (currentTab === 'courses') {
-          return <CourseBrowser />;
+          return (
+            <CourseBrowser
+              onOpenAssignment={_id => setOverrideTab('assignments')}
+            />
+          );
         }
         if (currentTab === 'assignments') {
           return <AssignmentWorkspace />;
