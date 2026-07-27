@@ -1,15 +1,14 @@
 import uuid
-from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship, Column, String, Index
+from sqlmodel import Field, Relationship, Column, Index
+import sqlalchemy as sa
 
-
-
-from app.models.user import get_naive_utc_now
+from app.models.base import TimestampModel
 
 if TYPE_CHECKING:
     from app.models.course import Course
+
 
 class ContentType(str, Enum):
     """
@@ -18,7 +17,8 @@ class ContentType(str, Enum):
     text = "text"
     video = "video"
 
-class Module(SQLModel, table=True):
+
+class Module(TimestampModel, table=True):
     """
     Database model representing a single study module inside a course.
     Contains content and an order index to represent ordering inside a course list.
@@ -27,16 +27,16 @@ class Module(SQLModel, table=True):
         Index("idx_module_course_order", "course_id", "order_index"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
-    course_id: uuid.UUID = Field(foreign_key="course.id", nullable=False, index=True)
+    course_id: uuid.UUID = Field(foreign_key="course.id", ondelete="CASCADE", nullable=False, index=True)
     title: str
-    content_type: ContentType = Field(sa_column=Column(String, nullable=False))
+    content_type: ContentType = Field(
+        sa_column=Column(
+            sa.Enum(ContentType, native_enum=False, values_callable=lambda x: [e.value for e in x]),
+            nullable=False,
+        )
+    )
     content: str
     order_index: int
-    created_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False)
-    updated_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False)
 
     # Relationships
     course: "Course" = Relationship(back_populates="modules")
-
-
