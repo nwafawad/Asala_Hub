@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { db, type TransactionLogItem } from '@/lib/db';
+import { generateUUID } from '@/lib/uuid';
 
 export type SyncState = 'synced' | 'offline' | 'pending' | 'syncing' | 'error';
 
@@ -105,13 +106,15 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addMockOfflineTransaction = async (action: 'CREATE_SUBMISSION' | 'UPDATE_COURSE' = 'CREATE_SUBMISSION') => {
+    const offlineUuid = generateUUID();
     const newItem: TransactionLogItem = {
+      offlineId: offlineUuid,
       action,
       entityType: action === 'CREATE_SUBMISSION' ? 'Submission' : 'Course',
-      entityId: `entity-${Math.floor(Math.random() * 1000)}`,
+      entityId: offlineUuid,
       payload: {
-        title: action === 'CREATE_SUBMISSION' ? 'Assignment 1 Draft Submission' : 'Updated Course Syllabus',
-        note: 'Buffered locally in IndexedDB',
+        title: action === 'CREATE_SUBMISSION' ? 'Assignment Draft Submission' : 'Updated Course Syllabus',
+        note: 'Buffered locally in IndexedDB with UUID v4',
       },
       timestamp: new Date().toISOString(),
       status: 'pending',

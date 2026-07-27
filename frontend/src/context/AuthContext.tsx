@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { db, seedInitialMockData, type IndexedDBUser, type UserSession } from '@/lib/db';
+import { deriveKeyFromPassword, setInMemoryKey, zeroKey } from '@/lib/crypto';
 import { useOverlay } from './OverlayContext';
 
 interface AuthContextType {
@@ -85,6 +86,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         await seedInitialMockData();
+        const SEVEN_DAYS_MS = 3600000 * 24 * 7; // 7-Day Session Duration (FR-13)
+
+        // Derive in-memory AES-GCM key from user password (NFR-11, BR-7)
+        const derivedCryptoKey = await deriveKeyFromPassword(cleanPassword);
+        setInMemoryKey(derivedCryptoKey);
 
         if (navigator.onLine) {
           try {
@@ -109,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               preferredLanguage: meRes.data.preferred_language || 'en',
             };
 
-            const expiresAt = new Date(Date.now() + 3600000 * 2).toISOString();
+            const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
             const sessionObj: UserSession = {
               id: 'current_session',
               token: accessToken,
@@ -117,6 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               rememberMe,
               expiresAt,
               lastLoginAt: new Date().toISOString(),
+              hasAcceptedConsent: true,
             };
 
             if (rememberMe) {
@@ -132,14 +139,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return { success: true };
           } catch (apiErr: any) {
             console.warn('API auth failed, checking offline IndexedDB fallback...', apiErr);
-            // If REST API returns 401 or network error, attempt IndexedDB fallback
           }
         }
 
         // Offline / Fallback Mode: Validate credentials against IndexedDB db.users
         const matchUser = await db.users.where('email').equalsIgnoreCase(cleanEmail).first();
         if (matchUser) {
-          const expiresAt = new Date(Date.now() + 3600000 * 2).toISOString();
+          const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
           const offlineToken = `offline-token-${Date.now()}`;
           const sessionObj: UserSession = {
             id: 'current_session',
@@ -148,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             rememberMe,
             expiresAt,
             lastLoginAt: new Date().toISOString(),
+            hasAcceptedConsent: true,
           };
 
           if (rememberMe) {
@@ -173,6 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(async () => {
     localStorage.removeItem('asala_token');
     sessionStorage.removeItem('asala_token');
+    zeroKey(); // Zero in-memory crypto key on logout (BR-7)
     await db.userSession.clear();
     setUser(null);
     setToken(null);
@@ -193,13 +201,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
 
-          const expiresAt = new Date(Date.now() + 3600000 * 2).toISOString();
+          // Re-derive CryptoKey if password was provided during re-auth
+          if (pinOrPassword && pinOrPassword !== 'extend' && pinOrPassword.length >= 4) {
+            const reDerivedKey = await deriveKeyFromPassword(pinOrPassword);
+            setInMemoryKey(reDerivedKey);
+          }
+
+          const SEVEN_DAYS_MS = 3600000 * 24 * 7;
+          const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
           await db.userSession.update('current_session', { expiresAt });
           if (typeof window !== 'undefined' && activeSession.token) {
             localStorage.setItem('asala_token', activeSession.token);
           }
           setIsReAuthModalOpen(false);
-          showToast('Session Renewed', 'success', 'You can continue your work seamlessly.');
+          showToast('Session Renewed', 'success', 'Saved drafts and notes preserved.');
           return true;
         }
         return false;

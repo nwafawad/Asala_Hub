@@ -1,14 +1,20 @@
 import Dexie, { type Table } from 'dexie';
+import { generateUUID } from './uuid';
 
 export interface TransactionLogItem {
   id?: number;
-  action: 'CREATE_SUBMISSION' | 'UPDATE_COURSE' | 'GRADE_ASSIGNMENT';
+  offlineId?: string; // UUID v4 collision-safe offline record ID (FR-14)
+  action: 'CREATE_SUBMISSION' | 'UPDATE_COURSE' | 'GRADE_ASSIGNMENT' | 'COMPLETE_MODULE';
   entityType: string;
   entityId: string;
   payload: Record<string, unknown>;
   timestamp: string;
   status: 'pending' | 'synced' | 'failed';
   errorMessage?: string;
+  serverSeqNum?: number; // Server-authoritative conflict resolution sequence (FR-15)
+  retryCount?: number;   // Exponential backoff retry counter (FR-16)
+  nextRetryAt?: string;  // Next scheduled retry timestamp (FR-16)
+  lastAckedId?: number;  // Last acknowledged log ID for sync resume (FR-16)
 }
 
 export interface CachedCourse {
@@ -69,6 +75,8 @@ export interface CachedSubmission {
   conflictStatus?: 'none' | 'resolved_lww';
   receiptHash?: string;
   draftHistory?: DraftSnapshot[];
+  serverSeqNum?: number;
+  deviceConflictDrafts?: DraftSnapshot[];
 }
 
 export interface IndexedDBUser {
@@ -87,6 +95,7 @@ export interface UserSession {
   expiresAt: string;
   lastLoginAt: string;
   pinCode?: string;
+  hasAcceptedConsent?: boolean;
 }
 
 export class AsalaHubDatabase extends Dexie {
@@ -99,10 +108,10 @@ export class AsalaHubDatabase extends Dexie {
 
   constructor() {
     super('AsalaHubDB');
-    this.version(3).stores({
-      transactionLogs: '++id, action, entityType, entityId, timestamp, status',
+    this.version(4).stores({
+      transactionLogs: '++id, offlineId, action, entityType, entityId, timestamp, status, serverSeqNum',
       cachedCourses: 'id, title, code, educatorName',
-      cachedSubmissions: 'id, assignmentId, studentName, syncStatus',
+      cachedSubmissions: 'id, assignmentId, studentName, syncStatus, serverSeqNum',
       users: 'id, email, role',
       userSession: 'id, token, rememberMe, expiresAt',
       cachedModules: 'id, courseId, type, sequenceOrder, isCachedOffline',

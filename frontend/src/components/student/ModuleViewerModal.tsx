@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { db, type CachedModule } from '@/lib/db';
+import { generateUUID } from '@/lib/uuid';
 import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
 import { isAudioCached, cacheAudioLecture, getCachedAudioObjectUrl } from '@/lib/audioCache';
@@ -64,12 +66,29 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
     const nextStatus = !isCompletedState;
     setIsCompletedState(nextStatus);
     await db.cachedModules.update(module.id, { isCompleted: nextStatus });
+
+    // Assign UUID v4 transaction log entry for offline sync queue (FR-14)
+    const offlineUuid = generateUUID();
+    await db.transactionLogs.add({
+      offlineId: offlineUuid,
+      action: 'COMPLETE_MODULE',
+      entityType: 'Module',
+      entityId: module.id,
+      payload: {
+        courseId: module.courseId,
+        moduleId: module.id,
+        isCompleted: nextStatus,
+      },
+      timestamp: new Date().toISOString(),
+      status: 'pending',
+    });
   };
 
   const handleNotesChange = async (notes: string) => {
     if (!module) return;
-    setUserNotesState(notes);
-    await db.cachedModules.update(module.id, { userNotes: notes });
+    const sanitizedNotes = DOMPurify.sanitize(notes); // XSS Sanitization (NFR-1)
+    setUserNotesState(sanitizedNotes);
+    await db.cachedModules.update(module.id, { userNotes: sanitizedNotes });
   };
 
   if (!isOpen || !module) return null;

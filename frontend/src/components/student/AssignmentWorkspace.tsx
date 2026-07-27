@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import { db, seedInitialMockData, type AttachmentFile, type DraftSnapshot } from '@/lib/db';
 import { compressPayload, decompressPayload } from '@/lib/compress';
+import { generateUUID } from '@/lib/uuid';
+import { encryptText, decryptText } from '@/lib/crypto';
 import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
 import { useOverlay } from '@/context/OverlayContext';
@@ -233,36 +236,38 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
     );
   };
 
-  // Simple offline markdown renderer
+  // Sanitized offline markdown renderer (NFR-1)
   const parsedMarkdown = React.useMemo(() => {
-    return content.split('\n').map((line, idx) => {
-      if (line.startsWith('# ')) {
+    const cleanContent = DOMPurify.sanitize(content);
+    return cleanContent.split('\n').map((line, idx) => {
+      const cleanLine = DOMPurify.sanitize(line);
+      if (cleanLine.startsWith('# ')) {
         return (
           <h1 key={idx} className="text-xl font-bold font-heading text-foreground my-2">
-            {line.replace('# ', '')}
+            {cleanLine.replace('# ', '')}
           </h1>
         );
       }
-      if (line.startsWith('## ')) {
+      if (cleanLine.startsWith('## ')) {
         return (
           <h2 key={idx} className="text-lg font-semibold font-heading text-foreground my-2">
-            {line.replace('## ', '')}
+            {cleanLine.replace('## ', '')}
           </h2>
         );
       }
-      if (line.startsWith('- ')) {
+      if (cleanLine.startsWith('- ')) {
         return (
           <li key={idx} className="text-xs text-foreground ml-4 list-disc my-0.5">
-            {line.replace('- ', '')}
+            {cleanLine.replace('- ', '')}
           </li>
         );
       }
-      if (line.startsWith('```')) {
+      if (cleanLine.startsWith('```')) {
         return <div key={idx} className="my-1 border-t border-border" />;
       }
       return (
         <p key={idx} className="text-xs text-foreground leading-relaxed my-1">
-          {line}
+          {cleanLine}
         </p>
       );
     });
