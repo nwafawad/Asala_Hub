@@ -100,6 +100,9 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
     }
   }, []);
 
+  const [filterTab, setFilterTab] = useState<'all' | 'downloaded' | 'in_progress' | 'completed'>('all');
+  const [sortBy, setSortBy] = useState<'code' | 'title' | 'progress' | 'size'>('code');
+
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -168,16 +171,37 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
     }
   };
 
-  const filteredCourses = React.useMemo(
-    () =>
-      courses.filter(
-        c =>
-          c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (c.titleAr && c.titleAr.includes(searchQuery))
-      ),
-    [courses, searchQuery]
-  );
+  const filteredCourses = React.useMemo(() => {
+    let list = courses.filter(c => {
+      const titleMatch = c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.titleAr && c.titleAr.includes(searchQuery));
+      if (!titleMatch) return false;
+
+      const mods = modulesMap[c.id] || [];
+      const cachedCount = mods.filter(m => m.isCachedOffline).length;
+      const completedCount = mods.filter(m => m.isCompleted).length;
+      const totalCount = mods.length || 1;
+
+      if (filterTab === 'downloaded') return c.isCachedOffline || cachedCount > 0;
+      if (filterTab === 'in_progress') return completedCount > 0 && completedCount < totalCount;
+      if (filterTab === 'completed') return completedCount === totalCount && totalCount > 0;
+      return true;
+    });
+
+    return list.sort((a, b) => {
+      if (sortBy === 'title') return a.title.localeCompare(b.title);
+      if (sortBy === 'size') return b.sizeMb - a.sizeMb;
+      if (sortBy === 'progress') {
+        const modsA = modulesMap[a.id] || [];
+        const modsB = modulesMap[b.id] || [];
+        const pctA = modsA.length ? (modsA.filter(m => m.isCompleted).length / modsA.length) : 0;
+        const pctB = modsB.length ? (modsB.filter(m => m.isCompleted).length / modsB.length) : 0;
+        return pctB - pctA;
+      }
+      return a.code.localeCompare(b.code);
+    });
+  }, [courses, modulesMap, searchQuery, filterTab, sortBy]);
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
   const selectedCourseModules = selectedCourseId ? modulesMap[selectedCourseId] || [] : [];
@@ -200,6 +224,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
           onClose={() => {
             setIsViewerOpen(false);
             setActiveModule(null);
+            loadCourses();
           }}
           onDownloadModule={toggleModuleCache}
         />
@@ -252,18 +277,76 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
         </div>
       </div>
 
-      {/* Search Input Bar & Refresh */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative w-full max-w-md">
-          <Search className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder={t.searchPlaceholder}
-            className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-          />
+      {/* Filter Tabs, Search & Sort Control Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-1 p-1 rounded-xl border border-border bg-card overflow-x-auto">
+          <button
+            onClick={() => setFilterTab('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+              filterTab === 'all'
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            All Courses ({courses.length})
+          </button>
+          <button
+            onClick={() => setFilterTab('downloaded')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+              filterTab === 'downloaded'
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Downloaded ({courses.filter(c => c.isCachedOffline || (modulesMap[c.id] || []).some(m => m.isCachedOffline)).length})
+          </button>
+          <button
+            onClick={() => setFilterTab('in_progress')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+              filterTab === 'in_progress'
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            In Progress
+          </button>
+          <button
+            onClick={() => setFilterTab('completed')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+              filterTab === 'completed'
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Completed
+          </button>
+        </div>
+
+        {/* Search & Sort Input Controls */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={t.searchPlaceholder}
+              className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as any)}
+            className="h-10 px-3 rounded-xl border border-border bg-card text-xs text-foreground font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+          >
+            <option value="code">Sort by Code</option>
+            <option value="title">Sort by Title</option>
+            <option value="progress">Sort by Progress</option>
+            <option value="size">Sort by Size</option>
+          </select>
         </div>
       </div>
 
@@ -352,21 +435,44 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
                       </p>
                     </div>
 
-                    {/* Partial Offline Cache Progress Meter on Card */}
-                    <div className="flex flex-col gap-1.5 pt-2">
-                      <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Layers className="w-3 h-3 text-primary" />
-                          {cachedModsCount} of {totalModsCount} Modules Ready
-                        </span>
-                        <span className="font-mono">{cachePct}%</span>
+                    {/* Partial Offline Cache & Academic Progress Meters on Card */}
+                    <div className="flex flex-col gap-2 pt-2">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Layers className="w-3 h-3 text-primary" />
+                            {cachedModsCount} of {totalModsCount} Cached Offline
+                          </span>
+                          <span className="font-mono">{cachePct}%</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full bg-primary/70 rounded-full transition-all duration-300"
+                            style={{ width: `${cachePct}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all duration-300"
-                          style={{ width: `${cachePct}%` }}
-                        />
-                      </div>
+
+                      {(() => {
+                        const completedCount = mods.filter(m => m.isCompleted).length;
+                        const compPct = Math.round((completedCount / totalModsCount) * 100);
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+                              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                Academic Progress ({completedCount}/{totalModsCount})
+                              </span>
+                              <span className="font-mono font-bold text-foreground">{compPct}%</span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                                style={{ width: `${compPct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 

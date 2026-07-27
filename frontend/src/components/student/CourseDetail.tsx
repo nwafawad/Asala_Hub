@@ -143,23 +143,29 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
           </div>
 
           {/* Academic Completion Meter */}
-          <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                {t.coursesPage.academicProgress}
-              </span>
-              <span className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400">
-                50% Completed
-              </span>
-            </div>
-            <div className="w-full h-2.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full bg-amber-500 rounded-full transition-all duration-500"
-                style={{ width: '50%' }}
-              />
-            </div>
-          </div>
+          {(() => {
+            const completedCount = sortedModules.filter(m => m.isCompleted).length;
+            const completedPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+            return (
+              <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-emerald-500" />
+                    {t.coursesPage.academicProgress}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {completedCount} / {totalCount} Completed ({completedPercentage}%)
+                  </span>
+                </div>
+                <div className="w-full h-2.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                    style={{ width: `${completedPercentage}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -209,6 +215,12 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                       <span className="text-xs text-muted-foreground capitalize">
                         {t.coursesPage?.moduleTypes?.[mod.type] || mod.type}
                       </span>
+                      {mod.isCompleted && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Completed
+                        </span>
+                      )}
                     </div>
 
                     <h3

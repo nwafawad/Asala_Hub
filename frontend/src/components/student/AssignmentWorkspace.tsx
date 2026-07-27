@@ -395,26 +395,63 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
                 >
                   <Code className="w-3.5 h-3.5" />
                 </button>
+                <button
+                  onClick={() => insertFormatting('> ')}
+                  title="Blockquote"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer font-serif italic text-xs font-bold px-1.5"
+                >
+                  "
+                </button>
+                <button
+                  onClick={() => insertFormatting('| Column 1 | Column 2 |\n| --- | --- |\n| ', ' | ')}
+                  title="Table Template"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer text-xs font-mono"
+                >
+                  田
+                </button>
               </div>
             )}
           </div>
 
-          {/* Live Autosave Indicator Ticker */}
-          <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-xl border border-border">
-            <Save
-              className={`w-3.5 h-3.5 ${
-                saveStatus === 'saving'
-                  ? 'text-amber-500 animate-spin'
-                  : 'text-emerald-500 animate-pulse'
-              }`}
-            />
-            <span>
-              {saveStatus === 'saving'
-                ? t.assignmentPage.saving
-                : secondsAgo < 3
-                ? t.assignmentPage.savedJustNow
-                : `Saved locally · ${secondsAgo}s ago`}
-            </span>
+          {/* Live Word & Character Target Meter + Autosave Indicator */}
+          <div className="flex flex-wrap items-center gap-3">
+            {(() => {
+              const words = content.trim() ? content.trim().split(/\s+/).filter(Boolean).length : 0;
+              const chars = content.length;
+              const targetWords = 300;
+              const progressPct = Math.min(100, Math.round((words / targetWords) * 100));
+
+              return (
+                <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-xl border border-border">
+                  <span className="font-semibold text-foreground">{words}</span> words / <span className="font-semibold text-foreground">{chars}</span> chars
+                  <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden ml-1 hidden sm:block">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-300"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-primary font-bold hidden sm:inline">{progressPct}% of goal</span>
+                </div>
+              );
+            })()}
+
+            {/* Live Autosave Indicator Ticker */}
+            <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-xl border border-border">
+              <Save
+                className={`w-3.5 h-3.5 ${
+                  saveStatus === 'saving'
+                    ? 'text-amber-500 animate-spin'
+                    : 'text-emerald-500 animate-pulse'
+                }`}
+              />
+              <span>
+                {saveStatus === 'saving'
+                  ? t.assignmentPage.saving
+                  : secondsAgo < 3
+                  ? t.assignmentPage.savedJustNow
+                  : `Saved locally · ${secondsAgo}s ago`}
+              </span>
+            </div>
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { type CachedModule } from '@/lib/db';
+import { db, type CachedModule } from '@/lib/db';
 import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
 import { isAudioCached, cacheAudioLecture, getCachedAudioObjectUrl } from '@/lib/audioCache';
@@ -41,8 +41,15 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [downloading, setDownloading] = useState<boolean>(false);
   const [isAudioCachedState, setIsAudioCachedState] = useState<boolean>(false);
+  const [isCompletedState, setIsCompletedState] = useState<boolean>(module?.isCompleted || false);
+  const [userNotesState, setUserNotesState] = useState<string>(module?.userNotes || '');
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg' | 'xl'>('base');
 
   React.useEffect(() => {
+    setIsCompletedState(module?.isCompleted || false);
+    setUserNotesState(module?.userNotes || '');
+
     async function checkAudio() {
       if (module && module.type === 'audio' && module.audioUrl) {
         const cached = await isAudioCached(module.audioUrl);
@@ -51,6 +58,19 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
     }
     checkAudio();
   }, [module]);
+
+  const toggleCompleted = async () => {
+    if (!module) return;
+    const nextStatus = !isCompletedState;
+    setIsCompletedState(nextStatus);
+    await db.cachedModules.update(module.id, { isCompleted: nextStatus });
+  };
+
+  const handleNotesChange = async (notes: string) => {
+    if (!module) return;
+    setUserNotesState(notes);
+    await db.cachedModules.update(module.id, { userNotes: notes });
+  };
 
   if (!isOpen || !module) return null;
 
@@ -79,10 +99,19 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
     }
   };
 
+  const fontSizeClasses = {
+    sm: 'text-xs leading-relaxed',
+    base: 'text-sm leading-relaxed',
+    lg: 'text-base leading-relaxed',
+    xl: 'text-lg leading-relaxed',
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 ${isFullscreen ? 'p-0' : 'p-4'}`}>
       <div
-        className="relative w-full max-w-3xl rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className={`relative w-full rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col transition-all ${
+          isFullscreen ? 'h-full max-w-full rounded-none' : 'max-w-3xl max-h-[90vh]'
+        }`}
         onClick={e => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -106,17 +135,49 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Font Size Selector */}
+            <div className="hidden sm:flex items-center border border-border rounded-lg bg-background p-0.5">
+              <button
+                onClick={() => setFontSize('sm')}
+                className={`px-2 py-0.5 text-xs font-mono rounded ${fontSize === 'sm' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+              >
+                A-
+              </button>
+              <button
+                onClick={() => setFontSize('base')}
+                className={`px-2 py-0.5 text-xs font-mono rounded ${fontSize === 'base' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+              >
+                A
+              </button>
+              <button
+                onClick={() => setFontSize('lg')}
+                className={`px-2 py-0.5 text-xs font-mono rounded ${fontSize === 'lg' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+              >
+                A+
+              </button>
+            </div>
+
+            {/* Distraction-Free Toggle */}
+            <button
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer"
+            >
+              {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Reader'}
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto flex flex-col gap-6">
+        <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
           {!module.isCachedOffline ? (
             /* Uncached Offline State Banner inside Modal */
             <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col items-center text-center gap-4">
@@ -235,19 +296,46 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
                 </div>
               )}
 
-              {/* Text / Markdown Body */}
-              <div className="prose dark:prose-invert max-w-none text-sm text-foreground leading-relaxed bg-card p-5 rounded-xl border border-border">
+              {/* Text / Markdown Content Body */}
+              <div className={`prose dark:prose-invert max-w-none text-foreground bg-card p-6 rounded-xl border border-border ${fontSizeClasses[fontSize]}`}>
                 <p className="whitespace-pre-line">
                   {module.content ||
                     'Detailed course material stored in local IndexedDB. Students can study this module completely offline.'}
                 </p>
+              </div>
+
+              {/* Offline Personal Notes Section */}
+              <div className="flex flex-col gap-2 p-4 rounded-xl bg-muted/30 border border-border">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-primary" />
+                  Personal Study Notes (Saved Offline to IndexedDB)
+                </label>
+                <textarea
+                  value={userNotesState}
+                  onChange={e => handleNotesChange(e.target.value)}
+                  placeholder="Type your notes or summaries for this module here..."
+                  rows={3}
+                  className="w-full p-3 rounded-lg border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                />
               </div>
             </div>
           )}
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-border bg-muted/20 flex justify-end">
+        <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between gap-4">
+          <button
+            onClick={toggleCompleted}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+              isCompletedState
+                ? 'bg-emerald-500 text-white border-emerald-600 shadow-xs'
+                : 'bg-background border-border text-foreground hover:bg-muted'
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{isCompletedState ? 'Module Completed ✓' : 'Mark as Read / Completed'}</span>
+          </button>
+
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-muted text-foreground text-xs font-semibold hover:bg-muted/80 transition-colors cursor-pointer"

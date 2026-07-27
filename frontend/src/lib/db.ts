@@ -38,6 +38,8 @@ export interface CachedModule {
   assignmentId?: string;
   dueDate?: string;
   points?: number;
+  isCompleted?: boolean;
+  userNotes?: string;
 }
 
 export interface AttachmentFile {

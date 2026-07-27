@@ -7,19 +7,43 @@ import { useSync } from '@/context/SyncContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { StatCard } from '@/components/ui/StatCard';
-import { FileCheck, ShieldCheck, Printer, CheckCircle2, Clock, ArrowRight, Activity, GitCommit, Database, Layers } from 'lucide-react';
+import { FileCheck, ShieldCheck, Printer, CheckCircle2, Clock, Activity, GitCommit, Database, Layers } from 'lucide-react';
 
 export const ProgressTracker: React.FC = () => {
   const { t } = useI18n();
   const { pendingCount, isOnline } = useSync();
   const { showToast } = useOverlay();
   const [submissions, setSubmissions] = useState<CachedSubmission[]>([]);
+  const [courses, setCourses] = useState<{ id: string; code: string; title: string; completed: number; total: number }[]>([]);
+  const [txLogs, setTxLogs] = useState<any[]>([]);
+  const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadData() {
       await seedInitialMockData();
-      const allSubmissions = await db.cachedSubmissions.toArray();
+      const [allSubmissions, allCourses, allModules, logs] = await Promise.all([
+        db.cachedSubmissions.toArray(),
+        db.cachedCourses.toArray(),
+        db.cachedModules.toArray(),
+        db.transactionLogs.toArray(),
+      ]);
+
       setSubmissions(allSubmissions);
+
+      const courseStats = allCourses.map(c => {
+        const mods = allModules.filter(m => m.courseId === c.id);
+        const completed = mods.filter(m => m.isCompleted).length;
+        return {
+          id: c.id,
+          code: c.code,
+          title: c.title,
+          completed,
+          total: mods.length || 1,
+        };
+      });
+
+      setCourses(courseStats);
+      setTxLogs(logs);
     }
     loadData();
   }, [pendingCount]);
@@ -72,8 +96,12 @@ export const ProgressTracker: React.FC = () => {
     [t, isOnline, pendingCount]
   );
 
+  const totalCompletedModules = courses.reduce((acc, c) => acc + c.completed, 0);
+  const totalCourseModules = Math.max(1, courses.reduce((acc, c) => acc + c.total, 0));
+  const overallCompletionRate = Math.round((totalCompletedModules / totalCourseModules) * 100);
+
   return (
-    <div className="flex flex-col gap-8 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">
       {/* Header Banner */}
       <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex flex-col gap-1">
@@ -92,8 +120,8 @@ export const ProgressTracker: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
           title={t.progressTracker.completionRate}
-          value="88%"
-          subtitle="Optimistic calculation (7 / 8 Modules)"
+          value={`${overallCompletionRate}%`}
+          subtitle={`Calculated: ${totalCompletedModules} of ${totalCourseModules} modules`}
           icon={CheckCircle2}
           trend={{ value: '+12%', isPositive: true }}
         />
@@ -110,6 +138,36 @@ export const ProgressTracker: React.FC = () => {
           icon={Clock}
           trend={{ value: `${pendingCount} queued`, isPositive: pendingCount === 0 }}
         />
+      </div>
+
+      {/* Course Academic Progress Breakdown Section */}
+      <div className="p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-4">
+        <h3 className="text-base font-semibold font-heading text-foreground flex items-center gap-2">
+          <Layers className="w-4 h-4 text-primary" />
+          Enrolled Courses Academic Progress Breakdown
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {courses.map(c => {
+            const pct = Math.round((c.completed / c.total) * 100);
+            return (
+              <div key={c.id} className="p-4 rounded-xl border border-border bg-background flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">{c.code}: {c.title}</span>
+                  <span className="text-xs font-mono font-bold text-primary">{pct}%</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-[11px] text-muted-foreground">
+                  {c.completed} of {c.total} modules completed
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Dual Pane Layout */}
@@ -154,16 +212,52 @@ export const ProgressTracker: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Pane: Interactive 5-Stage Sync Lifecycle Timeline */}
+        {/* Right Pane: Transaction Log Queue Inspector & Sync Timeline */}
         <div className="p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-5 lg:col-span-2">
           <div className="flex items-center justify-between border-b border-border pb-3">
             <h3 className="text-base font-semibold font-heading text-foreground">
-              {t.progressTracker.lifecycleTitle}
+              Offline Sync Transaction Queue ({txLogs.length})
             </h3>
             <StatusPill label="SRS 3.3 Protocol" variant="info" />
           </div>
 
-          <div className="flex flex-col gap-4 relative pl-4 rtl:pl-0 rtl:pr-4 border-l rtl:border-l-0 rtl:border-r border-border">
+          {/* Inspectable Transaction Log Queue List */}
+          <div className="flex flex-col gap-2">
+            {txLogs.length === 0 ? (
+              <div className="p-4 rounded-xl border border-border bg-muted/20 text-center text-xs text-muted-foreground">
+                No active transaction logs in queue. All actions are synced.
+              </div>
+            ) : (
+              txLogs.map(log => (
+                <div key={log.id || log.timestamp} className="p-3 rounded-xl border border-border bg-muted/20 flex flex-col gap-2">
+                  <div
+                    className="flex items-center justify-between cursor-pointer"
+                    onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Database className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-xs font-mono font-bold text-foreground">{log.action}</span>
+                      <span className="text-[11px] text-muted-foreground font-mono">({log.entityType})</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <StatusPill label={log.status} variant={log.status === 'synced' ? 'success' : 'warning'} />
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </div>
+                  {expandedLogId === log.id && (
+                    <pre className="p-3 rounded-lg bg-card border border-border text-[10px] font-mono text-muted-foreground overflow-x-auto">
+                      {JSON.stringify(log.payload || log, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* 5-Stage Sync Timeline */}
+          <div className="mt-4 pt-4 border-t border-border flex flex-col gap-4 relative pl-4 rtl:pl-0 rtl:pr-4 border-l rtl:border-l-0 rtl:border-r border-border">
             {timelineSteps.map((step, idx) => {
               const Icon = step.icon;
               return (
