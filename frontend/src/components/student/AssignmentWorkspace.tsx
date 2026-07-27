@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import DOMPurify from 'dompurify';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { db, seedInitialMockData, type AttachmentFile, type DraftSnapshot } from '@/lib/db';
 import { compressPayload, decompressPayload } from '@/lib/compress';
 import { generateUUID } from '@/lib/uuid';
@@ -243,9 +243,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
 
   // Sanitized offline markdown renderer (NFR-1)
   const parsedMarkdown = React.useMemo(() => {
-    const cleanContent = DOMPurify.sanitize(content);
+    const cleanContent = sanitizeHtml(content);
     return cleanContent.split('\n').map((line, idx) => {
-      const cleanLine = DOMPurify.sanitize(line);
+      const cleanLine = sanitizeHtml(line);
       if (cleanLine.startsWith('# ')) {
         return (
           <h1 key={idx} className="text-xl font-bold font-heading text-foreground my-2">

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import DOMPurify from 'dompurify';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { db, type CachedModule } from '@/lib/db';
 import { generateUUID } from '@/lib/uuid';
 import { useI18n } from '@/context/I18nContext';
@@ -86,7 +86,7 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
 
   const handleNotesChange = async (notes: string) => {
     if (!module) return;
-    const sanitizedNotes = DOMPurify.sanitize(notes); // XSS Sanitization (NFR-1)
+    const sanitizedNotes = sanitizeHtml(notes); // XSS Sanitization (NFR-1)
     setUserNotesState(sanitizedNotes);
     await db.cachedModules.update(module.id, { userNotes: sanitizedNotes });
   };
