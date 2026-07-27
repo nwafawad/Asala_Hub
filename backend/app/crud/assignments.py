@@ -32,10 +32,14 @@ def get_assignments_by_course(
     session: Session, course_id: uuid.UUID, skip: int = 0, limit: int = 100
 ) -> List[Assignment]:
     """
-    Retrieve all assignments for a specific course with pagination.
+    Retrieve all assignments for a specific course with pagination, ordered by creation date.
     """
     return session.exec(
-        select(Assignment).where(Assignment.course_id == course_id).offset(skip).limit(limit)
+        select(Assignment)
+        .where(Assignment.course_id == course_id)
+        .order_by(Assignment.created_at.desc())
+        .offset(skip)
+        .limit(limit)
     ).all()
 
 

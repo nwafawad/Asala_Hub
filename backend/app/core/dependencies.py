@@ -58,7 +58,7 @@ def get_current_user_claims(
         raise credentials_exception
 
 def get_current_user(
-    token: str = Depends(get_token_from_request),
+    claims: UserAuthClaims = Depends(get_current_user_claims),
     session: Session = Depends(get_session)
 ) -> User:
     """
@@ -69,7 +69,6 @@ def get_current_user(
     Returns:
         User: The authenticated User database model.
     """
-    claims = get_current_user_claims(token)
     user = session.get(User, claims.user_id)
     if user is None:
         raise HTTPException(
@@ -87,7 +86,7 @@ class RoleChecker:
         """
         Initialize the RoleChecker with a list of permitted roles.
         """
-        self.allowed_roles = allowed_roles
+        self.allowed_roles = set(allowed_roles)
 
     def __call__(
         self,

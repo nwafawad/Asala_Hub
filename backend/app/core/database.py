@@ -22,6 +22,7 @@ else:
         "max_overflow": settings.MAX_OVERFLOW,
         "pool_recycle": settings.POOL_RECYCLE,
         "pool_timeout": settings.POOL_TIMEOUT,
+        "pool_pre_ping": settings.POOL_PRE_PING,
     })
 
 # Initialize database engine
