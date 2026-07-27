@@ -24,7 +24,7 @@ class ResourceNotFoundError(DomainException):
     """Raised when a requested resource does not exist in the database."""
 
     def __init__(self, resource_name: str = "Resource", resource_id: Optional[Any] = None):
-        message = f"{resource_name} not found" if resource_id is None else f"{resource_name} with ID '{resource_id}' not found"
+        message = f"{resource_name} not found"
         super().__init__(message=message, status_code=status.HTTP_404_NOT_FOUND)
 
 

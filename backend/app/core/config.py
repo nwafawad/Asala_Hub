@@ -58,10 +58,10 @@ class Settings(BaseSettings):
         """Parsed list of allowed CORS origins."""
         return [h.strip() for h in self.ALLOWED_HOSTS.split(",") if h.strip()]
 
-    class Config:
-        """Pydantic configuration settings."""
-        env_file = ".env"
-        extra = "ignore"
+    model_config = {
+        "env_file": ".env",
+        "extra": "ignore"
+    }
 
 # Global settings instance
 settings = Settings()

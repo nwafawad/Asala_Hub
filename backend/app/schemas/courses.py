@@ -3,8 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field
-from app.schemas.modules import ModuleRead
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class CourseCreate(BaseModel):
@@ -33,9 +32,7 @@ class CourseRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        """Pydantic configuration settings."""
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CourseReadWithModules(CourseRead):
     """

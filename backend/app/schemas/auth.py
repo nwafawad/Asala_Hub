@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from app.models import UserRole
 
 class UserRegister(BaseModel):
@@ -42,9 +42,7 @@ class UserRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        """Pydantic configuration settings."""
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserAuthClaims(BaseModel):
     """
