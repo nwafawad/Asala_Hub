@@ -113,3 +113,53 @@ def update_submission_grade(
         session.commit()
         session.refresh(db_submission)
     return db_submission
+
+
+def get_submissions_by_assignment(
+    session: Session,
+    assignment_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+    load_student: bool = False
+) -> List[Submission]:
+    """
+    Retrieve active non-deleted submissions for an assignment.
+    Optionally eagerly loads the student profile to prevent N+1 queries.
+    """
+    query = select(Submission).where(
+        Submission.assignment_id == assignment_id,
+        Submission.is_deleted == False
+    ).order_by(Submission.submitted_at.desc())
+
+    if load_student:
+        query = query.options(joinedload(Submission.student))
+
+    return session.exec(query.offset(skip).limit(limit)).all()
+
+
+def get_user_submission_for_assignment(
+    session: Session, assignment_id: uuid.UUID, student_id: uuid.UUID
+) -> Optional[Submission]:
+    """
+    Retrieve a student's active submission for a specific assignment.
+    """
+    return session.exec(
+        select(Submission).where(
+            Submission.assignment_id == assignment_id,
+            Submission.student_id == student_id,
+            Submission.is_deleted == False
+        )
+    ).first()
+
+
+def delete_submission(session: Session, db_submission: Submission, soft: bool = True) -> None:
+    """
+    Delete a submission (soft delete by default).
+    """
+    if soft:
+        db_submission.is_deleted = True
+        db_submission.updated_at = get_naive_utc_now()
+        session.add(db_submission)
+    else:
+        session.delete(db_submission)
+    session.commit()

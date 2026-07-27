@@ -304,8 +304,6 @@ def process_sync_batch(
                 )
             )
 
-
-
     # Commit all accepted savepoints in a single atomic database commit
     if synced_count > 0:
         session.commit()
@@ -315,6 +313,44 @@ def process_sync_batch(
         synced_count=synced_count,
         error_count=error_count
     )
+
+
+SUPPORTED_ENTITY_TYPES = {"submission"}
+
+def get_latest_server_sequence(session: Session) -> int:
+    """
+    Fetch the latest global server sequence checkpoint number.
+    
+    Args:
+        session (Session): The active database transaction session.
+    Returns:
+        int: Current maximum server_sequence checkpoint.
+    """
+    max_seq = session.exec(select(func.max(TransactionLog.server_sequence))).first()
+    return max_seq or 0
+
+def get_sync_delta(
+    session: Session,
+    since_sequence: int = 0,
+    limit: int = 500
+) -> List[TransactionLog]:
+    """
+    Retrieve server mutation transaction logs registered after since_sequence.
+    Used by offline-first clients during pull synchronization.
+    
+    Args:
+        session (Session): The active database transaction session.
+        since_sequence (int): The last server_sequence checkpoint acknowledged by client.
+        limit (int): Maximum transaction logs to return per pull request.
+    Returns:
+        List[TransactionLog]: List of newer transaction logs ordered by sequence.
+    """
+    return session.exec(
+        select(TransactionLog)
+        .where(TransactionLog.server_sequence > since_sequence)
+        .order_by(TransactionLog.server_sequence.asc())
+        .limit(limit)
+    ).all()
 
 
 
