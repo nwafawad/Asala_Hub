@@ -47,14 +47,15 @@ export const ReAuthModal: React.FC = () => {
                 {t.auth.pinPrompt}
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Lock className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <input
                   type="password"
                   required
+                  dir="ltr"
                   value={pinOrPass}
                   onChange={e => setPinOrPass(e.target.value)}
                   placeholder="••••"
-                  className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
+                  className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 text-left rtl:text-right rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
                 />
               </div>
             </div>

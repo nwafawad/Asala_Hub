@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
-import { Layers, Lock, Mail, AlertCircle, CheckSquare, Square, LogIn } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { Layers, Lock, Mail, AlertCircle, CheckSquare, Square, LogIn, Languages, Sun, Moon } from 'lucide-react';
 
 interface LoginFormProps {
   onSuccess: (role: 'student' | 'educator') => void;
@@ -11,7 +12,8 @@ interface LoginFormProps {
 
 export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) => {
   const { login } = useAuth();
-  const { t } = useI18n();
+  const { t, toggleLanguage } = useI18n();
+  const { theme, setTheme } = useTheme();
 
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -27,7 +29,7 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
     try {
       const result = await login(email, password, rememberMe);
       if (result.success) {
-        const role = email.includes('layla') ? 'educator' : 'student';
+        const role = email.toLowerCase().includes('layla') ? 'educator' : 'student';
         onSuccess(role);
       } else {
         setError(result.error || t.auth.invalidCredentials);
@@ -40,7 +42,31 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6 antialiased">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6 antialiased relative">
+      {/* Top Header Actions: Language Switcher & Theme Toggle */}
+      <div className="absolute top-6 right-6 rtl:right-auto rtl:left-6 flex items-center gap-2">
+        <button
+          onClick={toggleLanguage}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-xs"
+          title="Switch Language"
+        >
+          <Languages className="w-3.5 h-3.5 text-primary" />
+          <span>{t.actions.switchLanguage}</span>
+        </button>
+
+        <button
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="p-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors cursor-pointer shadow-xs"
+          title={t.actions.toggleTheme}
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-4 h-4 text-amber-400" />
+          ) : (
+            <Moon className="w-4 h-4 text-slate-700" />
+          )}
+        </button>
+      </div>
+
       <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-xl p-8 flex flex-col gap-6 animate-in fade-in-0 zoom-in-95 duration-200">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center gap-2">
@@ -68,14 +94,15 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
               {t.auth.emailLabel}
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Mail className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input
                 type="email"
                 required
+                dir="ltr"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="email@asalahub.dev"
-                className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 text-left rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-sans"
               />
             </div>
           </div>
@@ -85,14 +112,15 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
               {t.auth.passwordLabel}
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Lock className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input
                 type="password"
                 required
+                dir="ltr"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 text-left rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
               />
             </div>
           </div>
@@ -104,9 +132,9 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
             className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer self-start my-1"
           >
             {rememberMe ? (
-              <CheckSquare className="w-4 h-4 text-primary" />
+              <CheckSquare className="w-4 h-4 text-primary shrink-0" />
             ) : (
-              <Square className="w-4 h-4 text-muted-foreground" />
+              <Square className="w-4 h-4 text-muted-foreground shrink-0" />
             )}
             <span>{t.auth.rememberMe}</span>
           </button>
@@ -117,7 +145,7 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
             disabled={isSubmitting}
             className="w-full h-10 mt-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
           >
-            <LogIn className="w-4 h-4" />
+            <LogIn className="w-4 h-4 rtl:rotate-180" />
             <span>{isSubmitting ? t.auth.signingIn : t.auth.signInButton}</span>
           </button>
         </form>

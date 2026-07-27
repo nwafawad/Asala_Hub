@@ -70,15 +70,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Login handler connecting to FastAPI REST API with IndexedDB fallback
   const login = useCallback(
-    async (email: string, pass: string, rememberMe: boolean) => {
+    async (emailInput: string, passInput: string, rememberMe: boolean) => {
+      // Strip invisible Unicode directional markers (e.g. \u200E, \u200F, \u202A-\u202E) attached by RTL keyboards
+      const cleanEmail = emailInput
+        .replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '')
+        .trim()
+        .toLowerCase();
+      const cleanPassword = passInput
+        .replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '')
+        .trim();
+
       try {
         await seedInitialMockData();
 
         if (navigator.onLine) {
           try {
             const formData = new URLSearchParams();
-            formData.append('username', email);
-            formData.append('password', pass);
+            formData.append('username', cleanEmail);
+            formData.append('password', cleanPassword);
 
             const res = await api.post('/auth/login', formData, {
               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -92,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const profile: IndexedDBUser = {
               id: meRes.data.id || `user-${Date.now()}`,
               email: meRes.data.email,
-              fullName: meRes.data.full_name || email.split('@')[0],
+              fullName: meRes.data.full_name || cleanEmail.split('@')[0],
               role: meRes.data.role === 'educator' ? 'educator' : 'student',
               preferredLanguage: meRes.data.preferred_language || 'en',
             };
@@ -118,14 +127,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setToken(accessToken);
             setIsOfflineSession(false);
             return { success: true };
-          } catch (apiErr) {
-            // If REST API fails (e.g. 401 incorrect credentials), don't fallback to offline
-            return { success: false, error: 'Invalid email or password.' };
+          } catch (apiErr: any) {
+            console.warn('API auth failed, checking offline IndexedDB fallback...', apiErr);
+            // If REST API returns 401 or network error, attempt IndexedDB fallback
           }
         }
 
-        // Offline Mode Fallback: Validate credentials against IndexedDB db.users
-        const matchUser = await db.users.where('email').equals(email).first();
+        // Offline / Fallback Mode: Validate credentials against IndexedDB db.users
+        const matchUser = await db.users.where('email').equalsIgnoreCase(cleanEmail).first();
         if (matchUser) {
           const expiresAt = new Date(Date.now() + 3600000 * 2).toISOString();
           const offlineToken = `offline-token-${Date.now()}`;

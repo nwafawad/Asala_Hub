@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { db, seedInitialMockData, type CachedCourse, type CachedModule } from '@/lib/db';
 import { api } from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
@@ -94,14 +94,28 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
       }
     } catch (err) {
       console.error('Error loading courses from IndexedDB:', err);
-    } fontinally: {
+    } finally {
       setLoading(false);
     }
   }, []);
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     loadCourses();
   }, [loadCourses]);
+
+  // "/" Keyboard shortcut listener for focusing search input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement !== searchInputRef.current) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const toggleCourseCache = async (course: CachedCourse) => {
     const newStatus = !course.isCachedOffline;
@@ -230,6 +244,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
         <div className="relative w-full max-w-md">
           <Search className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
+            ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
