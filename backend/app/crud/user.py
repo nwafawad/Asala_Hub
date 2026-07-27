@@ -4,7 +4,8 @@ import uuid
 from typing import List, Optional
 from sqlmodel import Session, select, func, or_, col
 from app.models import User
-from app.models.user import UserRole, get_naive_utc_now
+from app.models.user import UserRole
+from app.models.base import get_naive_utc_now
 from app.schemas.auth import UserRegister
 from app.core.security import get_password_hash
 

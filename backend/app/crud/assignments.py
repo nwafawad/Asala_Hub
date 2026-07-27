@@ -5,7 +5,7 @@ from typing import List, Optional
 from sqlmodel import Session, select, col
 from sqlalchemy.orm import joinedload
 from app.models import Assignment, Submission, SyncStatus
-from app.models.user import get_naive_utc_now
+from app.models.base import get_naive_utc_now
 from app.schemas.assignments import AssignmentCreate, AssignmentUpdate, GradeUpdate
 
 

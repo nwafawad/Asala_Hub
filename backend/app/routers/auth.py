@@ -5,44 +5,29 @@ Exposes endpoints for user registration, user login authentication,
 and retrieving the currently logged-in user profile details.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
+
 from app.core.database import get_session
 from app.models import User
 from app.schemas.auth import UserRegister, TokenResponse, UserRead
-from app.core.security import verify_password, create_access_token, set_auth_cookie
-
 from app.core.dependencies import get_current_user
-from app.crud import user as crud_user
+from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(
     user_in: UserRegister,
     response: Response,
     session: Session = Depends(get_session)
-):
+) -> TokenResponse:
     """
     Register a new user, hash their password, and issue a JWT access token via HttpOnly cookie and body.
-    
-    Raises:
-        HTTPException: 409 Conflict if email is already registered.
     """
-    # Verify uniqueness of the email address
-    existing_user = crud_user.get_user_by_email(session, user_in.email)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A user with this email address already exists."
-        )
-    
-    # Store the user entity and generate a session token
-    new_user = crud_user.create_user(session, user_in)
-    access_token = create_access_token(subject=new_user.id, role=new_user.role)
-    set_auth_cookie(response, access_token)
-    return {"access_token": access_token, "token_type": "bearer"}
+    return auth_service.register_new_user(session, user_in, response)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -50,39 +35,21 @@ def login(
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: Session = Depends(get_session)
-):
+) -> TokenResponse:
     """
     Authenticate credentials and generate a JWT access token via HttpOnly cookie and body.
-    
-    Raises:
-        HTTPException: 401 Unauthorized if email or password does not match.
     """
-    # OAuth2 request form passes email via the 'username' form field
-    user = crud_user.get_user_by_email(session, form_data.username)
-    user_hash = user.password_hash if user else None
-    
-    # Always verify password to mitigate timing attacks on non-existent users
-    password_correct = verify_password(form_data.password, user_hash)
-    
-    if not user or not password_correct:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        
-    # Generate and return user session access token
-    access_token = create_access_token(subject=user.id, role=user.role)
-    set_auth_cookie(response, access_token)
-    return {"access_token": access_token, "token_type": "bearer"}
-
-
+    return auth_service.authenticate_user(
+        session=session,
+        email=form_data.username,
+        password=form_data.password,
+        response=response,
+    )
 
 
 @router.get("/me", response_model=UserRead)
-def read_current_user(current_user: User = Depends(get_current_user)):
+def read_current_user(current_user: User = Depends(get_current_user)) -> User:
     """
     Return the profile info of the currently logged-in user.
     """
     return current_user
-

@@ -10,7 +10,7 @@ from typing import List, Optional
 from sqlmodel import Session, select, func, col
 from sqlalchemy.orm import defer, joinedload
 from app.models import Module
-from app.models.user import get_naive_utc_now
+from app.models.base import get_naive_utc_now
 from app.schemas.modules import ModuleCreate, ModuleUpdate
 
 def create_module(

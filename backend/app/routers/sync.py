@@ -1,18 +1,20 @@
+"""
+Sync Engine API Router.
+
+Exposes endpoint for processing offline batch transactions from client IndexedDB queue (FR-20).
+"""
+
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.sync import (
-    SyncBatchRequest,
-    SyncBatchResponse,
-    CURRENT_SCHEMA_VERSION,
-    MIN_SUPPORTED_SCHEMA_VERSION,
-)
-from app.crud.sync import process_sync_batch
+from app.schemas.sync import SyncBatchRequest, SyncBatchResponse
+from app.services import sync_service
 
 router = APIRouter(prefix="/sync", tags=["Sync Engine"])
+
 
 @router.post("", response_model=SyncBatchResponse, status_code=status.HTTP_200_OK)
 def sync_batch(
@@ -33,5 +35,4 @@ def sync_batch(
     per-transaction with `status: "unsupported_schema_version"`. Older supported schema versions
     are automatically normalized before processing.
     """
-    return process_sync_batch(db, current_user.id, batch)
-
+    return sync_service.process_sync_batch(db, current_user.id, batch)
