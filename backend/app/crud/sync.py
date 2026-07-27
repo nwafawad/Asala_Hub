@@ -26,16 +26,25 @@ def _to_naive_utc(dt: Optional[datetime], fallback: datetime) -> datetime:
         return fallback
     return dt.replace(tzinfo=None)
 
-def _get_next_server_sequence(session: Session) -> int:
+class ServerSequenceGenerator:
     """
-    Fetch monotonically increasing server sequence number.
-    Uses Postgres nextval('tx_log_server_seq') in production and a max() fallback for SQLite in unit tests.
+    Stateful sequence generator for batch processing.
+    Uses Postgres nextval('tx_log_server_seq') in production and a cached max() sequence counter
+    for non-Postgres (e.g. SQLite) to eliminate N+1 sequence queries inside loops.
     """
-    bind = session.get_bind()
-    if bind and bind.dialect.name == "postgresql":
-        return session.scalar(text("SELECT nextval('tx_log_server_seq')"))
-    max_seq = session.exec(select(func.max(TransactionLog.server_sequence))).first()
-    return (max_seq or 0) + 1
+    def __init__(self, session: Session):
+        self.session = session
+        bind = session.get_bind()
+        self.is_postgres = bool(bind and bind.dialect.name == "postgresql")
+        if not self.is_postgres:
+            max_seq = session.exec(select(func.max(TransactionLog.server_sequence))).first()
+            self._current_seq = max_seq or 0
+
+    def next(self) -> int:
+        if self.is_postgres:
+            return self.session.scalar(text("SELECT nextval('tx_log_server_seq')"))
+        self._current_seq += 1
+        return self._current_seq
 
 def normalize_payload(payload: dict, schema_version: int, entity_type: str) -> dict:
     """
@@ -72,6 +81,9 @@ def process_sync_batch(
 
     if not batch.transactions:
         return SyncBatchResponse(results=[], synced_count=0, error_count=0)
+
+    # Initialize batch sequence generator
+    seq_gen = ServerSequenceGenerator(session)
 
     # Fetch acting user instance to verify role permissions (e.g. educator vs student)
     acting_user = session.get(User, user_id)
@@ -136,7 +148,7 @@ def process_sync_batch(
 
             with session.begin_nested():
                 # Server-authoritative sequence assignment (FR-15)
-                server_seq = _get_next_server_sequence(session)
+                server_seq = seq_gen.next()
 
                 if tx.entity_type == "submission":
                     existing_submission = existing_submissions.get(tx.entity_id)

@@ -10,6 +10,7 @@ from typing import List, Optional
 from sqlmodel import Session, select
 from sqlalchemy.orm import defer, joinedload
 from app.models import Module
+from app.models.user import get_naive_utc_now
 from app.schemas.modules import ModuleCreate, ModuleUpdate
 
 def create_module(
@@ -97,6 +98,7 @@ def update_module(
     update_data = module_in.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_module, key, value)
+    db_module.updated_at = get_naive_utc_now()
     session.add(db_module)
     if commit:
         session.commit()

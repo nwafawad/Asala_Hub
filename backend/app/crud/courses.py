@@ -5,6 +5,7 @@ from typing import List, Optional
 from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 from app.models import Course
+from app.models.user import get_naive_utc_now
 from app.schemas.courses import CourseCreate, CourseUpdate
 
 
@@ -48,7 +49,7 @@ def get_courses(
     Returns:
         List[Course]: List of matching Course model instances.
     """
-    query = select(Course).where(Course.is_deleted == False)
+    query = select(Course).where(Course.is_deleted == False).order_by(Course.created_at.desc())
     if educator_id is not None:
         query = query.where(Course.educator_id == educator_id)
     return session.exec(query.offset(skip).limit(limit)).all()
@@ -100,6 +101,7 @@ def update_course(
     update_data = course_in.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_course, key, value)
+    db_course.updated_at = get_naive_utc_now()
     session.add(db_course)
     if commit:
         session.commit()
@@ -107,14 +109,20 @@ def update_course(
     return db_course
 
 
-def delete_course(session: Session, db_course: Course) -> None:
+def delete_course(session: Session, db_course: Course, soft: bool = True) -> None:
     """
-    Delete a course from the database.
+    Delete a course from the database via soft delete by default.
     
     Args:
         session (Session): The active database transaction session.
         db_course (Course): The Course model instance to delete.
+        soft (bool): If True, soft-deletes by setting is_deleted=True.
     """
-    session.delete(db_course)
+    if soft:
+        db_course.is_deleted = True
+        db_course.updated_at = get_naive_utc_now()
+        session.add(db_course)
+    else:
+        session.delete(db_course)
     session.commit()
 
