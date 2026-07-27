@@ -49,12 +49,14 @@ def create_access_token(subject: Union[str, Any], role: str, expires_delta: Opti
     Returns:
         str: Encoded JWT token string.
     """
+    now = datetime.now(timezone.utc)
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = now + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode = {
+        "iat": int(now.timestamp()),
         "exp": int(expire.timestamp()),
         "sub": str(subject),
         "role": role
@@ -77,8 +79,19 @@ def set_auth_cookie(response: Response, token: str) -> None:
         value=token,
         httponly=True,
         samesite=settings.COOKIE_SAMESITE,
-        secure=settings.COOKIE_SECURE,
+        secure=settings.effective_cookie_secure,
         max_age=settings.COOKIE_MAX_AGE
+    )
+
+def clear_auth_cookie(response: Response) -> None:
+    """
+    Helper function to delete the authentication cookie upon logout.
+    """
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        samesite=settings.COOKIE_SAMESITE,
+        secure=settings.effective_cookie_secure
     )
 
 

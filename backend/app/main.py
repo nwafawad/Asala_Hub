@@ -43,9 +43,7 @@ origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
-if settings.ALLOWED_HOSTS:
-    hosts = [h.strip() for h in settings.ALLOWED_HOSTS.split(",") if h.strip()]
-    origins.extend(hosts)
+origins.extend(settings.allowed_hosts_list)
 origins = list(set(origins))  # Remove duplicates
 
 app.add_middleware(
