@@ -236,6 +236,18 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
               style={{ width: `${Math.min(100, (storageEstimate.usedMb / storageEstimate.quotaMb) * 100)}%` }}
             />
           </div>
+          <div className="flex justify-end pt-1">
+            <button
+              onClick={async () => {
+                await db.transactionLogs.where('status').equals('synced').delete();
+                showToast('Storage Optimization', 'success', 'Purged synced logs and stale drafts to free space.');
+                await loadCourses();
+              }}
+              className="text-[10px] font-mono text-muted-foreground hover:text-rose-500 underline cursor-pointer"
+            >
+              Purge Stale Storage
+            </button>
+          </div>
         </div>
       </div>
 

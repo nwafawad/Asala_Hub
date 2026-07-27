@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { db, seedInitialMockData, type AttachmentFile, type DraftSnapshot } from '@/lib/db';
+import { compressPayload, decompressPayload } from '@/lib/compress';
 import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
 import { useOverlay } from '@/context/OverlayContext';
@@ -64,7 +65,8 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
       await seedInitialMockData();
       const existing = await db.cachedSubmissions.get('sub-102');
       if (existing) {
-        if (existing.content) setContent(existing.content);
+        const decompressed = existing.content ? decompressPayload(existing.content) : content;
+        if (existing.content) setContent(decompressed);
         if (existing.attachments) setAttachments(existing.attachments);
         if (existing.draftHistory && existing.draftHistory.length > 0) {
           setDraftHistory(existing.draftHistory);
@@ -73,9 +75,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
           const initialSnapshot: DraftSnapshot = {
             id: `snap-${Date.now()}`,
             timestamp: new Date().toISOString(),
-            content: existing.content || content,
-            wordCount: (existing.content || content).trim().split(/\s+/).length,
-            sizeKb: +((existing.content || content).length / 1024).toFixed(2),
+            content: decompressed,
+            wordCount: decompressed.trim().split(/\s+/).length,
+            sizeKb: +(decompressed.length / 1024).toFixed(2),
           };
           setDraftHistory([initialSnapshot]);
         }
@@ -124,7 +126,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
           assignmentId: 'assign-2',
           assignmentTitle: 'Offline Transaction Log Architecture',
           studentName: user?.fullName || 'Asala Student',
-          content,
+          content: compressPayload(content),
           attachments,
           submittedAt: now.toISOString(),
           syncStatus: 'pending',

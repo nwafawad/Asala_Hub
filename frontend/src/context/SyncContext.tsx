@@ -57,6 +57,14 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Register Service Worker for PWA Offline Caching
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then(reg => console.log('Asala PWA ServiceWorker registered with scope:', reg.scope))
+        .catch(err => console.warn('ServiceWorker registration notice:', err));
+    }
+
     refreshLogs();
 
     return () => {
