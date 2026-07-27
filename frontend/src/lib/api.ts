@@ -10,11 +10,11 @@ export const api = axios.create({
   timeout: 10000,
 });
 
-// Request Interceptor: Attach Bearer token if present in localStorage or IndexedDB
+// Request Interceptor: Attach Bearer token if present in localStorage or sessionStorage
 api.interceptors.request.use(
   config => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('asala_token');
+      const token = localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token');
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -29,7 +29,7 @@ api.interceptors.response.use(
   response => response,
   error => {
     if (error.response && error.response.status === 401) {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && navigator.onLine) {
         window.dispatchEvent(new CustomEvent('asala:session-expired'));
       }
     }

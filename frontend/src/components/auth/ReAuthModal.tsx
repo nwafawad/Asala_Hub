@@ -12,14 +12,20 @@ export const ReAuthModal: React.FC = () => {
 
   const [pinOrPass, setPinOrPass] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pinOrPass) return;
     setIsSubmitting(true);
-    await renewSession(pinOrPass);
+    setErrorMsg(null);
+    const success = await renewSession(pinOrPass);
     setIsSubmitting(false);
-    setPinOrPass('');
+    if (success) {
+      setPinOrPass('');
+    } else {
+      setErrorMsg('Incorrect PIN code. Please try again.');
+    }
   };
 
   return (
@@ -58,6 +64,11 @@ export const ReAuthModal: React.FC = () => {
                   className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 text-left rtl:text-right rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
                 />
               </div>
+              {errorMsg && (
+                <p className="text-xs font-semibold text-rose-500 animate-in fade-in-0 mt-0.5">
+                  {errorMsg}
+                </p>
+              )}
             </div>
 
             <button

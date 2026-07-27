@@ -14,6 +14,7 @@ import { useSync } from '@/context/SyncContext';
 import { useAuth } from '@/context/AuthContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { startViewTransition } from '@/lib/view-transition';
+import { SettingsView } from '@/components/shell/SettingsView';
 import { BookOpen, FileText, Database, ShieldCheck, Plus, RefreshCw, Layers } from 'lucide-react';
 
 export default function Home() {
@@ -67,6 +68,9 @@ export default function Home() {
         }
         if (currentTab === 'progress') {
           return <ProgressTracker />;
+        }
+        if (currentTab === 'settings') {
+          return <SettingsView />;
         }
 
         // Default Dashboard View

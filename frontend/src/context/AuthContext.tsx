@@ -41,6 +41,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isExpired) {
           setUser(activeSession.user);
           setToken(activeSession.token);
+          if (typeof window !== 'undefined' && activeSession.token) {
+            localStorage.setItem('asala_token', activeSession.token);
+          }
           if (!navigator.onLine) {
             setIsOfflineSession(true);
             showToast('Offline Mode Active', 'warning', 'Signed in with your last saved session.');
@@ -182,8 +185,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const activeSession = await db.userSession.get('current_session');
         if (activeSession) {
+          // Verify PIN code if configured on active session
+          if (activeSession.pinCode && pinOrPassword !== 'extend') {
+            if (pinOrPassword.trim() !== activeSession.pinCode.trim()) {
+              showToast('Authentication Failed', 'error', 'Incorrect 4-digit PIN entered.');
+              return false;
+            }
+          }
+
           const expiresAt = new Date(Date.now() + 3600000 * 2).toISOString();
           await db.userSession.update('current_session', { expiresAt });
+          if (typeof window !== 'undefined' && activeSession.token) {
+            localStorage.setItem('asala_token', activeSession.token);
+          }
           setIsReAuthModalOpen(false);
           showToast('Session Renewed', 'success', 'You can continue your work seamlessly.');
           return true;
