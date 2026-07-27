@@ -5,7 +5,7 @@ from typing import List, Optional
 from sqlmodel import Session, select, func, or_, col
 from sqlalchemy.orm import selectinload, joinedload
 from app.models import Course
-from app.models.user import get_naive_utc_now
+from app.models.base import get_naive_utc_now
 from app.schemas.courses import CourseCreate, CourseUpdate
 
 

@@ -1,15 +1,22 @@
+"""
+Asala Hub API Gateway Entrypoint.
+
+Initializes FastAPI application instance, mounts HTTP middleware, configures CORS,
+registers global domain exception handlers, and mounts API routers.
+"""
+
 from __future__ import annotations
 
-import time
 import logging
-from fastapi import FastAPI, Depends, Request, Response, status
-from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session, text, select
-from app.core.config import settings
+from fastapi import FastAPI, Depends, Response, status
+from sqlmodel import Session, select
+
+from app.core.exceptions import DomainException, domain_exception_handler
+from app.core.middleware import security_and_logging_middleware, setup_cors
 from app.core.database import get_session
 from app.routers import auth, courses, modules, assignments, sync
 
-
+# Configure system logger
 logger = logging.getLogger("asala_hub")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -19,49 +26,27 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Request latency, logging, and OWASP security headers middleware
-@app.middleware("http")
-async def log_requests_and_security_headers_middleware(request: Request, call_next):
-    start_time = time.time()
-    response: Response = await call_next(request)
-    process_time = (time.time() - start_time) * 1000
+# Register custom domain exception handlers
+app.add_exception_handler(DomainException, domain_exception_handler)
 
-    # Inject OWASP security headers
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+# Mount HTTP security headers and request latency middleware
+app.middleware("http")(security_and_logging_middleware)
 
-    logger.info(f"[{request.method}] {request.url.path} -> {response.status_code} ({process_time:.2f}ms)")
-    return response
+# Configure CORS origins
+setup_cors(app)
 
 
-
-# CORS configuration
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-origins.extend(settings.allowed_hosts_list)
-origins = list(set(origins))  # Remove duplicates
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/health")
+# System Health Check Endpoints
+@app.get("/health", tags=["system"])
 def health_check():
+    """Liveness check verifying server availability."""
     return {"status": "ok"}
 
-@app.get("/healthz")
+
+@app.get("/healthz", tags=["system"])
 def healthz_check(response: Response, session: Session = Depends(get_session)):
     """
-    Diagnostic health check verifying DB connection pool readiness.
+    Readiness check verifying database connection pool health.
     """
     try:
         session.exec(select(1))
@@ -71,7 +56,8 @@ def healthz_check(response: Response, session: Session = Depends(get_session)):
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"status": "error", "database": "disconnected", "detail": str(e)}
 
-# Include routers
+
+# Include feature routers
 app.include_router(auth.router)
 app.include_router(courses.router)
 app.include_router(modules.router)
