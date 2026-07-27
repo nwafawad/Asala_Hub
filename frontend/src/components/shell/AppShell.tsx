@@ -28,10 +28,16 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex antialiased selection:bg-primary/20 selection:text-primary transition-colors">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-xl focus:shadow-lg focus:outline-none"
+      >
+        Skip to main content
+      </a>
       <Sidebar activeTab={activeTab} setActiveTab={handleSetActiveTab} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main id="main-content" className="flex-1 p-8 overflow-y-auto" tabIndex={-1}>
           {children(activeTab, handleSetActiveTab)}
         </main>
       </div>

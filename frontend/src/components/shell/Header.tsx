@@ -54,6 +54,7 @@ export const Header: React.FC = () => {
               ref={inputRef}
               type="text"
               placeholder={t.searchPlaceholder}
+              aria-label={t.searchPlaceholder}
               className="w-full h-9 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
@@ -68,7 +69,8 @@ export const Header: React.FC = () => {
 
           <button
             onClick={handleToggleLanguage}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
+            aria-label="Switch interface language"
             title="Switch Language"
           >
             <Languages className="w-3.5 h-3.5 text-primary" />
@@ -77,7 +79,8 @@ export const Header: React.FC = () => {
 
           <button
             onClick={handleToggleTheme}
-            className="p-2 rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="p-2 rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
+            aria-label="Toggle light and dark color theme"
             title={t.actions.toggleTheme}
           >
             {theme === 'dark' ? (
@@ -91,7 +94,10 @@ export const Header: React.FC = () => {
           {user && (
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
-                <button className="flex items-center gap-2 p-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors cursor-pointer">
+                <button
+                  aria-label="Open user profile menu"
+                  className="flex items-center gap-2 p-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
+                >
                   <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
                     {user.fullName.substring(0, 2).toUpperCase()}
                   </div>

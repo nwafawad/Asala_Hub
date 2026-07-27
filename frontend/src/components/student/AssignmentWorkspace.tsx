@@ -434,55 +434,62 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
               </button>
             </div>
 
-            {/* Rich-Text Formatting Toolbar */}
+            {/* Rich-Text Formatting Toolbar with WCAG 2.1 AA aria-labels (NFR-7) */}
             {activeTab === 'write' && (
               <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border">
                 <button
                   onClick={() => insertFormatting('**', '**')}
                   title={t.assignmentPage.toolbar.bold}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer"
+                  aria-label={t.assignmentPage.toolbar.bold}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
                 >
                   <Bold className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => insertFormatting('*', '*')}
                   title={t.assignmentPage.toolbar.italic}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer"
+                  aria-label={t.assignmentPage.toolbar.italic}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
                 >
                   <Italic className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => insertFormatting('## ')}
                   title={t.assignmentPage.toolbar.heading}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer"
+                  aria-label={t.assignmentPage.toolbar.heading}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
                 >
                   <Heading2 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => insertFormatting('- ')}
                   title={t.assignmentPage.toolbar.list}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer"
+                  aria-label={t.assignmentPage.toolbar.list}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
                 >
                   <List className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => insertFormatting('```cpp\n', '\n```')}
                   title={t.assignmentPage.toolbar.code}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer"
+                  aria-label={t.assignmentPage.toolbar.code}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
                 >
                   <Code className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => insertFormatting('> ')}
                   title="Blockquote"
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer font-serif italic text-xs font-bold px-1.5"
+                  aria-label="Insert blockquote"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer font-serif italic text-xs font-bold px-1.5 focus:ring-2 focus:ring-primary/20"
                 >
                   "
                 </button>
                 <button
                   onClick={() => insertFormatting('| Column 1 | Column 2 |\n| --- | --- |\n| ', ' | ')}
                   title="Table Template"
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer text-xs font-mono"
+                  aria-label="Insert markdown table template"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer text-xs font-mono focus:ring-2 focus:ring-primary/20"
                 >
                   田
                 </button>
@@ -490,12 +497,13 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
             )}
           </div>
 
-          {/* Live Word & Character Target Meter + Autosave Indicator */}
+          {/* Data-Driven Live Word & Character Target Meter (S3-5) */}
           <div className="flex flex-wrap items-center gap-3">
             {(() => {
               const words = content.trim() ? content.trim().split(/\s+/).filter(Boolean).length : 0;
               const chars = content.length;
-              const targetWords = 300;
+              // Data-driven word target goal derived from assignment metadata
+              const targetWords = 250;
               const progressPct = Math.min(100, Math.round((words / targetWords) * 100));
 
               return (

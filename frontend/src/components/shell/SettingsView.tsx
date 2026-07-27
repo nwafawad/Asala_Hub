@@ -1,21 +1,69 @@
-'use client';
-
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { useSync } from '@/context/SyncContext';
-import { KeyRound, Lock, ShieldCheck, Check, Sparkles, User, HardDrive, Plus, RefreshCw } from 'lucide-react';
+import { db } from '@/lib/db';
+import { KeyRound, Lock, ShieldCheck, Check, Sparkles, User, HardDrive, Plus, RefreshCw, Download, Trash2, ShieldAlert, FileCheck } from 'lucide-react';
 import { StatusPill } from '@/components/ui/StatusPill';
 
 export const SettingsView: React.FC = () => {
-  const { user, setQuickPin } = useAuth();
+  const { user, setQuickPin, logout } = useAuth();
   const { t } = useI18n();
   const { showToast } = useOverlay();
   const { pendingCount, addMockOfflineTransaction, syncNow } = useSync();
 
   const [pin, setPin] = useState<string>('');
   const [isSaved, setIsSaved] = useState<boolean>(false);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState<boolean>(false);
+
+  const handleExportData = async () => {
+    try {
+      const [submissions, modules, usersList, logs] = await Promise.all([
+        db.cachedSubmissions.toArray(),
+        db.cachedModules.toArray(),
+        db.users.toArray(),
+        db.transactionLogs.toArray(),
+      ]);
+
+      const exportObject = {
+        exportDate: new Date().toISOString(),
+        userProfile: user,
+        submissions,
+        studyNotes: modules.filter(m => m.userNotes).map(m => ({ moduleId: m.id, title: m.title, notes: m.userNotes })),
+        transactionLogs: logs,
+      };
+
+      const jsonStr = JSON.stringify(exportObject, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `asala_student_data_export_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast('Data Exported', 'success', 'Downloaded complete JSON copy of your local data.');
+    } catch (err) {
+      console.error('Export failed:', err);
+      showToast('Export Failed', 'error', 'Could not export local data.');
+    }
+  };
+
+  const handleDeleteLocalData = async () => {
+    try {
+      await db.delete();
+      localStorage.clear();
+      sessionStorage.clear();
+      showToast('Local Data Purged', 'info', 'All IndexedDB records cleared.');
+      await logout();
+    } catch (err) {
+      console.error('Delete data failed:', err);
+      showToast('Purge Failed', 'error', 'Could not clear local database.');
+    }
+  };
 
   const handleSavePin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,6 +274,107 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Data & Privacy Governance Section (CR-1, CR-2, CR-3) */}
+      <div className="p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-6">
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div className="flex flex-col">
+              <h3 className="text-base font-bold font-heading text-foreground">
+                Data Rights & Privacy Governance
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Manage consent, self-service data export, and local device data retention (CR-1, CR-2, CR-3).
+              </p>
+            </div>
+          </div>
+          <StatusPill label="Institutional Consent Verified" variant="success" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Export My Data Card */}
+          <div className="p-4 rounded-xl border border-border bg-background flex flex-col justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <FileCheck className="w-4 h-4 text-emerald-500" />
+                <span className="text-xs font-bold text-foreground">Self-Service Data Export</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Download a complete JSON copy of all your local IndexedDB records, decrypted submission drafts, notes, and session history (CR-2).
+              </p>
+            </div>
+            <button
+              onClick={handleExportData}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs self-start"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export My Data (JSON)</span>
+            </button>
+          </div>
+
+          {/* Delete My Local Data Card */}
+          <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex flex-col justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-destructive" />
+                <span className="text-xs font-bold text-foreground">Purge Local Device Storage</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Clear all cached courses, offline submissions, and local credentials stored on this device.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsConfirmDeleteOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs self-start"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete My Local Data</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 30-Day Data Retention Policy Banner (CR-3) */}
+        <div className="p-4 rounded-xl border border-border bg-muted/20 text-xs text-muted-foreground leading-relaxed flex flex-col gap-1">
+          <span className="font-semibold text-foreground">Data Retention & Minor Protection Notice</span>
+          <span>
+            Asala Hub campus nodes store offline data on shared or budget student devices for up to 30 days following the last successful intranet synchronization. Institutional enrollment agreements cover minor consent per CR-1.
+          </span>
+        </div>
+      </div>
+
+      {/* Confirmation Modal for Delete Local Data */}
+      {isConfirmDeleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="max-w-md w-full p-6 rounded-2xl bg-card border border-border shadow-2xl flex flex-col gap-4">
+            <h3 className="text-lg font-bold font-heading text-foreground">
+              Confirm Purging Local Data?
+            </h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              This will permanently delete all offline course modules, un-synced drafts, and personal notes stored in this browser's IndexedDB storage.
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setIsConfirmDeleteOpen(false)}
+                className="px-4 py-2 rounded-xl border border-border bg-muted text-xs font-semibold text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setIsConfirmDeleteOpen(false);
+                  await handleDeleteLocalData();
+                }}
+                className="px-4 py-2 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                Confirm Delete & Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
