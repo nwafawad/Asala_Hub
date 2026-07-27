@@ -33,6 +33,9 @@ import {
   ChevronUp,
   RotateCcw,
   WifiOff,
+  GitMerge,
+  AlertCircle,
+  Check,
 } from 'lucide-react';
 
 interface AssignmentWorkspaceProps {
@@ -51,6 +54,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
   );
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [draftHistory, setDraftHistory] = useState<DraftSnapshot[]>([]);
+  const [conflictDrafts, setConflictDrafts] = useState<DraftSnapshot[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
 
@@ -71,6 +75,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
         const decompressed = existing.content ? decompressPayload(existing.content) : content;
         if (existing.content) setContent(decompressed);
         if (existing.attachments) setAttachments(existing.attachments);
+        if (existing.deviceConflictDrafts) setConflictDrafts(existing.deviceConflictDrafts);
         if (existing.draftHistory && existing.draftHistory.length > 0) {
           setDraftHistory(existing.draftHistory);
         } else {
@@ -330,6 +335,73 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
           </div>
         </div>
       </div>
+
+      {/* Multi-Device Draft Conflict Resolution Panel (BR-6, FR-15) */}
+      {conflictDrafts.length > 0 && (
+        <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col gap-4 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <GitMerge className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              <h3 className="text-sm font-bold text-foreground">
+                Multi-Device Draft Conflict Detected
+              </h3>
+            </div>
+            <span className="text-xs font-mono text-amber-600 dark:text-amber-400 font-semibold">
+              Server Sequence #104
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Edits from another offline device were received for this assignment. Review the side-by-side comparison below and choose which draft to keep.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Local Device Version */}
+            <div className="p-4 rounded-xl bg-card border border-border flex flex-col justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                  This Device (Current Active Draft)
+                </span>
+                <p className="text-xs font-mono text-foreground line-clamp-3 bg-muted/30 p-2.5 rounded-lg border border-border">
+                  {content}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setConflictDrafts([]);
+                  showToast('Conflict Resolved', 'success', 'Kept current local device draft.');
+                }}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>Keep Current Local Draft</span>
+              </button>
+            </div>
+
+            {/* Remote Device Version */}
+            <div className="p-4 rounded-xl bg-card border border-border flex flex-col justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  Remote Device Draft (Synced via Intranet)
+                </span>
+                <p className="text-xs font-mono text-foreground line-clamp-3 bg-muted/30 p-2.5 rounded-lg border border-border">
+                  {conflictDrafts[0]?.content || 'Remote draft content...'}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  if (conflictDrafts[0]?.content) setContent(conflictDrafts[0].content);
+                  setConflictDrafts([]);
+                  showToast('Conflict Resolved', 'success', 'Applied remote device draft.');
+                }}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-muted text-foreground border border-border text-xs font-semibold hover:bg-muted/80 transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4 text-primary" />
+                <span>Adopt Remote Device Draft</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Workspace Editor Card */}
       <div className="p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-5">

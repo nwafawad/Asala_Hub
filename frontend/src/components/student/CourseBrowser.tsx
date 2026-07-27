@@ -6,6 +6,7 @@ import { db, seedInitialMockData, type CachedCourse, type CachedModule } from '@
 import { api } from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
+import { useStorage } from '@/context/StorageContext';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SkeletonCard } from '@/components/ui/Skeletons';
 import { CourseDetail } from '@/components/student/CourseDetail';
@@ -31,6 +32,8 @@ interface CourseBrowserProps {
 export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }) => {
   const { t, language } = useI18n();
   const { showToast } = useOverlay();
+  const { usedMb, quotaMb, usagePercent, daysSinceLastSync, refreshStorageEstimate } = useStorage();
+
   const [courses, setCourses] = useState<CachedCourse[]>([]);
   const [modulesMap, setModulesMap] = useState<Record<string, CachedModule[]>>({});
   const [loading, setLoading] = useState<boolean>(true);
@@ -38,11 +41,6 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [activeModule, setActiveModule] = useState<CachedModule | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState<boolean>(false);
-
-  const [storageEstimate, setStorageEstimate] = useState<{ usedMb: number; quotaMb: number }>({
-    usedMb: 18.4,
-    quotaMb: 2048,
-  });
 
   const loadCourses = useCallback(async () => {
     try {
@@ -83,16 +81,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
 
       setCourses(allCourses);
       setModulesMap(grouped);
-
-      if (typeof window !== 'undefined' && 'storage' in navigator && 'estimate' in navigator.storage) {
-        const estimate = await navigator.storage.estimate();
-        if (estimate.usage && estimate.quota) {
-          setStorageEstimate({
-            usedMb: +(estimate.usage / (1024 * 1024)).toFixed(1),
-            quotaMb: +(estimate.quota / (1024 * 1024)).toFixed(0),
-          });
-        }
-      }
+      await refreshStorageEstimate();
     } catch (err) {
       console.error('Error loading courses from IndexedDB:', err);
     } finally {
@@ -245,7 +234,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
           <p className="text-xs text-muted-foreground">{t.coursesPage.subtitle}</p>
         </div>
 
-        {/* IndexedDB Storage Quota Meter */}
+        {/* IndexedDB Storage Quota Meter & 30-Day Offline Duration Warning (FR-18, NFR-13) */}
         <div className="p-3.5 rounded-xl bg-muted/40 border border-border flex flex-col gap-2 min-w-[260px]">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-foreground flex items-center gap-1.5">
@@ -253,20 +242,30 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
               {t.coursesPage.storageUsage}
             </span>
             <span className="text-muted-foreground font-mono">
-              {storageEstimate.usedMb} MB / {storageEstimate.quotaMb} MB
+              {usedMb} MB / {quotaMb} MB
             </span>
           </div>
           <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
             <div
-              className="h-full bg-primary rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(100, (storageEstimate.usedMb / storageEstimate.quotaMb) * 100)}%` }}
+              className={`h-full rounded-full transition-all duration-300 ${
+                usagePercent > 80 ? 'bg-destructive' : 'bg-primary'
+              }`}
+              style={{ width: `${usagePercent}%` }}
             />
           </div>
+
+          {daysSinceLastSync > 30 && (
+            <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+              ⚠️ Offline duration: {daysSinceLastSync} days (Limit: 30 days). Connect to intranet to sync.
+            </div>
+          )}
+
           <div className="flex justify-end pt-1">
             <button
               onClick={async () => {
                 await db.transactionLogs.where('status').equals('synced').delete();
-                showToast('Storage Optimization', 'success', 'Purged synced logs and stale drafts to free space.');
+                showToast('Storage Optimization', 'success', 'Purged synced logs to free space.');
+                await refreshStorageEstimate();
                 await loadCourses();
               }}
               className="text-[10px] font-mono text-muted-foreground hover:text-rose-500 underline cursor-pointer"

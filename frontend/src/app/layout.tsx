@@ -5,6 +5,7 @@ import { I18nProvider } from '@/context/I18nContext';
 import { SyncProvider } from '@/context/SyncContext';
 import { OverlayProvider } from '@/context/OverlayContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { StorageProvider } from '@/context/StorageContext';
 import { ServiceWorkerRegister } from '@/components/shell/ServiceWorkerRegister';
 import './globals.css';
 
@@ -45,10 +46,12 @@ export default function RootLayout({
           <I18nProvider>
             <OverlayProvider>
               <AuthProvider>
-                <SyncProvider>
-                  <ServiceWorkerRegister />
-                  {children}
-                </SyncProvider>
+                <StorageProvider>
+                  <SyncProvider>
+                    <ServiceWorkerRegister />
+                    {children}
+                  </SyncProvider>
+                </StorageProvider>
               </AuthProvider>
             </OverlayProvider>
           </I18nProvider>
