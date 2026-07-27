@@ -4,7 +4,7 @@ import time
 import logging
 from fastapi import FastAPI, Depends, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session, text
+from sqlmodel import Session, text, select
 from app.core.config import settings
 from app.core.database import get_session
 from app.routers import auth, courses, modules, assignments, sync
@@ -64,7 +64,7 @@ def healthz_check(response: Response, session: Session = Depends(get_session)):
     Diagnostic health check verifying DB connection pool readiness.
     """
     try:
-        session.exec(text("SELECT 1"))
+        session.exec(select(1))
         return {"status": "ok", "database": "connected"}
     except Exception as e:
         logger.error(f"Health check DB failure: {e}")

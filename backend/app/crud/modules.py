@@ -7,7 +7,7 @@ retrieval by parent course, single lookups, reordering, and updating/deleting.
 
 import uuid
 from typing import List, Optional
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, col
 from sqlalchemy.orm import defer, joinedload
 from app.models import Module
 from app.models.user import get_naive_utc_now
@@ -31,7 +31,7 @@ def create_module(
     order_index = module_in.order_index
     if not order_index or order_index <= 0:
         max_order = session.exec(
-            select(func.max(Module.order_index)).where(Module.course_id == course_id)
+            select(func.max(col(Module.order_index))).where(col(Module.course_id) == course_id)
         ).first()
         order_index = (max_order or 0) + 1
 
@@ -67,17 +67,17 @@ def get_modules_for_course(
     Returns:
         List[Module]: List of ordered Module model instances.
     """
-    query = select(Module).where(Module.course_id == course_id).order_by(Module.order_index)
+    query = select(Module).where(col(Module.course_id) == course_id).order_by(col(Module.order_index))
     if not include_content:
-        query = query.options(defer(Module.content))
-    return session.exec(query.offset(skip).limit(limit)).all()
+        query = query.options(defer(getattr(Module, "content")))
+    return list(session.exec(query.offset(skip).limit(limit)).all())
 
 def count_modules_for_course(session: Session, course_id: uuid.UUID) -> int:
     """
     Count total modules for a specific course efficiently.
     """
     return session.exec(
-        select(func.count(Module.id)).where(Module.course_id == course_id)
+        select(func.count(col(Module.id))).where(col(Module.course_id) == course_id)
     ).first() or 0
 
 def get_module_by_id_and_course(
@@ -94,9 +94,9 @@ def get_module_by_id_and_course(
     Returns:
         Optional[Module]: The Module instance, or None if not found.
     """
-    query = select(Module).where(Module.id == module_id, Module.course_id == course_id)
+    query = select(Module).where(col(Module.id) == module_id, col(Module.course_id) == course_id)
     if load_course:
-        query = query.options(joinedload(Module.course))
+        query = query.options(joinedload(getattr(Module, "course")))
     return session.exec(query).first()
 
 def update_module(
@@ -124,7 +124,7 @@ def update_module(
     return db_module
 
 def reorder_course_modules(
-    session: Session, course_id: uuid.UUID, ordered_module_ids: List[uuid.UUID]
+    session: Session, course_id: uuid.UUID, ordered_module_ids: List[uuid.UUID], commit: bool = True
 ) -> None:
     """
     Bulk update order_index positions for a list of module IDs in a single atomic transaction.
@@ -136,18 +136,21 @@ def reorder_course_modules(
             db_module.order_index = index
             db_module.updated_at = now
             session.add(db_module)
-    session.commit()
+    if commit:
+        session.commit()
 
-def delete_module(session: Session, db_module: Module) -> None:
+def delete_module(session: Session, db_module: Module, commit: bool = True) -> None:
     """
     Delete a module from the database.
     
     Args:
         session (Session): The active database transaction session.
         db_module (Module): The Module model instance to delete.
+        commit (bool): If True, commits the transaction immediately.
     """
     session.delete(db_module)
-    session.commit()
+    if commit:
+        session.commit()
 
 def get_course_syllabus(session: Session, course_id: uuid.UUID) -> List[Module]:
     """

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from typing import List, Optional
-from sqlmodel import Session, select, func, or_
+from sqlmodel import Session, select, func, or_, col
 from app.models import User
 from app.models.user import UserRole, get_naive_utc_now
 from app.schemas.auth import UserRegister
@@ -20,7 +20,7 @@ def get_user_by_email(session: Session, email: str) -> Optional[User]:
         Optional[User]: The matching user model instance, or None.
     """
     normalized_email = email.strip().lower()
-    return session.exec(select(User).where(User.email == normalized_email)).first()
+    return session.exec(select(User).where(col(User.email) == normalized_email)).first()
 
 def get_user_by_id(session: Session, user_id: uuid.UUID) -> Optional[User]:
     """
@@ -69,10 +69,10 @@ def get_users(
     """
     Retrieve users with optional role filtering and pagination.
     """
-    query = select(User).order_by(User.created_at.desc())
+    query = select(User).order_by(col(User.created_at).desc())
     if role is not None:
-        query = query.where(User.role == role)
-    return session.exec(query.offset(skip).limit(limit)).all()
+        query = query.where(col(User.role) == role)
+    return list(session.exec(query.offset(skip).limit(limit)).all())
 
 
 def search_users(
@@ -85,26 +85,27 @@ def search_users(
     """
     Search users by name or email (case-insensitive).
     """
-    pattern = f"%{search_term.strip()}%"
+    clean_term = search_term.strip().replace("%", r"\%").replace("_", r"\_")
+    pattern = f"%{clean_term}%"
     query = select(User).where(
         or_(
-            User.full_name.ilike(pattern),
-            User.email.ilike(pattern)
+            col(User.full_name).ilike(pattern),
+            col(User.email).ilike(pattern)
         )
-    ).order_by(User.created_at.desc())
+    ).order_by(col(User.created_at).desc())
 
     if role is not None:
-        query = query.where(User.role == role)
-    return session.exec(query.offset(skip).limit(limit)).all()
+        query = query.where(col(User.role) == role)
+    return list(session.exec(query.offset(skip).limit(limit)).all())
 
 
 def count_users(session: Session, role: Optional[UserRole] = None) -> int:
     """
     Count total registered users efficiently.
     """
-    query = select(func.count(User.id))
+    query = select(func.count(col(User.id)))
     if role is not None:
-        query = query.where(User.role == role)
+        query = query.where(col(User.role) == role)
     return session.exec(query).first() or 0
 
 
@@ -118,9 +119,9 @@ def update_user_profile(
     """
     Update a user's profile attributes and refresh updated_at.
     """
-    if full_name is not None:
+    if full_name is not None and full_name.strip():
         db_user.full_name = full_name.strip()
-    if preferred_language is not None:
+    if preferred_language is not None and preferred_language.strip():
         db_user.preferred_language = preferred_language.strip()
     db_user.updated_at = get_naive_utc_now()
     session.add(db_user)
@@ -145,4 +146,10 @@ def update_user_password(
     return db_user
 
 
-
+def delete_user(session: Session, db_user: User, commit: bool = True) -> None:
+    """
+    Delete a user record from the database.
+    """
+    session.delete(db_user)
+    if commit:
+        session.commit()

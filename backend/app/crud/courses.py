@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from typing import List, Optional
-from sqlmodel import Session, select, func, or_
+from sqlmodel import Session, select, func, or_, col
 from sqlalchemy.orm import selectinload, joinedload
 from app.models import Course
 from app.models.user import get_naive_utc_now
@@ -54,18 +54,19 @@ def get_courses(
     Returns:
         List[Course]: List of matching Course model instances.
     """
-    query = select(Course).where(Course.is_deleted == False).order_by(Course.created_at.desc())
+    query = select(Course).where(col(Course.is_deleted) == False).order_by(col(Course.created_at).desc())
     if educator_id is not None:
-        query = query.where(Course.educator_id == educator_id)
+        query = query.where(col(Course.educator_id) == educator_id)
     if search:
-        search_pattern = f"%{search.strip()}%"
+        clean_search = search.strip().replace("%", r"\%").replace("_", r"\_")
+        search_pattern = f"%{clean_search}%"
         query = query.where(
             or_(
-                Course.title.ilike(search_pattern),
-                Course.description.ilike(search_pattern)
+                col(Course.title).ilike(search_pattern),
+                col(Course.description).ilike(search_pattern)
             )
         )
-    return session.exec(query.offset(skip).limit(limit)).all()
+    return list(session.exec(query.offset(skip).limit(limit)).all())
 
 
 def count_courses(session: Session, educator_id: Optional[uuid.UUID] = None) -> int:
@@ -78,9 +79,9 @@ def count_courses(session: Session, educator_id: Optional[uuid.UUID] = None) -> 
     Returns:
         int: Total number of active courses matching criteria.
     """
-    query = select(func.count(Course.id)).where(Course.is_deleted == False)
+    query = select(func.count(col(Course.id))).where(col(Course.is_deleted) == False)
     if educator_id is not None:
-        query = query.where(Course.educator_id == educator_id)
+        query = query.where(col(Course.educator_id) == educator_id)
     return session.exec(query).first() or 0
 
 
@@ -95,7 +96,7 @@ def get_course_by_id(session: Session, course_id: uuid.UUID) -> Optional[Course]
         Optional[Course]: The Course instance, or None if not found or deleted.
     """
     return session.exec(
-        select(Course).where(Course.id == course_id, Course.is_deleted == False)
+        select(Course).where(col(Course.id) == course_id, col(Course.is_deleted) == False)
     ).first()
 
 
@@ -111,8 +112,8 @@ def get_course_with_modules(session: Session, course_id: uuid.UUID) -> Optional[
     """
     return session.exec(
         select(Course)
-        .where(Course.id == course_id, Course.is_deleted == False)
-        .options(selectinload(Course.modules))
+        .where(col(Course.id) == course_id, col(Course.is_deleted) == False)
+        .options(selectinload(getattr(Course, "modules")))
     ).first()
 
 
@@ -123,11 +124,11 @@ def get_course_full_detail(session: Session, course_id: uuid.UUID) -> Optional[C
     """
     return session.exec(
         select(Course)
-        .where(Course.id == course_id, Course.is_deleted == False)
+        .where(col(Course.id) == course_id, col(Course.is_deleted) == False)
         .options(
-            selectinload(Course.modules),
-            selectinload(Course.assignments),
-            joinedload(Course.educator)
+            selectinload(getattr(Course, "modules")),
+            selectinload(getattr(Course, "assignments")),
+            joinedload(getattr(Course, "educator"))
         )
     ).first()
 
@@ -158,7 +159,7 @@ def update_course(
     return db_course
 
 
-def delete_course(session: Session, db_course: Course, soft: bool = True) -> None:
+def delete_course(session: Session, db_course: Course, soft: bool = True, commit: bool = True) -> None:
     """
     Delete a course from the database via soft delete by default.
     
@@ -166,6 +167,7 @@ def delete_course(session: Session, db_course: Course, soft: bool = True) -> Non
         session (Session): The active database transaction session.
         db_course (Course): The Course model instance to delete.
         soft (bool): If True, soft-deletes by setting is_deleted=True.
+        commit (bool): If True, commits the transaction immediately.
     """
     if soft:
         db_course.is_deleted = True
@@ -173,5 +175,7 @@ def delete_course(session: Session, db_course: Course, soft: bool = True) -> Non
         session.add(db_course)
     else:
         session.delete(db_course)
-    session.commit()
+    if commit:
+        session.commit()
+
 

@@ -8,6 +8,8 @@ and security variables used across the application via Pydantic settings.
 import os
 from pydantic_settings import BaseSettings
 
+from typing import Literal
+
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables and an optional .env file.
@@ -37,7 +39,7 @@ class Settings(BaseSettings):
     # Cookie configuration parameters
     COOKIE_MAX_AGE: int = 86400 * 7  # 7 days
     COOKIE_SECURE: bool = False
-    COOKIE_SAMESITE: str = "lax"
+    COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
 
     @property
     def is_production(self) -> bool:

@@ -19,6 +19,8 @@ from app.schemas.courses import (
     CourseRead,
     CourseReadWithModules,
 )
+import app.crud.courses as crud_courses
+
 router = APIRouter(prefix="/courses", tags=["courses"])
 
 def _get_course_or_raise(session: Session, course_id: uuid.UUID, user_id: Optional[uuid.UUID] = None) -> Course:

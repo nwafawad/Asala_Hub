@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from typing import List, Optional
-from sqlmodel import Session, select
+from sqlmodel import Session, select, col
 from sqlalchemy.orm import joinedload
 from app.models import Assignment, Submission, SyncStatus
 from app.models.user import get_naive_utc_now
@@ -34,13 +34,13 @@ def get_assignments_by_course(
     """
     Retrieve all assignments for a specific course with pagination, ordered by creation date.
     """
-    return session.exec(
+    return list(session.exec(
         select(Assignment)
-        .where(Assignment.course_id == course_id)
-        .order_by(Assignment.created_at.desc())
+        .where(col(Assignment.course_id) == course_id)
+        .order_by(col(Assignment.created_at).desc())
         .offset(skip)
         .limit(limit)
-    ).all()
+    ).all())
 
 
 
@@ -51,9 +51,9 @@ def get_assignment_by_id_and_course(
     Retrieve an assignment by ID and parent course ID.
     Optionally loads the parent course eagerly to allow owner verification.
     """
-    query = select(Assignment).where(Assignment.id == assignment_id, Assignment.course_id == course_id)
+    query = select(Assignment).where(col(Assignment.id) == assignment_id, col(Assignment.course_id) == course_id)
     if load_course:
-        query = query.options(joinedload(Assignment.course))
+        query = query.options(joinedload(getattr(Assignment, "course")))
     return session.exec(query).first()
 
 
@@ -74,12 +74,13 @@ def update_assignment(
     return db_assignment
 
 
-def delete_assignment(session: Session, db_assignment: Assignment) -> None:
+def delete_assignment(session: Session, db_assignment: Assignment, commit: bool = True) -> None:
     """
     Delete an assignment and cascade to its child submissions.
     """
     session.delete(db_assignment)
-    session.commit()
+    if commit:
+        session.commit()
 
 
 def get_submission_by_id_and_assignment(
@@ -90,12 +91,12 @@ def get_submission_by_id_and_assignment(
     Optionally loads the assignment and parent course eagerly.
     """
     query = select(Submission).where(
-        Submission.id == submission_id,
-        Submission.assignment_id == assignment_id,
-        Submission.is_deleted == False
+        col(Submission.id) == submission_id,
+        col(Submission.assignment_id) == assignment_id,
+        col(Submission.is_deleted) == False
     )
     if load_assignment_course:
-        query = query.options(joinedload(Submission.assignment).joinedload(Assignment.course))
+        query = query.options(joinedload(getattr(Submission, "assignment")).joinedload(getattr(Assignment, "course")))
     return session.exec(query).first()
 
 
@@ -127,14 +128,14 @@ def get_submissions_by_assignment(
     Optionally eagerly loads the student profile to prevent N+1 queries.
     """
     query = select(Submission).where(
-        Submission.assignment_id == assignment_id,
-        Submission.is_deleted == False
-    ).order_by(Submission.submitted_at.desc())
+        col(Submission.assignment_id) == assignment_id,
+        col(Submission.is_deleted) == False
+    ).order_by(col(Submission.submitted_at).desc())
 
     if load_student:
-        query = query.options(joinedload(Submission.student))
+        query = query.options(joinedload(getattr(Submission, "student")))
 
-    return session.exec(query.offset(skip).limit(limit)).all()
+    return list(session.exec(query.offset(skip).limit(limit)).all())
 
 
 def get_user_submission_for_assignment(
@@ -145,14 +146,14 @@ def get_user_submission_for_assignment(
     """
     return session.exec(
         select(Submission).where(
-            Submission.assignment_id == assignment_id,
-            Submission.student_id == student_id,
-            Submission.is_deleted == False
+            col(Submission.assignment_id) == assignment_id,
+            col(Submission.student_id) == student_id,
+            col(Submission.is_deleted) == False
         )
     ).first()
 
 
-def delete_submission(session: Session, db_submission: Submission, soft: bool = True) -> None:
+def delete_submission(session: Session, db_submission: Submission, soft: bool = True, commit: bool = True) -> None:
     """
     Delete a submission (soft delete by default).
     """
@@ -162,4 +163,5 @@ def delete_submission(session: Session, db_submission: Submission, soft: bool = 
         session.add(db_submission)
     else:
         session.delete(db_submission)
-    session.commit()
+    if commit:
+        session.commit()

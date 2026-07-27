@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import List, Optional
-from sqlmodel import Session, select, func, text
+from sqlmodel import Session, select, func, text, col
 
 from app.models.user import User, UserRole, get_naive_utc_now
 from app.models.transaction import TransactionLog
@@ -37,7 +37,7 @@ class ServerSequenceGenerator:
         bind = session.get_bind()
         self.is_postgres = bool(bind and bind.dialect.name == "postgresql")
         if not self.is_postgres:
-            max_seq = session.exec(select(func.max(TransactionLog.server_sequence))).first()
+            max_seq = session.exec(select(func.max(col(TransactionLog.server_sequence)))).first()
             self._current_seq = max_seq or 0
 
     def next(self) -> int:
@@ -93,7 +93,7 @@ def process_sync_batch(
     existing_tx_logs = {
         tx_log.id: tx_log
         for tx_log in session.exec(
-            select(TransactionLog).where(TransactionLog.id.in_(all_tx_ids))
+            select(TransactionLog).where(col(TransactionLog.id).in_(all_tx_ids))
         ).all()
     }
 
@@ -106,7 +106,7 @@ def process_sync_batch(
         existing_submissions = {
             sub.id: sub
             for sub in session.exec(
-                select(Submission).where(Submission.id.in_(submission_entity_ids))
+                select(Submission).where(col(Submission.id).in_(submission_entity_ids))
             ).all()
         }
 
@@ -326,7 +326,7 @@ def get_latest_server_sequence(session: Session) -> int:
     Returns:
         int: Current maximum server_sequence checkpoint.
     """
-    max_seq = session.exec(select(func.max(TransactionLog.server_sequence))).first()
+    max_seq = session.exec(select(func.max(col(TransactionLog.server_sequence)))).first()
     return max_seq or 0
 
 def get_sync_delta(
@@ -345,12 +345,12 @@ def get_sync_delta(
     Returns:
         List[TransactionLog]: List of newer transaction logs ordered by sequence.
     """
-    return session.exec(
+    return list(session.exec(
         select(TransactionLog)
-        .where(TransactionLog.server_sequence > since_sequence)
-        .order_by(TransactionLog.server_sequence.asc())
+        .where(col(TransactionLog.server_sequence) > since_sequence)
+        .order_by(col(TransactionLog.server_sequence).asc())
         .limit(limit)
-    ).all()
+    ).all())
 
 
 
