@@ -13,6 +13,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
 import { useAuth } from '@/context/AuthContext';
 import { useOverlay } from '@/context/OverlayContext';
+import { startViewTransition } from '@/lib/view-transition';
 import { BookOpen, FileText, Database, ShieldCheck, Plus, RefreshCw, Layers } from 'lucide-react';
 
 export default function Home() {
@@ -21,7 +22,13 @@ export default function Home() {
   const { pendingCount, isOnline, syncState, addMockOfflineTransaction, syncNow } = useSync();
   const { showToast } = useOverlay();
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [overrideTab, setOverrideTab] = useState<string | null>(null);
+  const [overrideTab, setOverrideTabState] = useState<string | null>(null);
+
+  const setOverrideTab = (tab: string | null) => {
+    startViewTransition(() => {
+      setOverrideTabState(tab);
+    });
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 800);

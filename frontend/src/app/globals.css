@@ -108,3 +108,43 @@
     font-family: var(--font-heading);
   }
 }
+
+/* ==========================================
+   View Transitions API Global Styles
+   ========================================== */
+
+/* Default view transition animations */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Fade animation for views */
+::view-transition-old(view-fade) {
+  animation: 180ms ease-out both fade-out;
+}
+::view-transition-new(view-fade) {
+  animation: 220ms ease-in both fade-in;
+}
+
+@keyframes fade-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.98); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Reduced motion accessibility override */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(view-fade),
+  ::view-transition-new(view-fade) {
+    animation: none !important;
+  }
+}
+

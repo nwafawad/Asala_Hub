@@ -7,6 +7,7 @@ import { useTheme } from 'next-themes';
 import { SyncIndicator } from './SyncIndicator';
 import { ReAuthModal } from '@/components/auth/ReAuthModal';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { startViewTransition } from '@/lib/view-transition';
 import { Search, Sun, Moon, Languages, LogOut, User } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
@@ -31,6 +32,18 @@ export const Header: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const handleToggleTheme = () => {
+    startViewTransition(() => {
+      setTheme(theme === 'dark' ? 'light' : 'dark');
+    });
+  };
+
+  const handleToggleLanguage = () => {
+    startViewTransition(() => {
+      toggleLanguage();
+    });
+  };
+
   return (
     <>
       <header className="h-16 border-b border-border bg-card/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30 transition-colors">
@@ -54,7 +67,7 @@ export const Header: React.FC = () => {
           <SyncIndicator />
 
           <button
-            onClick={toggleLanguage}
+            onClick={handleToggleLanguage}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
             title="Switch Language"
           >
@@ -63,7 +76,7 @@ export const Header: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={handleToggleTheme}
             className="p-2 rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors cursor-pointer"
             title={t.actions.toggleTheme}
           >

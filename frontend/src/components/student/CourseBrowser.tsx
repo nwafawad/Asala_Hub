@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { startViewTransition } from '@/lib/view-transition';
 import { db, seedInitialMockData, type CachedCourse, type CachedModule } from '@/lib/db';
 import { api } from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
@@ -309,7 +310,12 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
               return (
                 <div
                   key={course.id}
-                  onClick={() => setSelectedCourseId(course.id)}
+                  onClick={() => {
+                    startViewTransition(() => {
+                      setSelectedCourseId(course.id);
+                    });
+                  }}
+                  style={{ viewTransitionName: `course-card-${course.id}` }}
                   className="p-5 rounded-2xl border border-border bg-card shadow-xs hover:shadow-md hover:border-primary/40 transition-all flex flex-col justify-between gap-5 group cursor-pointer"
                 >
                   <div className="flex flex-col gap-3">
