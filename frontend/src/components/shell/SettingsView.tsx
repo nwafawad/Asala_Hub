@@ -4,13 +4,15 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
-import { KeyRound, Lock, ShieldCheck, Check, Sparkles, User, HardDrive } from 'lucide-react';
+import { useSync } from '@/context/SyncContext';
+import { KeyRound, Lock, ShieldCheck, Check, Sparkles, User, HardDrive, Plus, RefreshCw } from 'lucide-react';
 import { StatusPill } from '@/components/ui/StatusPill';
 
 export const SettingsView: React.FC = () => {
   const { user, setQuickPin } = useAuth();
   const { t } = useI18n();
   const { showToast } = useOverlay();
+  const { pendingCount, addMockOfflineTransaction, syncNow } = useSync();
 
   const [pin, setPin] = useState<string>('');
   const [isSaved, setIsSaved] = useState<boolean>(false);
@@ -149,6 +151,78 @@ export const SettingsView: React.FC = () => {
           <div className="p-3 rounded-xl bg-muted/40 border border-border/50 text-[11px] text-muted-foreground flex items-center gap-2">
             <HardDrive className="w-4 h-4 text-primary shrink-0" />
             <span>Session auto-renews smoothly upon entering your 4-digit PIN.</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Relocated System Telemetry & Developer Tools Card Section */}
+      <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-base font-bold font-heading text-foreground flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              System Telemetry & Developer Tools
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Technical inspection parameters, offline transaction log simulation, and intranet sync triggers.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                await addMockOfflineTransaction('CREATE_SUBMISSION');
+                showToast('Log added to IndexedDB', 'info', 'Saved transaction log offline.');
+              }}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Simulate Offline Log</span>
+            </button>
+
+            <button
+              onClick={async () => {
+                showToast('Syncing deltas...', 'info');
+                await syncNow();
+              }}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border bg-background text-foreground text-xs font-semibold hover:bg-muted transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4 text-primary" />
+              <span>Trigger Sync</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Telemetry Metrics Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-1">
+            <span className="text-[11px] font-medium text-muted-foreground">Offline Transaction Queue</span>
+            <span className="text-lg font-mono font-bold text-foreground">{pendingCount} Payloads</span>
+            <span className="text-[10px] text-muted-foreground">Buffered in Dexie IndexedDB</span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-1">
+            <span className="text-[11px] font-medium text-muted-foreground">Intranet Protocol</span>
+            <span className="text-lg font-mono font-bold text-emerald-600 dark:text-emerald-400">TLS 1.2+ / HTTP</span>
+            <span className="text-[10px] text-muted-foreground">SRS 3.3 Protocol Active</span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-1">
+            <span className="text-[11px] font-medium text-muted-foreground">Payload Packaging</span>
+            <span className="text-lg font-mono font-bold text-primary">Flat JSON Delta</span>
+            <span className="text-[10px] text-muted-foreground">LZ-String Compressed</span>
+          </div>
+        </div>
+
+        {/* Integrated Feature Engine Status Badges */}
+        <div className="flex flex-col gap-2 pt-2 border-t border-border">
+          <span className="text-xs font-semibold text-foreground">Integrated Offline Engine Modules</span>
+          <div className="flex flex-wrap gap-2">
+            <StatusPill label="Auth Gate & Role Auto-Route" variant="success" />
+            <StatusPill label="2s IndexedDB Auto-Save" variant="info" />
+            <StatusPill label="Offline Blob Attachments" variant="warning" />
+            <StatusPill label="In-Place Re-Auth Modal" variant="info" dotAnimation />
+            <StatusPill label="Printable Submission Receipts" variant="neutral" />
           </div>
         </div>
       </div>
