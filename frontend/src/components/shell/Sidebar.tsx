@@ -3,7 +3,18 @@
 import React from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
-import { LayoutDashboard, BookOpen, FileCheck, Activity, RefreshCw, Settings, Layers } from 'lucide-react';
+import {
+  LayoutDashboard,
+  BookOpen,
+  FileCheck,
+  Activity,
+  RefreshCw,
+  Settings,
+  Layers,
+  Users,
+  BookPlus,
+  Award,
+} from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 
 import { useSync } from '@/context/SyncContext';
@@ -20,11 +31,38 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
 
   const navItems = React.useMemo(() => {
     const isEducator = user?.role === 'educator';
+    if (isEducator) {
+      return [
+        {
+          id: 'curriculum',
+          label: t.educator?.nav?.curriculumBuilder || 'Curriculum Builder',
+          icon: BookPlus,
+        },
+        {
+          id: 'gradeBook',
+          label: t.educator?.nav?.gradeBook || 'Grade Book & Grader',
+          icon: Award,
+        },
+        {
+          id: 'roster',
+          label: t.educator?.nav?.cohortRoster || 'Cohort Roster',
+          icon: Users,
+        },
+        {
+          id: 'analytics',
+          label: t.educator?.nav?.performanceAnalytics || 'Performance Analytics',
+          icon: Activity,
+        },
+        { id: 'syncQueue', label: t.nav.syncQueue, icon: RefreshCw },
+        { id: 'settings', label: t.nav.settings, icon: Settings },
+      ];
+    }
+
     return [
       { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard },
       { id: 'courses', label: t.nav.courses, icon: BookOpen },
-      { id: 'assignments', label: isEducator ? 'Submissions & Grading' : t.nav.assignments, icon: FileCheck },
-      { id: 'progress', label: isEducator ? 'Course Analytics' : t.nav.progress, icon: Activity },
+      { id: 'assignments', label: t.nav.assignments, icon: FileCheck },
+      { id: 'progress', label: t.nav.progress, icon: Activity },
       { id: 'syncQueue', label: t.nav.syncQueue, icon: RefreshCw },
       { id: 'settings', label: t.nav.settings, icon: Settings },
     ];

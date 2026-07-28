@@ -9,6 +9,10 @@ import { SkeletonCard } from '@/components/ui/Skeletons';
 import { CourseBrowser } from '@/components/student/CourseBrowser';
 import { AssignmentWorkspace } from '@/components/student/AssignmentWorkspace';
 import { ProgressTracker } from '@/components/student/ProgressTracker';
+import { CourseBuilder } from '@/components/educator/CourseBuilder';
+import { GradeBook } from '@/components/educator/GradeBook';
+import { CohortRoster } from '@/components/educator/CohortRoster';
+import { PerformanceDashboard } from '@/components/educator/PerformanceDashboard';
 import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
 import { useAuth } from '@/context/AuthContext';
@@ -82,18 +86,33 @@ export default function Home() {
       <LoginForm
         onSuccess={role => {
           showToast('Authentication Successful', 'success', `Welcome back!`);
-          setOverrideTab(role === 'student' ? 'courses' : 'dashboard');
+          setOverrideTab(role === 'student' ? 'courses' : 'curriculum');
         }}
       />
     );
   }
 
+  const isEducator = user?.role === 'educator';
+
   return (
     <AppShell onTabChange={() => setOverrideTabState(null)}>
       {(activeTab, setActiveTab) => {
-        const currentTab = overrideTab || activeTab;
+        let currentTab = overrideTab || activeTab;
+
+        // If Educator, default landing tab is 'curriculum' if on generic student dashboard
+        if (isEducator && (currentTab === 'dashboard' || currentTab === 'courses')) {
+          currentTab = 'curriculum';
+        }
 
         switch (currentTab) {
+          case 'curriculum':
+            return <CourseBuilder />;
+          case 'gradeBook':
+            return <GradeBook />;
+          case 'roster':
+            return <CohortRoster />;
+          case 'analytics':
+            return <PerformanceDashboard />;
           case 'courses':
             return (
               <CourseBrowser
@@ -114,7 +133,9 @@ export default function Home() {
             return <SettingsView />;
           case 'dashboard':
           default:
-            return (
+            return isEducator ? (
+              <CourseBuilder />
+            ) : (
               <DashboardView
                 user={user}
                 isOnline={isOnline}
