@@ -120,6 +120,16 @@ export class AsalaHubDatabase extends Dexie {
       userSession: 'id, token, rememberMe, expiresAt',
       cachedModules: 'id, courseId, type, sequenceOrder, isCachedOffline',
     });
+
+    // v5: Add [status+id] compound index for O(log n) pending-log range queries (Perf #1)
+    this.version(5).stores({
+      transactionLogs: '++id, offlineId, action, entityType, entityId, timestamp, status, serverSeqNum, [status+id]',
+      cachedCourses: 'id, title, code, educatorName',
+      cachedSubmissions: 'id, assignmentId, studentName, syncStatus, serverSeqNum',
+      users: 'id, email, role',
+      userSession: 'id, token, rememberMe, expiresAt',
+      cachedModules: 'id, courseId, type, sequenceOrder, isCachedOffline',
+    });
   }
 }
 

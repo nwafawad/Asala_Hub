@@ -7,7 +7,6 @@ import { OverlayProvider } from '@/context/OverlayContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { StorageProvider } from '@/context/StorageContext';
 import { ServiceWorkerRegister } from '@/components/shell/ServiceWorkerRegister';
-import { AxeAudit } from '@/components/shell/AxeAudit';
 import './globals.css';
 
 const geistSans = Geist({
@@ -50,7 +49,6 @@ export default function RootLayout({
                 <StorageProvider>
                   <SyncProvider>
                     <ServiceWorkerRegister />
-                    <AxeAudit />
                     {children}
                   </SyncProvider>
                 </StorageProvider>

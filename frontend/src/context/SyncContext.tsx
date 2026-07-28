@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { db, type TransactionLogItem } from '@/lib/db';
 import { generateUUID } from '@/lib/uuid';
 import { api } from '@/lib/api';
@@ -26,6 +26,11 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [syncState, setSyncState] = useState<SyncState>('synced');
   const [pendingLogs, setPendingLogs] = useState<TransactionLogItem[]>([]);
   const { showSystemMessage, blockingMessage, closeBlockingMessage } = useSystemMessage();
+  // Bug #2: mutex ref — prevents concurrent sync requests from rapid clicks or simultaneous online events
+  const isSyncingRef = useRef<boolean>(false);
+  // Stable ref to always hold the latest syncNow — avoids hoisting/forward-declaration errors in the
+  // network useEffect while still calling the most up-to-date version (no stale closure).
+  const syncNowRef = useRef<() => Promise<void>>(async () => {});
 
   // Load and count pending logs from Dexie IndexedDB
   const refreshLogs = useCallback(async () => {
@@ -52,8 +57,9 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const handleOnline = () => {
       setIsOnline(true);
-      showSystemMessage('WORKING_OFFLINE');
+      // Bug #1: coming back online should trigger a sync, not show the offline modal
       refreshLogs();
+      syncNowRef.current();
     };
 
     const handleOffline = () => {
@@ -166,12 +172,15 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Core sync trigger
   const syncNow = useCallback(async () => {
-    if (!navigator.onLine) {
-      setSyncState('offline');
-      showSystemMessage('WORKING_OFFLINE');
+    // Bug #2: guard against re-entrant concurrent sync operations
+    if (isSyncingRef.current || !navigator.onLine) {
+      if (!navigator.onLine) {
+        setSyncState('offline');
+        showSystemMessage('WORKING_OFFLINE');
+      }
       return;
     }
-
+    isSyncingRef.current = true;
     setSyncState('syncing');
     showSystemMessage('SYNC_IN_PROGRESS');
 
@@ -222,8 +231,16 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Sync process error:', err);
       setSyncState('error');
       showSystemMessage('SYNC_FAILED');
+    } finally {
+      // Bug #2: always release the mutex so future syncs can proceed
+      isSyncingRef.current = false;
     }
   }, [refreshLogs, showSystemMessage, handleBatchSuccess, handleBackoffRetry]);
+
+  // Keep syncNowRef current so the network useEffect always calls the latest version
+  useEffect(() => {
+    syncNowRef.current = syncNow;
+  }, [syncNow]);
 
   // Backoff retry timer listener (Task 4)
   useEffect(() => {

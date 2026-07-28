@@ -20,8 +20,11 @@ export function compressPayload(input: string): string {
         phrase += currChar;
       } else {
         out.push(phrase.length > 1 ? dictionary[phrase] : phrase.charCodeAt(0));
-        dictionary[phrase + currChar] = code;
-        code++;
+        // Guard: cap dictionary at 65000 to prevent UTF-16 surrogate-pair territory (Perf #3)
+        if (code < 65000) {
+          dictionary[phrase + currChar] = code;
+          code++;
+        }
         phrase = currChar;
       }
     }

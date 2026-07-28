@@ -47,5 +47,13 @@ export function sanitizeHtml(dirty: string): string {
     .replace(/<iframe\b[^<]*>([\s\S]*?)<\/iframe>/gi, '')
     .replace(/on\w+="[^"]*"/gi, '')
     .replace(/on\w+='[^']*'/gi, '')
-    .replace(/href="javascript:[^"]*"/gi, 'href="#"');
+    .replace(/href="javascript:[^"]*"/gi, 'href="#"')
+    // Security #2: strip inline style attributes (CSS injection / exfiltration vector)
+    .replace(/\s*style\s*=\s*"[^"]*"/gi, '')
+    .replace(/\s*style\s*=\s*'[^']*'/gi, '')
+    // Security #2: neutralise srcdoc and data: protocol URIs
+    .replace(/srcdoc\s*=\s*"[^"]*"/gi, '')
+    .replace(/srcdoc\s*=\s*'[^']*'/gi, '')
+    .replace(/(href|src|action)\s*=\s*"\s*data:[^"]*"/gi, '$1="#"')
+    .replace(/(href|src|action)\s*=\s*'\s*data:[^']*'/gi, "$1='#'");
 }

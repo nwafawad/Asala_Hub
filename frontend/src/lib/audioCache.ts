@@ -49,6 +49,20 @@ export async function getCachedAudioObjectUrl(audioUrl: string): Promise<string 
   }
 }
 
+/**
+ * Revokes a blob object URL created by getCachedAudioObjectUrl.
+ * Call this in the audio component's cleanup / useEffect return to prevent memory leaks (Perf #2).
+ */
+export function revokeAudioObjectUrl(url: string | null): void {
+  if (url && url.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.warn('Error revoking audio object URL:', err);
+    }
+  }
+}
+
 export async function evictAudioCache(audioUrl: string): Promise<boolean> {
   if (typeof window === 'undefined' || !('caches' in window) || !audioUrl) return false;
   try {

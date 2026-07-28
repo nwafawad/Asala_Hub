@@ -43,8 +43,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isExpired) {
           setUser(activeSession.user);
           setToken(decryptedToken);
+          // Bug #4: Only persist token to localStorage when the user opted into rememberMe
           if (typeof window !== 'undefined' && decryptedToken) {
-            localStorage.setItem('asala_token', decryptedToken);
+            if (activeSession.rememberMe) {
+              localStorage.setItem('asala_token', decryptedToken);
+            } else {
+              sessionStorage.setItem('asala_token', decryptedToken);
+            }
           }
           if (!navigator.onLine) {
             setIsOfflineSession(true);
@@ -89,8 +94,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await seedInitialMockData();
         const SEVEN_DAYS_MS = 3600000 * 24 * 7; // 7-Day Session Duration (FR-13)
 
-        // Derive in-memory AES-GCM key from user password (NFR-11, BR-7)
-        const derivedCryptoKey = await deriveKeyFromPassword(cleanPassword);
+        // Derive in-memory AES-GCM key from user password — mix in email for per-user salt (Security #1)
+        const derivedCryptoKey = await deriveKeyFromPassword(cleanPassword, undefined, cleanEmail);
         setInMemoryKey(derivedCryptoKey);
 
         if (navigator.onLine) {
@@ -196,17 +201,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const activeSession = await db.userSession.get('current_session');
         if (activeSession) {
-          // Verify PIN code if configured on active session
-          if (activeSession.pinCode && pinOrPassword !== 'extend') {
+          // Bug #3: PIN verification is always required when pinCode is configured — no bypass allowed
+          if (activeSession.pinCode) {
             if (pinOrPassword.trim() !== activeSession.pinCode.trim()) {
               showToast('Authentication Failed', 'error', 'Incorrect 4-digit PIN entered.');
               return false;
             }
           }
 
-          // Re-derive CryptoKey if password was provided during re-auth
-          if (pinOrPassword && pinOrPassword !== 'extend' && pinOrPassword.length >= 4) {
-            const reDerivedKey = await deriveKeyFromPassword(pinOrPassword);
+          // Re-derive CryptoKey if a full password was supplied during re-auth
+          // Pass user email so the salt matches what was used at login (Security #1 consistency)
+          if (pinOrPassword && pinOrPassword.length >= 4) {
+            const reDerivedKey = await deriveKeyFromPassword(
+              pinOrPassword,
+              undefined,
+              activeSession.user.email
+            );
             setInMemoryKey(reDerivedKey);
           }
 
@@ -229,9 +239,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [showToast]
   );
 
+  // Bug #3: extendSession directly extends expiry without touching PIN-gated renewSession
   const extendSession = useCallback(async () => {
-    await renewSession('extend');
-  }, [renewSession]);
+    try {
+      const SEVEN_DAYS_MS = 3600000 * 24 * 7;
+      const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
+      await db.userSession.update('current_session', { expiresAt });
+    } catch (err) {
+      console.error('Error extending session:', err);
+    }
+  }, []);
 
   const setQuickPin = useCallback(
     async (pin: string) => {

@@ -22,11 +22,21 @@ const SALT_STRING = 'AsalaHub_Salt_v2_2026_Intranet_Sec';
 
 /**
  * Derives an AES-GCM 256-bit CryptoKey using PBKDF2 with SHA-256 and 310,000 iterations.
+ * If userEmail is provided it is mixed into the salt to produce per-user unique key material (Security #1).
  */
-export async function deriveKeyFromPassword(password: string, customSalt?: string): Promise<CryptoKey> {
+export async function deriveKeyFromPassword(
+  password: string,
+  customSalt?: string,
+  userEmail?: string
+): Promise<CryptoKey> {
   const enc = new TextEncoder();
   const passwordBytes = enc.encode(password);
-  const saltBytes = enc.encode(customSalt || SALT_STRING);
+  // Build per-user salt: base string + optional user-scoped discriminator
+  const saltBase = customSalt || SALT_STRING;
+  const saltString = userEmail
+    ? `${saltBase}:${userEmail.toLowerCase().trim()}`
+    : saltBase;
+  const saltBytes = enc.encode(saltString);
 
   const baseKey = await crypto.subtle.importKey(
     'raw',
