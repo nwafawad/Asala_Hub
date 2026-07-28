@@ -13,3 +13,10 @@ export function getInitials(name?: string): string {
   }
   return parts[0].substring(0, 2).toUpperCase();
 }
+
+export function isEducatorUser(user: { role?: string; email?: string } | null | undefined): boolean {
+  if (!user) return false;
+  const role = (user.role || '').toLowerCase();
+  const email = (user.email || '').toLowerCase();
+  return role === 'educator' || email.includes('educator') || email.includes('prof') || email.includes('teacher');
+}

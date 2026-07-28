@@ -18,6 +18,7 @@ import { useSync } from '@/context/SyncContext';
 import { useAuth } from '@/context/AuthContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { startViewTransition } from '@/lib/view-transition';
+import { isEducatorUser } from '@/lib/utils';
 import { SettingsView } from '@/components/shell/SettingsView';
 import { db, seedInitialMockData } from '@/lib/db';
 import { BookOpen, FileText, CheckCircle2, Award, Clock, ArrowRight, Play, Sparkles, Layers } from 'lucide-react';
@@ -92,7 +93,7 @@ export default function Home() {
     );
   }
 
-  const isEducator = user?.role === 'educator';
+  const isEducator = isEducatorUser(user);
 
   return (
     <AppShell onTabChange={() => setOverrideTabState(null)}>

@@ -37,9 +37,10 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
     try {
       const result = await login(email, password, rememberMe);
       if (result.success) {
-        // Bug #1: resolve role from IndexedDB user profile, not email string matching
-        const userObj = await db.users.where('email').equalsIgnoreCase(email).first();
-        const role = userObj?.role ?? 'student';
+        const cleanEmail = email.trim().toLowerCase();
+        const userObj = await db.users.where('email').equalsIgnoreCase(cleanEmail).first();
+        const isEducatorEmail = cleanEmail.includes('educator') || cleanEmail.includes('prof') || cleanEmail.includes('teacher');
+        const role = userObj?.role || (isEducatorEmail ? 'educator' : 'student');
         onSuccess(role);
       } else {
         setError(result.error || t.auth.invalidCredentials);
@@ -49,6 +50,11 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const fillDemoAccount = (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword('password123');
   };
 
   return (
@@ -87,6 +93,29 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
             {t.auth.loginTitle}
           </h1>
           <p className="text-xs text-muted-foreground">{t.auth.loginSubtitle}</p>
+        </div>
+
+        {/* Demo Quick-Fill Buttons */}
+        <div className="p-3 rounded-xl bg-muted/40 border border-border flex flex-col gap-2">
+          <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider text-center">
+            Quick Demo Accounts (Click to Fill)
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => fillDemoAccount('educator@asalahub.edu')}
+              className="px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-colors cursor-pointer text-center"
+            >
+              🎓 Educator Demo
+            </button>
+            <button
+              type="button"
+              onClick={() => fillDemoAccount('student@asalahub.edu')}
+              className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold transition-colors cursor-pointer text-center"
+            >
+              📖 Student Demo
+            </button>
+          </div>
         </div>
 
         {/* Inline Non-Blocking Credential Error Alert */}

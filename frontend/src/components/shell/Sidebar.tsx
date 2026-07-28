@@ -15,7 +15,7 @@ import {
   BookPlus,
   Award,
 } from 'lucide-react';
-import { cn, getInitials } from '@/lib/utils';
+import { cn, getInitials, isEducatorUser } from '@/lib/utils';
 
 import { useSync } from '@/context/SyncContext';
 
@@ -30,7 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
   const { pendingCount } = useSync();
 
   const navItems = React.useMemo(() => {
-    const isEducator = user?.role === 'educator';
+    const isEducator = isEducatorUser(user);
     if (isEducator) {
       return [
         {

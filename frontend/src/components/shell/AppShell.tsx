@@ -8,6 +8,7 @@ import { startViewTransition } from '@/lib/view-transition';
 import { useStorage } from '@/context/StorageContext';
 import { useSync } from '@/context/SyncContext';
 import { useAuth } from '@/context/AuthContext';
+import { isEducatorUser } from '@/lib/utils';
 import { AlertTriangle, HardDrive, RefreshCw, WifiOff } from 'lucide-react';
 
 interface AppShellProps {
@@ -17,18 +18,22 @@ interface AppShellProps {
 
 export const AppShell: React.FC<AppShellProps> = ({ children, onTabChange }) => {
   const { user } = useAuth();
-  const defaultTab = user?.role === 'educator' ? 'curriculum' : 'dashboard';
+  const isEducator = isEducatorUser(user);
+  const defaultTab = isEducator ? 'curriculum' : 'dashboard';
   const [activeTab, setActiveTabState] = useState<string>(defaultTab);
   const { isNearFull, isQueueFull, usedMb, quotaMb } = useStorage();
   const { syncNow, isOnline } = useSync();
 
   useEffect(() => {
-    if (user?.role === 'educator' && (activeTab === 'dashboard' || activeTab === 'courses')) {
+    if (isEducator && (activeTab === 'dashboard' || activeTab === 'courses')) {
       setActiveTabState('curriculum');
-    } else if (user?.role === 'student' && activeTab === 'curriculum') {
+    } else if (
+      !isEducator &&
+      (activeTab === 'curriculum' || activeTab === 'gradeBook' || activeTab === 'roster' || activeTab === 'analytics')
+    ) {
       setActiveTabState('courses');
     }
-  }, [user?.role]);
+  }, [isEducator, activeTab]);
 
   const handleSetActiveTab = (tab: string) => {
     if (onTabChange) onTabChange(tab);

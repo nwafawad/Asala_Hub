@@ -187,6 +187,35 @@ export const db = new AsalaHubDatabase();
 
 export async function seedInitialMockData() {
   try {
+    await db.users.bulkPut([
+      {
+        id: 'user-educator-1',
+        email: 'educator@asalahub.edu',
+        fullName: 'Prof. Tariq Al-Mansoor',
+        role: 'educator',
+        preferredLanguage: 'en',
+      },
+      {
+        id: 'user-student-1',
+        email: 'student@asalahub.edu',
+        fullName: 'Sami Mansoor',
+        role: 'student',
+        preferredLanguage: 'en',
+      },
+    ]);
+
+    // Self-heal current active session if cached with legacy student role
+    const currentSession = await db.userSession.get('current_session');
+    if (
+      currentSession &&
+      (currentSession.user.email.includes('educator') || currentSession.user.email.includes('prof'))
+    ) {
+      if (currentSession.user.role !== 'educator') {
+        currentSession.user.role = 'educator';
+        await db.userSession.put(currentSession);
+      }
+    }
+
     const existingCohorts = await db.cachedCohorts.count();
     if (existingCohorts === 0) {
       await db.cachedCohorts.bulkPut([
