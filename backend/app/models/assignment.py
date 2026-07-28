@@ -25,10 +25,15 @@ class Assignment(TimestampModel, table=True):
     """
     Database model representing an assignment assigned inside a specific course.
     """
+    __table_args__ = (
+        Index("idx_assignment_course_due", "course_id", "due_date"),
+    )
+
     course_id: uuid.UUID = Field(foreign_key="course.id", ondelete="CASCADE", nullable=False, index=True)
     title: str
     description: str
     due_date: datetime
+
 
     # Relationships
     course: "Course" = Relationship(back_populates="assignments")

@@ -103,16 +103,15 @@ class RoleChecker:
 
     def __call__(
         self,
-        current_user: Union[User, UserAuthClaims] = Depends(get_current_user_claims)
-    ) -> Union[User, UserAuthClaims]:
+        current_user: User = Depends(get_current_user)
+    ) -> User:
         """
         Enforce the role restrictions against the currently logged-in user.
         
         Raises:
             PermissionDeniedError: 403 Forbidden if the user's role is not allowed.
         """
-        user_role = getattr(current_user, "role", None)
-        if user_role not in self.allowed_roles:
+        if current_user.role not in self.allowed_roles:
             raise PermissionDeniedError("You do not have permission to perform this action")
         return current_user
 
@@ -132,6 +131,7 @@ def require_admin(current_user: User = Depends(require_role(UserRole.admin))) ->
     Dependency helper to enforce that the authenticated user has the Admin role.
     """
     return current_user
+
 
 
 
