@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { startViewTransition } from '@/lib/view-transition';
 import { db, seedInitialMockData, type CachedCourse, type CachedModule } from '@/lib/db';
 import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { useStorage } from '@/context/StorageContext';
@@ -33,6 +34,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
   const { t, language } = useI18n();
   const { showToast } = useOverlay();
   const { usedMb, quotaMb, usagePercent, daysSinceLastSync, refreshStorageEstimate } = useStorage();
+  const { isOfflineSession, token } = useAuth();
 
   const [courses, setCourses] = useState<CachedCourse[]>([]);
   const [modulesMap, setModulesMap] = useState<Record<string, CachedModule[]>>({});
@@ -46,7 +48,8 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
     try {
       await seedInitialMockData();
 
-      if (typeof window !== 'undefined' && navigator.onLine) {
+      const isOfflineToken = token ? token.startsWith('offline-token-') : false;
+      if (typeof window !== 'undefined' && navigator.onLine && !isOfflineSession && !isOfflineToken) {
         try {
           const res = await api.get('/courses/');
           if (res.data && Array.isArray(res.data)) {
@@ -87,7 +90,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshStorageEstimate, isOfflineSession, token]);
 
   const [filterTab, setFilterTab] = useState<'all' | 'downloaded' | 'in_progress' | 'completed'>('all');
   const [sortBy, setSortBy] = useState<'code' | 'title' | 'progress' | 'size'>('code');

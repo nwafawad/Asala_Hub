@@ -30,7 +30,11 @@ api.interceptors.response.use(
   error => {
     if (error.response && error.response.status === 401) {
       if (typeof window !== 'undefined' && navigator.onLine) {
-        window.dispatchEvent(new CustomEvent('asala:session-expired'));
+        const token = localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token');
+        // Do NOT trigger session expired modal for offline dummy tokens or when unauthenticated
+        if (token && !token.startsWith('offline-token-')) {
+          window.dispatchEvent(new CustomEvent('asala:session-expired'));
+        }
       }
     }
     return Promise.reject(error);

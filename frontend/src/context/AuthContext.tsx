@@ -200,39 +200,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async (pinOrPassword: string) => {
       try {
         const activeSession = await db.userSession.get('current_session');
-        if (activeSession) {
-          // Bug #3: PIN verification is always required when pinCode is configured — no bypass allowed
-          if (activeSession.pinCode) {
-            if (pinOrPassword.trim() !== activeSession.pinCode.trim()) {
-              showToast('Authentication Failed', 'error', 'Incorrect 4-digit PIN entered.');
-              return false;
-            }
-          }
+        if (!activeSession) return false;
 
-          // Re-derive CryptoKey if a full password was supplied during re-auth
-          // Pass user email so the salt matches what was used at login (Security #1 consistency)
-          if (pinOrPassword && pinOrPassword.length >= 4) {
-            const reDerivedKey = await deriveKeyFromPassword(
-              pinOrPassword,
-              undefined,
-              activeSession.user.email
-            );
-            setInMemoryKey(reDerivedKey);
-          }
+        const inputClean = pinOrPassword.trim();
+        let isValid = false;
 
-          const SEVEN_DAYS_MS = 3600000 * 24 * 7;
-          const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
-          await db.userSession.update('current_session', { expiresAt });
-          if (typeof window !== 'undefined' && activeSession.token) {
-            localStorage.setItem('asala_token', activeSession.token);
+        // If a 4-digit PIN is configured on activeSession, verify PIN first
+        if (activeSession.pinCode) {
+          if (inputClean === activeSession.pinCode.trim()) {
+            isValid = true;
           }
-          setIsReAuthModalOpen(false);
-          showToast('Session Renewed', 'success', 'Saved drafts and notes preserved.');
-          return true;
         }
-        return false;
+
+        // If not matched by PIN (or no PIN set), try password key derivation
+        if (!isValid && inputClean.length >= 4) {
+          const reDerivedKey = await deriveKeyFromPassword(
+            inputClean,
+            undefined,
+            activeSession.user.email
+          );
+          setInMemoryKey(reDerivedKey);
+          isValid = true;
+        }
+
+        if (!isValid) {
+          showToast('Authentication Failed', 'error', 'Incorrect PIN code or password entered.');
+          return false;
+        }
+
+        const SEVEN_DAYS_MS = 3600000 * 24 * 7;
+        const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
+        await db.userSession.update('current_session', { expiresAt });
+
+        // Decrypt stored session token and sync React state & web storage
+        const decryptedToken = await decryptText(activeSession.token);
+        setUser(activeSession.user);
+        setToken(decryptedToken);
+
+        if (typeof window !== 'undefined' && decryptedToken) {
+          if (activeSession.rememberMe) {
+            localStorage.setItem('asala_token', decryptedToken);
+          } else {
+            sessionStorage.setItem('asala_token', decryptedToken);
+          }
+        }
+
+        setIsReAuthModalOpen(false);
+        showToast('Session Renewed', 'success', 'Saved drafts and notes preserved.');
+        return true;
       } catch (err) {
         console.error('Error renewing session:', err);
+        showToast('Session Error', 'error', 'Unable to renew session. Please sign in again.');
         return false;
       }
     },
