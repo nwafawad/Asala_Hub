@@ -45,8 +45,10 @@ class Submission(TimestampModel, SoftDeleteMixin, table=True):
     """
     __table_args__ = (
         Index("idx_submission_assignment_student", "assignment_id", "student_id"),
+        Index("idx_submission_conflict_unresolved", "sync_status", "is_deleted", "resolution_status"),
         UniqueConstraint("assignment_id", "student_id", name="uq_submission_assignment_student"),
     )
+
 
     assignment_id: uuid.UUID = Field(foreign_key="assignment.id", ondelete="CASCADE", nullable=False, index=True)
     student_id: uuid.UUID = Field(foreign_key="user.id", ondelete="CASCADE", nullable=False, index=True)
@@ -60,7 +62,16 @@ class Submission(TimestampModel, SoftDeleteMixin, table=True):
         )
     )
     grade: Optional[float] = Field(default=None, nullable=True)
+    resolution_status: Optional[str] = Field(default=None, nullable=True, index=True)
+    resolved_by: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id", nullable=True)
+    resolved_at: Optional[datetime] = Field(default=None, nullable=True)
+    resolution_note: Optional[str] = Field(default=None, nullable=True)
+
 
     # Relationships
     assignment: Assignment = Relationship(back_populates="submissions")
-    student: "User" = Relationship(back_populates="submissions")
+    student: "User" = Relationship(
+        back_populates="submissions",
+        sa_relationship_kwargs={"primaryjoin": "Submission.student_id == User.id"}
+    )
+

@@ -26,6 +26,8 @@ class ModuleUpdate(BaseModel):
     order_index: Optional[int] = Field(default=None, ge=0)
 
 
+from typing import Optional, Dict, Any
+
 class ModuleRead(BaseModel):
     """
     Schema representing read-only Module information.
@@ -36,10 +38,12 @@ class ModuleRead(BaseModel):
     content_type: ContentType
     content: str
     order_index: int
+    media_variants: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 
 
 class ModuleSyllabusRead(BaseModel):

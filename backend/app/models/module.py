@@ -1,7 +1,7 @@
 import uuid
 from enum import Enum
-from typing import TYPE_CHECKING
-from sqlmodel import Field, Relationship, Column, Index
+from typing import TYPE_CHECKING, Optional, Dict, Any
+from sqlmodel import Field, Relationship, Column, Index, JSON
 import sqlalchemy as sa
 
 from app.models.base import TimestampModel
@@ -21,7 +21,7 @@ class ContentType(str, Enum):
 class Module(TimestampModel, table=True):
     """
     Database model representing a single study module inside a course.
-    Contains content and an order index to represent ordering inside a course list.
+    Contains content, order index, and media variants.
     """
     __table_args__ = (
         Index("idx_module_course_order", "course_id", "order_index"),
@@ -37,6 +37,8 @@ class Module(TimestampModel, table=True):
     )
     content: str
     order_index: int
+    media_variants: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON, nullable=True))
 
     # Relationships
     course: "Course" = Relationship(back_populates="modules")
+

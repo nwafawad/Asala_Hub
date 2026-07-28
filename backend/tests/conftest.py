@@ -98,3 +98,31 @@ def student_token_headers_fixture(test_student: User) -> dict[str, str]:
     """
     token = create_access_token(subject=test_student.id, role=test_student.role)
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(name="test_admin")
+def test_admin_fixture(session: Session) -> User:
+    """
+    Creates and returns a test admin user.
+    """
+    admin_user = User(
+        full_name="Admin Test User",
+        email="admin.test@asalahub.dev",
+        password_hash=get_password_hash("TestPassword123"),
+        role=UserRole.admin,
+        preferred_language="en"
+    )
+    session.add(admin_user)
+    session.commit()
+    session.refresh(admin_user)
+    return admin_user
+
+
+@pytest.fixture(name="admin_token_headers")
+def admin_token_headers_fixture(test_admin: User) -> dict[str, str]:
+    """
+    Generates Authorization headers containing a valid JWT token for the test admin.
+    """
+    token = create_access_token(subject=test_admin.id, role=test_admin.role)
+    return {"Authorization": f"Bearer {token}"}
+

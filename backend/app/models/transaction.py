@@ -29,9 +29,10 @@ class TransactionLog(TimestampModel, table=True):
         sa_column=Column(
             sa.BigInteger,
             sa.Sequence("tx_log_server_seq"),
-            nullable=False,
+            nullable=True,
         )
     )
+
     server_received_at: datetime = Field(default_factory=get_naive_utc_now, nullable=False, index=True)
     client_timestamp: datetime = Field(index=True)
     synced_at: Optional[datetime] = Field(default=None, nullable=True, index=True)
