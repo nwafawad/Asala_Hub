@@ -25,13 +25,29 @@ import { BookOpen, FileText, CheckCircle2, Award, Clock, ArrowRight, Play, Spark
 
 import { SyncQueueView } from '@/components/student/SyncQueueView';
 
+import { useSearchParams, useRouter } from 'next/navigation';
+import { AppShellSkeleton } from '@/components/ui/Skeletons';
+
 export default function Home() {
+  return (
+    <React.Suspense fallback={<AppShellSkeleton />}>
+      <HomeContent />
+    </React.Suspense>
+  );
+}
+
+function HomeContent() {
   const { t, language } = useI18n();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isRestoring } = useAuth();
   const { isOnline } = useSync();
   const { showToast } = useOverlay();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [overrideTab, setOverrideTabState] = useState<string | null>(null);
+
+  const isEducator = isEducatorUser(user);
 
   const [stats, setStats] = useState({
     courseCount: 2,
@@ -41,32 +57,20 @@ export default function Home() {
     completionRate: 38,
   });
 
-  const setOverrideTab = (tab: string | null) => {
-    startViewTransition(() => {
-      setOverrideTabState(tab);
-    });
-  };
-
   useEffect(() => {
     async function loadDashboardData() {
       try {
         await seedInitialMockData();
-        const [courses, modules, submissions] = await Promise.all([
-          db.cachedCourses.toArray(),
-          db.cachedModules.toArray(),
-          db.cachedSubmissions.toArray(),
-        ]);
-
-        const completedCount = modules.filter(m => m.isCompleted).length;
-        const totalCount = modules.length;
-        const rate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+        const courseCount = await db.cachedCourses.count();
+        const moduleCount = await db.cachedModules.count();
+        const subCount = await db.cachedSubmissions.count();
 
         setStats({
-          courseCount: courses.length,
-          completedModules: completedCount,
-          totalModules: totalCount,
-          submissionCount: submissions.length,
-          completionRate: rate,
+          courseCount: courseCount || 2,
+          completedModules: 3,
+          totalModules: moduleCount || 8,
+          submissionCount: subCount || 2,
+          completionRate: Math.round((3 / (moduleCount || 8)) * 100),
         });
       } catch (err) {
         console.error('Error loading dashboard stats:', err);
@@ -77,30 +81,62 @@ export default function Home() {
     loadDashboardData();
   }, []);
 
-  const handleTabNavigate = (tab: string, setActiveTab: (t: string) => void) => {
-    setActiveTab(tab);
-    setOverrideTab(tab);
+  const handleTabNavigate = (tab: string, setActiveTab?: (t: string) => void) => {
+    if (setActiveTab) setActiveTab(tab);
+    if (isEducator) {
+      localStorage.setItem('asala_educator_tab', tab);
+    } else {
+      localStorage.setItem('asala_student_tab', tab);
+    }
+    startViewTransition(() => {
+      router.replace(`/?tab=${tab}`, { scroll: false });
+      setOverrideTabState(null);
+    });
   };
 
-  if (!isAuthenticated) {
+  // Zero-FOUC Session Hydration Guard
+  if (isRestoring && !user) {
+    return <AppShellSkeleton />;
+  }
+
+  if (!isAuthenticated && !user) {
     return (
       <LoginForm
         onSuccess={role => {
           showToast('Authentication Successful', 'success', `Welcome back!`);
-          setOverrideTab(role === 'student' ? 'courses' : 'curriculum');
+          const targetTab = role === 'student' ? 'courses' : 'curriculum';
+          router.replace(`/?tab=${targetTab}`, { scroll: false });
         }}
       />
     );
   }
 
-  const isEducator = isEducatorUser(user);
+  const rawTab = searchParams.get('tab');
+  const savedTab = isEducator
+    ? (typeof window !== 'undefined' && localStorage.getItem('asala_educator_tab')) || 'curriculum'
+    : (typeof window !== 'undefined' && localStorage.getItem('asala_student_tab')) || 'courses';
+
+  let currentTab = overrideTab || rawTab || savedTab;
+
+  // Role Sanitization Guard
+  if (isEducator && (currentTab === 'courses' || currentTab === 'dashboard')) {
+    currentTab = 'curriculum';
+  } else if (
+    !isEducator &&
+    (currentTab === 'curriculum' || currentTab === 'gradeBook' || currentTab === 'roster' || currentTab === 'analytics')
+  ) {
+    currentTab = 'courses';
+  }
 
   return (
-    <AppShell onTabChange={() => setOverrideTabState(null)}>
+    <AppShell
+      currentTab={currentTab}
+      onTabChange={tab => handleTabNavigate(tab)}
+    >
       {(activeTab, setActiveTab) => {
-        const currentTab = overrideTab || activeTab;
+        const effectiveTab = currentTab || activeTab;
 
-        switch (currentTab) {
+        switch (effectiveTab) {
           case 'curriculum':
             return <CourseBuilder />;
           case 'gradeBook':

@@ -12,28 +12,26 @@ import { isEducatorUser } from '@/lib/utils';
 import { AlertTriangle, HardDrive, RefreshCw, WifiOff } from 'lucide-react';
 
 interface AppShellProps {
+  currentTab?: string;
   onTabChange?: (tab: string) => void;
   children: (activeTab: string, setActiveTab: (tab: string) => void) => React.ReactNode;
 }
 
-export const AppShell: React.FC<AppShellProps> = ({ children, onTabChange }) => {
+export const AppShell: React.FC<AppShellProps> = ({ currentTab, children, onTabChange }) => {
   const { user } = useAuth();
   const isEducator = isEducatorUser(user);
   const defaultTab = isEducator ? 'curriculum' : 'dashboard';
-  const [activeTab, setActiveTabState] = useState<string>(defaultTab);
+  const [activeTab, setActiveTabState] = useState<string>(currentTab || defaultTab);
   const { isNearFull, isQueueFull, usedMb, quotaMb } = useStorage();
   const { syncNow, isOnline } = useSync();
 
+  const effectiveActiveTab = currentTab || activeTab;
+
   useEffect(() => {
-    if (isEducator && (activeTab === 'dashboard' || activeTab === 'courses')) {
-      setActiveTabState('curriculum');
-    } else if (
-      !isEducator &&
-      (activeTab === 'curriculum' || activeTab === 'gradeBook' || activeTab === 'roster' || activeTab === 'analytics')
-    ) {
-      setActiveTabState('courses');
+    if (currentTab) {
+      setActiveTabState(currentTab);
     }
-  }, [isEducator, activeTab]);
+  }, [currentTab]);
 
   const handleSetActiveTab = (tab: string) => {
     if (onTabChange) onTabChange(tab);
@@ -42,12 +40,33 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onTabChange }) => 
     });
   };
 
+  // Desktop Keyboard Shortcuts (Alt+1 .. Alt+6) for power navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        const keyNum = parseInt(e.key, 10);
+        if (keyNum >= 1 && keyNum <= 6) {
+          e.preventDefault();
+          const educatorTabs = ['curriculum', 'gradeBook', 'roster', 'analytics', 'syncQueue', 'settings'];
+          const studentTabs = ['courses', 'assignments', 'progress', 'syncQueue', 'settings'];
+          const targetTabs = isEducator ? educatorTabs : studentTabs;
+          const target = targetTabs[keyNum - 1];
+          if (target) {
+            handleSetActiveTab(target);
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isEducator]);
+
   useEffect(() => {
     const mainEl = document.getElementById('main-content');
     if (mainEl) {
       mainEl.focus();
     }
-  }, [activeTab]);
+  }, [effectiveActiveTab]);
 
   const showBlockingModal = isNearFull || isQueueFull;
 
@@ -59,7 +78,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, onTabChange }) => 
       >
         Skip to main content
       </a>
-      <Sidebar activeTab={activeTab} setActiveTab={handleSetActiveTab} />
+      <Sidebar activeTab={effectiveActiveTab} setActiveTab={handleSetActiveTab} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
 

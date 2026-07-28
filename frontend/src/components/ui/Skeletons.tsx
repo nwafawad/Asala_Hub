@@ -43,3 +43,43 @@ export const SkeletonList: React.FC<{ count?: number }> = ({ count = 3 }) => {
     </div>
   );
 };
+
+export const AppShellSkeleton: React.FC = () => {
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col antialiased">
+      <header className="h-16 border-b border-border bg-card/80 px-6 flex items-center justify-between sticky top-0 z-30">
+        <div className="flex items-center gap-3 flex-1 max-w-md">
+          <Skeleton className="h-9 w-full rounded-lg" />
+        </div>
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-8 w-28 rounded-lg" />
+          <Skeleton className="h-8 w-20 rounded-lg" />
+          <Skeleton className="h-8 w-8 rounded-full" />
+        </div>
+      </header>
+      <div className="flex-1 flex">
+        <aside className="w-64 border-r border-border p-4 hidden md:flex flex-col gap-3 shrink-0">
+          <Skeleton className="h-10 w-full rounded-xl" />
+          <Skeleton className="h-8 w-full rounded-lg" />
+          <Skeleton className="h-8 w-full rounded-lg" />
+          <Skeleton className="h-8 w-full rounded-lg" />
+          <Skeleton className="h-8 w-full rounded-lg" />
+        </aside>
+        <main className="flex-1 p-6 flex flex-col gap-6 max-w-7xl mx-auto w-full">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-7 w-48 rounded-lg" />
+              <Skeleton className="h-4 w-64 rounded-md" />
+            </div>
+            <Skeleton className="h-10 w-32 rounded-xl" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+};

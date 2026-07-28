@@ -6,12 +6,15 @@ import { db, seedInitialMockData, type IndexedDBUser, type UserSession } from '@
 import { deriveKeyFromPassword, setInMemoryKey, zeroKey, encryptText, decryptText } from '@/lib/crypto';
 import { useOverlay } from './OverlayContext';
 
+import { isEducatorUser } from '@/lib/utils';
+
 interface AuthContextType {
   user: IndexedDBUser | null;
   token: string | null;
   isAuthenticated: boolean;
   isOfflineSession: boolean;
   isReAuthModalOpen: boolean;
+  isRestoring: boolean;
   login: (email: string, pass: string, rememberMe: boolean) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   renewSession: (pinOrPassword: string) => Promise<boolean>;
@@ -25,8 +28,27 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<IndexedDBUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [isRestoring, setIsRestoring] = useState<boolean>(true);
+  const [user, setUser] = useState<IndexedDBUser | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const cachedRole = localStorage.getItem('asala_role');
+    const cachedEmail = localStorage.getItem('asala_email');
+    const cachedName = localStorage.getItem('asala_name');
+    if (cachedRole && cachedEmail) {
+      return {
+        id: 'boot-user',
+        email: cachedEmail,
+        fullName: cachedName || cachedEmail.split('@')[0],
+        role: cachedRole as 'student' | 'educator',
+        preferredLanguage: 'en',
+      };
+    }
+    return null;
+  });
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token');
+  });
   const [isOfflineSession, setIsOfflineSession] = useState<boolean>(false);
   const [isReAuthModalOpen, setIsReAuthModalOpen] = useState<boolean>(false);
   const { showToast } = useOverlay();
@@ -36,22 +58,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await seedInitialMockData();
       const sessions = await db.userSession.toArray();
-      const activeSession = sessions[0];
+      const activeSession =
+        (await db.userSession.get('current_session')) ||
+        sessions.find(s => s.id === 'current_session') ||
+        sessions[0];
 
       if (activeSession) {
         const isExpired = new Date(activeSession.expiresAt).getTime() < Date.now();
         const decryptedToken = await decryptText(activeSession.token);
         if (!isExpired) {
-          setUser(activeSession.user);
+          let freshUser = await db.users.where('email').equalsIgnoreCase(activeSession.user.email).first();
+          if (!freshUser) freshUser = activeSession.user;
+
+          if (isEducatorUser(freshUser)) {
+            freshUser.role = 'educator';
+          }
+
+          setUser(freshUser);
           setToken(decryptedToken);
-          // Bug #4: Only persist token to localStorage when the user opted into rememberMe
-          if (typeof window !== 'undefined' && decryptedToken) {
-            if (activeSession.rememberMe) {
+
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('asala_role', freshUser.role);
+            localStorage.setItem('asala_email', freshUser.email);
+            localStorage.setItem('asala_name', freshUser.fullName);
+            if (decryptedToken && activeSession.rememberMe) {
               localStorage.setItem('asala_token', decryptedToken);
-            } else {
-              sessionStorage.setItem('asala_token', decryptedToken);
             }
           }
+
           if (!navigator.onLine) {
             setIsOfflineSession(true);
             showToast('Offline Mode Active', 'warning', 'Signed in with your last saved session.');
@@ -64,6 +98,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       console.error('Error restoring user session:', err);
+    } finally {
+      setIsRestoring(false);
     }
   }, [showToast]);
 
@@ -201,6 +237,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(async () => {
     localStorage.removeItem('asala_token');
+    localStorage.removeItem('asala_role');
+    localStorage.removeItem('asala_email');
+    localStorage.removeItem('asala_name');
     sessionStorage.removeItem('asala_token');
     zeroKey(); // Zero in-memory crypto key on logout (BR-7)
     await db.userSession.clear();
@@ -301,6 +340,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: newRole,
       };
       setUser(updatedUser);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('asala_role', newRole);
+      }
       await db.users.put(updatedUser);
 
       const activeSession = await db.userSession.get('current_session');
@@ -320,6 +362,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAuthenticated: !!user && !!token,
       isOfflineSession,
       isReAuthModalOpen,
+      isRestoring,
       login,
       logout,
       renewSession,
@@ -334,6 +377,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       token,
       isOfflineSession,
       isReAuthModalOpen,
+      isRestoring,
       login,
       logout,
       renewSession,
