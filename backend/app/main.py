@@ -14,9 +14,10 @@ from sqlmodel import Session, select
 from app.core.exceptions import DomainException, domain_exception_handler
 from app.core.middleware import security_and_logging_middleware, setup_cors
 from app.core.database import get_session
-from app.routers import auth, courses, modules, assignments, sync
+from app.routers import auth, courses, modules, assignments, sync, admin
 
 # Configure system logger
+
 logger = logging.getLogger("asala_hub")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -63,3 +64,5 @@ app.include_router(courses.router)
 app.include_router(modules.router)
 app.include_router(assignments.router)
 app.include_router(sync.router)
+app.include_router(admin.router)
+

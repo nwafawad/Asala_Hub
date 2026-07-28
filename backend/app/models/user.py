@@ -17,6 +17,8 @@ class UserRole(str, Enum):
     """
     student = "student"
     educator = "educator"
+    admin = "admin"
+
 
 
 class User(TimestampModel, table=True):
@@ -36,5 +38,9 @@ class User(TimestampModel, table=True):
 
     # Relationships
     courses: List["Course"] = Relationship(back_populates="educator")
-    submissions: List["Submission"] = Relationship(back_populates="student")
+    submissions: List["Submission"] = Relationship(
+        back_populates="student",
+        sa_relationship_kwargs={"primaryjoin": "User.id == Submission.student_id"}
+    )
     transaction_logs: List["TransactionLog"] = Relationship(back_populates="user")
+

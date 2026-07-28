@@ -121,6 +121,14 @@ def require_role(*roles: UserRole):
     return RoleChecker(list(roles))
 
 
+def require_admin(current_user: User = Depends(require_role(UserRole.admin))) -> User:
+    """
+    Dependency helper to enforce that the authenticated user has the Admin role.
+    """
+    return current_user
+
+
+
 # Resource Verification Dependencies
 
 def get_valid_course(
