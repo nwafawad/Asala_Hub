@@ -185,26 +185,9 @@ export class AsalaHubDatabase extends Dexie {
 
 export const db = new AsalaHubDatabase();
 
-export async function seedInitialMockData() {
+export async function initializeDatabase() {
   try {
-    await db.users.bulkPut([
-      {
-        id: 'user-educator-1',
-        email: 'educator@asalahub.edu',
-        fullName: 'Prof. Tariq Al-Mansoor',
-        role: 'educator',
-        preferredLanguage: 'en',
-      },
-      {
-        id: 'user-student-1',
-        email: 'student@asalahub.edu',
-        fullName: 'Sami Mansoor',
-        role: 'student',
-        preferredLanguage: 'en',
-      },
-    ]);
-
-    // Self-heal current active session if cached with legacy student role
+    // Database schema initialization & session role verification
     const currentSession = await db.userSession.get('current_session');
     if (
       currentSession &&
@@ -215,67 +198,12 @@ export async function seedInitialMockData() {
         await db.userSession.put(currentSession);
       }
     }
-
-    const existingCohorts = await db.cachedCohorts.count();
-    if (existingCohorts === 0) {
-      await db.cachedCohorts.bulkPut([
-        {
-          id: 'cohort-cs101-a',
-          name: 'CS101 - Section A (Fall 2026)',
-          courseId: 'cs101',
-          educatorId: 'user-educator-1',
-          studentCount: 3,
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: 'cohort-se202-b',
-          name: 'SE202 - Section B (Fall 2026)',
-          courseId: 'se202',
-          educatorId: 'user-educator-1',
-          studentCount: 2,
-          updatedAt: new Date().toISOString(),
-        },
-      ]);
-
-      await db.cohortEnrollments.bulkPut([
-        {
-          id: 'cohort-cs101-a_user-student-1',
-          cohortId: 'cohort-cs101-a',
-          studentId: 'user-student-1',
-          studentName: 'Tariq Al-Mansoor',
-          studentEmail: 'tariq.student@asalahub.edu',
-          status: 'active',
-          adminFlags: ['Scholarship Grantee', 'Offline Device Sync Enabled'],
-          gradeAverage: 88.5,
-          lastActiveAt: new Date().toISOString(),
-        },
-        {
-          id: 'cohort-cs101-a_user-student-2',
-          cohortId: 'cohort-cs101-a',
-          studentId: 'user-student-2',
-          studentName: 'Amina Khalil',
-          studentEmail: 'amina.k@asalahub.edu',
-          status: 'active',
-          adminFlags: ['Honor Roll'],
-          gradeAverage: 94.0,
-          lastActiveAt: new Date().toISOString(),
-        },
-        {
-          id: 'cohort-cs101-a_user-student-3',
-          cohortId: 'cohort-cs101-a',
-          studentId: 'user-student-3',
-          studentName: 'Zayd Hassan',
-          studentEmail: 'zayd.h@asalahub.edu',
-          status: 'suspended',
-          adminFlags: ['Pending Fee Clearance'],
-          gradeAverage: 65.0,
-          lastActiveAt: new Date().toISOString(),
-        },
-      ]);
-    }
   } catch (err) {
-    console.warn('Error seeding mock cohort data:', err);
+    console.warn('Error initializing database:', err);
   }
 }
+
+// Backwards-compatibility alias for initializeDatabase
+export const seedInitialMockData = initializeDatabase;
 
 

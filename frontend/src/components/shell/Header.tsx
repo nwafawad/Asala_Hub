@@ -12,11 +12,10 @@ import { Search, Sun, Moon, Languages, LogOut, User } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 import { getInitials, isEducatorUser } from '@/lib/utils';
-import { Shield } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { t, toggleLanguage } = useI18n();
-  const { user, isOfflineSession, logout, switchRole } = useAuth();
+  const { user, isOfflineSession, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const isEducator = isEducatorUser(user);
@@ -69,19 +68,6 @@ export const Header: React.FC = () => {
             <StatusPill label={t.auth.signedInOffline} variant="warning" />
           )}
 
-          <button
-            onClick={() => switchRole(isEducator ? 'student' : 'educator')}
-            className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
-              isEducator
-                ? 'bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20'
-                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20'
-            }`}
-            title="Click to Switch Role Mode"
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span>{isEducator ? '🎓 Educator Mode' : '📖 Student Mode'}</span>
-          </button>
-
           <SyncIndicator />
 
           <button
@@ -130,13 +116,6 @@ export const Header: React.FC = () => {
                     <p className="text-xs font-bold text-foreground">{user.fullName}</p>
                     <p className="text-[10px] text-muted-foreground">{user.email} ({isEducator ? 'Educator' : 'Student'})</p>
                   </div>
-                  <DropdownMenu.Item
-                    onClick={() => switchRole(isEducator ? 'student' : 'educator')}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-foreground hover:bg-muted cursor-pointer outline-none"
-                  >
-                    <Shield className="w-3.5 h-3.5 text-primary" />
-                    <span>Switch to {isEducator ? 'Student Mode' : 'Educator Mode'}</span>
-                  </DropdownMenu.Item>
                   <DropdownMenu.Item
                     onClick={logout}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-rose-500 hover:bg-rose-500/10 cursor-pointer outline-none"
