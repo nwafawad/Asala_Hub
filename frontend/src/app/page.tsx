@@ -46,6 +46,11 @@ function HomeContent() {
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [overrideTab, setOverrideTabState] = useState<string | null>(null);
+  const [hasMounted, setHasMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const isEducator = isEducatorUser(user);
 
@@ -94,8 +99,8 @@ function HomeContent() {
     });
   };
 
-  // Zero-FOUC Session Hydration Guard
-  if (isRestoring && !user) {
+  // Zero-FOUC & Hydration Mismatch Guard
+  if (!hasMounted || (isRestoring && !user)) {
     return <AppShellSkeleton />;
   }
 
