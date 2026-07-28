@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 
 export type ToastType = 'success' | 'warning' | 'error' | 'info';
 
@@ -31,8 +31,13 @@ const OverlayContext = createContext<OverlayContextType | undefined>(undefined);
 export const OverlayProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [activeModal, setActiveModal] = useState<ModalOptions | null>(null);
+  const timersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const removeToast = useCallback((id: string) => {
+    if (timersRef.current.has(id)) {
+      clearTimeout(timersRef.current.get(id)!);
+      timersRef.current.delete(id);
+    }
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
@@ -42,10 +47,19 @@ export const OverlayProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     setToasts(prev => [...prev, newToast]);
 
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       removeToast(id);
     }, 4000);
+
+    timersRef.current.set(id, timer);
   }, [removeToast]);
+
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach(timer => clearTimeout(timer));
+      timersRef.current.clear();
+    };
+  }, []);
 
   const openModal = useCallback((options: ModalOptions) => {
     setActiveModal(options);

@@ -70,6 +70,11 @@ export default function Home() {
     loadDashboardData();
   }, []);
 
+  const handleTabNavigate = (tab: string, setActiveTab: (t: string) => void) => {
+    setActiveTab(tab);
+    setOverrideTab(tab);
+  };
+
   if (!isAuthenticated) {
     return (
       <LoginForm
@@ -82,34 +87,70 @@ export default function Home() {
   }
 
   return (
-    <AppShell>
+    <AppShell onTabChange={() => setOverrideTabState(null)}>
       {(activeTab, setActiveTab) => {
         const currentTab = overrideTab || activeTab;
 
-        if (currentTab === 'courses') {
-          return (
-            <CourseBrowser
-              onOpenAssignment={_id => setOverrideTab('assignments')}
-            />
-          );
+        switch (currentTab) {
+          case 'courses':
+            return (
+              <CourseBrowser
+                onOpenAssignment={_id => handleTabNavigate('assignments', setActiveTab)}
+              />
+            );
+          case 'assignments':
+            return (
+              <AssignmentWorkspace
+                onBack={() => handleTabNavigate('courses', setActiveTab)}
+              />
+            );
+          case 'progress':
+            return <ProgressTracker />;
+          case 'settings':
+            return <SettingsView />;
+          case 'dashboard':
+          default:
+            return (
+              <DashboardView
+                user={user}
+                isOnline={isOnline}
+                isLoading={isLoading}
+                stats={stats}
+                t={t}
+                onNavigate={tab => handleTabNavigate(tab, setActiveTab)}
+              />
+            );
         }
-        if (currentTab === 'assignments') {
-          return (
-            <AssignmentWorkspace
-              onBack={() => setOverrideTab('courses')}
-            />
-          );
-        }
-        if (currentTab === 'progress') {
-          return <ProgressTracker />;
-        }
-        if (currentTab === 'settings') {
-          return <SettingsView />;
-        }
+      }}
+    </AppShell>
+  );
+}
 
-        // Clean, 100% Student-Centric Dashboard View (Zero Technical Jargon)
-        return (
-          <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">
+// Extracted Sub-component for Dashboard View readability
+interface DashboardViewProps {
+  user: any;
+  isOnline: boolean;
+  isLoading: boolean;
+  stats: {
+    courseCount: number;
+    completedModules: number;
+    totalModules: number;
+    submissionCount: number;
+    completionRate: number;
+  };
+  t: any;
+  onNavigate: (tab: string) => void;
+}
+
+const DashboardView: React.FC<DashboardViewProps> = ({
+  user,
+  isOnline,
+  isLoading,
+  stats,
+  t,
+  onNavigate,
+}) => (
+  <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">
             {/* Header Greeting Banner */}
             <div className="p-6 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex flex-col gap-1">
@@ -151,7 +192,7 @@ export default function Home() {
               </div>
 
               <button
-                onClick={() => setOverrideTab('courses')}
+                onClick={() => onNavigate('courses')}
                 className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs self-start md:self-center shrink-0"
               >
                 <span>Continue Reading</span>
@@ -211,7 +252,7 @@ export default function Home() {
                     Upcoming Assignment Deadlines
                   </h3>
                   <button
-                    onClick={() => setOverrideTab('assignments')}
+                    onClick={() => onNavigate('assignments')}
                     className="text-xs text-primary font-semibold hover:underline cursor-pointer"
                   >
                     View All Workspace
@@ -236,7 +277,7 @@ export default function Home() {
                     </div>
 
                     <button
-                      onClick={() => setOverrideTab('assignments')}
+                      onClick={() => onNavigate('assignments')}
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs shrink-0 self-start sm:self-center"
                     >
                       <span>Open Workspace</span>
@@ -300,8 +341,4 @@ export default function Home() {
               </div>
             </div>
           </div>
-        );
-      }}
-    </AppShell>
-  );
-}
+);

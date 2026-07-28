@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -10,19 +10,28 @@ import { useSync } from '@/context/SyncContext';
 import { AlertTriangle, HardDrive, RefreshCw } from 'lucide-react';
 
 interface AppShellProps {
+  onTabChange?: (tab: string) => void;
   children: (activeTab: string, setActiveTab: (tab: string) => void) => React.ReactNode;
 }
 
-export const AppShell: React.FC<AppShellProps> = ({ children }) => {
+export const AppShell: React.FC<AppShellProps> = ({ children, onTabChange }) => {
   const [activeTab, setActiveTabState] = useState<string>('dashboard');
   const { isNearFull, isQueueFull, usedMb, quotaMb } = useStorage();
   const { syncNow } = useSync();
 
   const handleSetActiveTab = (tab: string) => {
+    if (onTabChange) onTabChange(tab);
     startViewTransition(() => {
       setActiveTabState(tab);
     });
   };
+
+  useEffect(() => {
+    const mainEl = document.getElementById('main-content');
+    if (mainEl) {
+      mainEl.focus();
+    }
+  }, [activeTab]);
 
   const showBlockingModal = isNearFull || isQueueFull;
 

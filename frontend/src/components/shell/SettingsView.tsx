@@ -54,11 +54,11 @@ export const SettingsView: React.FC = () => {
 
   const handleDeleteLocalData = async () => {
     try {
-      await db.delete();
+      await logout();
       localStorage.clear();
       sessionStorage.clear();
+      await db.delete();
       showToast('Local Data Purged', 'info', 'All IndexedDB records cleared.');
-      await logout();
     } catch (err) {
       console.error('Delete data failed:', err);
       showToast('Purge Failed', 'error', 'Could not clear local database.');

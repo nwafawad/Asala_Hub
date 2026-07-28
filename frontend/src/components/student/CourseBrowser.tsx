@@ -98,17 +98,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
     loadCourses();
   }, [loadCourses]);
 
-  // "/" Keyboard shortcut listener for focusing search input
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '/' && document.activeElement !== searchInputRef.current) {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+
 
   const toggleCourseCache = async (course: CachedCourse) => {
     const newStatus = !course.isCachedOffline;
