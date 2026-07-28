@@ -45,6 +45,7 @@ interface AssignmentWorkspaceProps {
 
 export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack, assignmentId = 'assign-2' }) => {
   const { t, language } = useI18n();
+  const isRtl = language === 'ar';
   const { isOnline, addMockOfflineTransaction } = useSync();
   const { showToast } = useOverlay();
   const { user } = useAuth();
@@ -496,54 +497,54 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
               </button>
             </div>
 
-            {/* Rich-Text Formatting Toolbar with WCAG 2.1 AA aria-labels (NFR-7) */}
+            {/* Rich-Text Formatting Toolbar with WCAG 2.1 AA aria-labels (NFR-7) & LTR layout container */}
             {activeTab === 'write' && (
-              <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border">
+              <div className="flex flex-wrap items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border" dir="ltr">
                 <button
                   onClick={() => insertFormatting('**', '**')}
                   title={t.assignmentPage.toolbar.bold}
                   aria-label={t.assignmentPage.toolbar.bold}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
+                  className="min-h-[44px] min-w-[44px] p-2.5 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  <Bold className="w-3.5 h-3.5" />
+                  <Bold className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => insertFormatting('*', '*')}
                   title={t.assignmentPage.toolbar.italic}
                   aria-label={t.assignmentPage.toolbar.italic}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
+                  className="min-h-[44px] min-w-[44px] p-2.5 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  <Italic className="w-3.5 h-3.5" />
+                  <Italic className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => insertFormatting('## ')}
                   title={t.assignmentPage.toolbar.heading}
                   aria-label={t.assignmentPage.toolbar.heading}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
+                  className="min-h-[44px] min-w-[44px] p-2.5 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  <Heading2 className="w-3.5 h-3.5" />
+                  <Heading2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => insertFormatting('- ')}
                   title={t.assignmentPage.toolbar.list}
                   aria-label={t.assignmentPage.toolbar.list}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
+                  className="min-h-[44px] min-w-[44px] p-2.5 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  <List className="w-3.5 h-3.5" />
+                  <List className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => insertFormatting('```cpp\n', '\n```')}
                   title={t.assignmentPage.toolbar.code}
                   aria-label={t.assignmentPage.toolbar.code}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
+                  className="min-h-[44px] min-w-[44px] p-2.5 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  <Code className="w-3.5 h-3.5" />
+                  <Code className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => insertFormatting('> ')}
                   title="Blockquote"
                   aria-label="Insert blockquote"
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer font-serif italic text-xs font-bold px-1.5 focus:ring-2 focus:ring-primary/20"
+                  className="min-h-[44px] min-w-[44px] p-2.5 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer font-serif italic text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   "
                 </button>
@@ -551,7 +552,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
                   onClick={() => insertFormatting('| Column 1 | Column 2 |\n| --- | --- |\n| ', ' | ')}
                   title="Table Template"
                   aria-label="Insert markdown table template"
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer text-xs font-mono focus:ring-2 focus:ring-primary/20"
+                  className="min-h-[44px] min-w-[44px] p-2.5 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   田
                 </button>
@@ -569,9 +570,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
               const progressPct = Math.min(100, Math.round((words / targetWords) * 100));
 
               return (
-                <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-xl border border-border">
+                <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-muted/30 px-3 py-2 rounded-xl border border-border">
                   <span className="font-semibold text-foreground">{words}</span> words / <span className="font-semibold text-foreground">{chars}</span> chars
-                  <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden ml-1 hidden sm:block">
+                  <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden ml-1 rtl:mr-1 rtl:ml-0 hidden sm:block">
                     <div
                       className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${progressPct}%` }}
@@ -583,7 +584,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
             })()}
 
             {/* Live Autosave Indicator Ticker */}
-            <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-xl border border-border">
+            <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-muted/30 px-3 py-2 rounded-xl border border-border">
               <Save
                 className={`w-3.5 h-3.5 ${
                   saveStatus === 'saving'
@@ -608,12 +609,16 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
             ref={textareaRef}
             value={content}
             onChange={e => setContent(e.target.value)}
+            dir={isRtl ? 'rtl' : 'ltr'}
             rows={10}
-            className="w-full p-4 rounded-xl border border-border bg-background text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-y"
+            className="w-full p-4 rounded-xl border border-border bg-background text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-y rtl:text-right"
             placeholder="Type your assignment response here..."
           />
         ) : (
-          <div className="w-full min-h-[220px] p-5 rounded-xl border border-border bg-muted/20">
+          <div
+            dir={isRtl ? 'rtl' : 'ltr'}
+            className="w-full min-h-[220px] p-5 rounded-xl border border-border bg-muted/20 rtl:text-right"
+          >
             {parsedMarkdown}
           </div>
         )}
@@ -627,7 +632,8 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
             </h4>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="text-xs text-primary font-semibold hover:underline cursor-pointer"
+              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-3.5 py-2 text-xs text-primary font-semibold hover:bg-primary/10 rounded-xl transition-colors cursor-pointer"
+              aria-label="Add file attachment"
             >
               + Add File
             </button>

@@ -272,7 +272,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
                 await refreshStorageEstimate();
                 await loadCourses();
               }}
-              className="text-[10px] font-mono text-muted-foreground hover:text-rose-500 underline cursor-pointer"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-2 text-xs font-mono text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 border border-border/60 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer"
               aria-label="Purge stale synced storage"
             >
               Purge Stale Storage
@@ -504,7 +504,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
                             e.stopPropagation();
                             toggleCourseCache(course);
                           }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs min-h-[44px]"
                           title="Cache all remaining modules for offline access"
                         >
                           <Download className="w-3.5 h-3.5" />
@@ -530,8 +530,9 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
                               showToast('Cache Evicted', 'info', `${course.code} offline package evicted.`);
                             });
                           }}
-                          className="p-1.5 rounded-xl bg-muted text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-3 rounded-xl bg-muted text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                           title="Evict local offline package"
+                          aria-label={`Evict local offline package for ${course.code}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

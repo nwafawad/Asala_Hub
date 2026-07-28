@@ -12,23 +12,23 @@ interface StatusPillProps {
 
 const variantStyles: Record<StatusVariant, { pill: string; dot: string }> = {
   success: {
-    pill: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
+    pill: 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 font-semibold',
     dot: 'bg-emerald-500',
   },
   warning: {
-    pill: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
+    pill: 'bg-amber-500/15 text-amber-900 dark:text-amber-300 border-amber-500/30 font-semibold',
     dot: 'bg-amber-500',
   },
   danger: {
-    pill: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20',
+    pill: 'bg-rose-500/15 text-rose-900 dark:text-rose-300 border-rose-500/30 font-semibold',
     dot: 'bg-rose-500',
   },
   info: {
-    pill: 'bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/20',
+    pill: 'bg-sky-500/15 text-sky-900 dark:text-sky-300 border-sky-500/30 font-semibold',
     dot: 'bg-sky-500',
   },
   neutral: {
-    pill: 'bg-stone-500/10 text-stone-700 dark:text-stone-400 border-stone-500/20',
+    pill: 'bg-stone-500/15 text-stone-800 dark:text-stone-300 border-stone-500/30 font-semibold',
     dot: 'bg-stone-500',
   },
 };

@@ -137,7 +137,7 @@ export const SyncQueueView: React.FC = () => {
             onClick={handleManualSync}
             disabled={isActionLoading || syncState === 'syncing' || pendingCount === 0}
             title={pendingCount === 0 ? 'Queue is clean — Nothing to sync' : 'Trigger Sync'}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-xs"
+            className="inline-flex items-center justify-center min-h-[44px] gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncState === 'syncing' ? 'animate-spin' : ''}`} />
             <span>{t.syncStatus.syncNow || 'Trigger Sync'}</span>
@@ -146,7 +146,7 @@ export const SyncQueueView: React.FC = () => {
           <button
             onClick={handleSimulateLog}
             disabled={isActionLoading}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary text-secondary-foreground border border-border text-xs font-semibold hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center justify-center min-h-[44px] gap-2 px-4 py-2.5 rounded-xl bg-secondary text-secondary-foreground border border-border text-xs font-semibold hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
           >
             <PlusCircle className="w-3.5 h-3.5 text-primary" />
             <span>Simulate Offline Log</span>
@@ -156,7 +156,7 @@ export const SyncQueueView: React.FC = () => {
             <button
               onClick={handleClearSynced}
               disabled={isActionLoading}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 text-xs font-semibold hover:bg-destructive/20 transition-colors cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center justify-center min-h-[44px] gap-2 px-4 py-2.5 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 text-xs font-semibold hover:bg-destructive/20 transition-colors cursor-pointer disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>{t.syncStatus.clearCompleted || 'Clear Synced'}</span>
