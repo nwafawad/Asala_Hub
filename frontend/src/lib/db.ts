@@ -52,7 +52,8 @@ export interface AttachmentFile {
   name: string;
   size: number;
   type: string;
-  dataUrl: string;
+  dataUrl?: string;          // Legacy Base64 — kept for backward compat with existing IndexedDB records
+  arrayBuffer?: ArrayBuffer; // Preferred: raw binary storage, ~33% smaller than Base64 (Perf #1)
 }
 
 export interface DraftSnapshot {

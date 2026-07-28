@@ -50,9 +50,16 @@ export const ProgressTracker: React.FC = () => {
 
   const handlePrintReceipt = React.useCallback(
     (sub: CachedSubmission) => {
-      const windowPrint = window.open('', '', 'width=600,height=400');
-      if (windowPrint) {
-        windowPrint.document.write(`
+      // UX #3: hidden iframe avoids popup blockers that silently suppress window.open()
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText =
+        'position:absolute;width:0;height:0;border:none;left:-9999px;top:-9999px;';
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(`
         <html>
           <head>
             <title>Offline Submission Receipt - ${sub.assignmentTitle}</title>
@@ -76,10 +83,19 @@ export const ProgressTracker: React.FC = () => {
           </body>
         </html>
       `);
-        windowPrint.document.close();
-        windowPrint.focus();
-        windowPrint.print();
+        doc.close();
+
+        // Allow browser to parse styles before triggering print dialog
+        setTimeout(() => {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          // Remove iframe from DOM once the print dialog closes
+          iframe.contentWindow?.addEventListener('afterprint', () => {
+            document.body.removeChild(iframe);
+          });
+        }, 300);
       }
+
       showToast('Receipt Printed', 'success', 'Official local submission receipt generated.');
     },
     [showToast]

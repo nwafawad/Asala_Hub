@@ -65,6 +65,8 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isFirstRender = useRef<boolean>(true);
+  // Bug #5: stable ref always holding the latest draftHistory — avoids stale closure in the autosave timeout
+  const draftHistoryRef = useRef<DraftSnapshot[]>([]);
 
   // Load existing draft & history from IndexedDB
   useEffect(() => {
@@ -131,6 +133,11 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
     return () => clearInterval(interval);
   }, [saveStatus]);
 
+  // Bug #5: keep draftHistoryRef current so autosave timeout always reads the latest history
+  useEffect(() => {
+    draftHistoryRef.current = draftHistory;
+  }, [draftHistory]);
+
   // Debounced 1.5s Auto-Save into Dexie IndexedDB with Draft History snapshots
   useEffect(() => {
     if (isFirstRender.current) {
@@ -146,15 +153,29 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
         const words = content.trim().split(/\s+/).filter(Boolean).length;
         const sizeKb = +(content.length / 1024).toFixed(2);
 
-        const newSnapshot: DraftSnapshot = {
-          id: `snap-${now.getTime()}`,
-          timestamp: now.toISOString(),
-          content,
-          wordCount: words,
-          sizeKb,
-        };
+        // Perf #2: only create a history snapshot on meaningful change
+        // (>= 10 word delta OR >= 60 seconds since last snapshot) to prevent rapid fill
+        const latestSnaps = draftHistoryRef.current;
+        const lastSnap = latestSnaps[0];
+        const wordDelta = Math.abs(words - (lastSnap?.wordCount ?? 0));
+        const secondsSinceLast = lastSnap
+          ? (now.getTime() - new Date(lastSnap.timestamp).getTime()) / 1000
+          : Infinity;
+        const shouldSnapshot = wordDelta >= 10 || secondsSinceLast >= 60;
 
-        const updatedHistory = [newSnapshot, ...draftHistory.slice(0, 9)];
+        const updatedHistory = shouldSnapshot
+          ? [
+              {
+                id: `snap-${now.getTime()}`,
+                timestamp: now.toISOString(),
+                content,
+                wordCount: words,
+                sizeKb,
+              } as DraftSnapshot,
+              ...latestSnaps.slice(0, 9),
+            ]
+          : latestSnaps;
+
         const compressed = compressPayload(content);
         const encryptedContent = await encryptText(compressed);
 
@@ -170,7 +191,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
           draftHistory: updatedHistory,
         });
 
-        setDraftHistory(updatedHistory);
+        if (shouldSnapshot) {
+          setDraftHistory(updatedHistory);
+        }
         setSaveStatus('saved');
         setSecondsAgo(0);
       } catch (err) {
@@ -204,7 +227,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
     }, 0);
   };
 
-  // Handle File Uploads & Conversion to IndexedDB Base64 DataUrl
+  // Handle File Uploads — store as raw ArrayBuffer (Perf #1: ~33% smaller than Base64 dataUrl)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -212,17 +235,17 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
     Array.from(files).forEach(file => {
       const reader = new FileReader();
       reader.onload = evt => {
-        const dataUrl = evt.target?.result as string;
+        const arrayBuffer = evt.target?.result as ArrayBuffer;
         const newAttachment: AttachmentFile = {
           name: file.name,
           size: file.size,
           type: file.type,
-          dataUrl,
+          arrayBuffer,
         };
         setAttachments(prev => [...prev, newAttachment]);
         showToast('File Attached Offline', 'info', `${file.name} saved to IndexedDB.`);
       };
-      reader.readAsDataURL(file);
+      reader.readAsArrayBuffer(file);
     });
     e.target.value = '';
   };

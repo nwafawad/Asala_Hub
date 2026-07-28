@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { db } from '@/lib/db';
 import { useI18n } from '@/context/I18nContext';
 import { useTheme } from 'next-themes';
 import { Layers, Lock, Mail, AlertCircle, CheckSquare, Square, LogIn, Languages, Sun, Moon } from 'lucide-react';
@@ -36,7 +37,9 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
     try {
       const result = await login(email, password, rememberMe);
       if (result.success) {
-        const role = email.toLowerCase().includes('layla') ? 'educator' : 'student';
+        // Bug #1: resolve role from IndexedDB user profile, not email string matching
+        const userObj = await db.users.where('email').equalsIgnoreCase(email).first();
+        const role = userObj?.role ?? 'student';
         onSuccess(role);
       } else {
         setError(result.error || t.auth.invalidCredentials);
