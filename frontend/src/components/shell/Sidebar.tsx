@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
   }, [t, user?.role]);
 
   return (
-    <aside className="w-64 border-r rtl:border-r-0 rtl:border-l border-border bg-card flex flex-col justify-between shrink-0 transition-colors">
+    <aside className="sticky top-0 h-screen w-64 border-r rtl:border-r-0 rtl:border-l border-border bg-card flex flex-col justify-between shrink-0 transition-colors overflow-y-auto z-40">
       <div className="p-6">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-primary text-primary-foreground shadow-sm">
@@ -92,16 +92,16 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={cn(
-                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer',
+                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer whitespace-nowrap overflow-hidden',
                   isActive
                     ? 'bg-primary/10 text-primary font-semibold'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'text-muted-foreground font-medium hover:bg-muted hover:text-foreground'
                 )}
               >
-                <Icon className={cn('w-4 h-4', isActive ? 'text-primary' : 'text-muted-foreground')} />
-                <span>{item.label}</span>
+                <Icon className={cn('w-4 h-4 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
+                <span className="truncate whitespace-nowrap">{item.label}</span>
                 {item.id === 'syncQueue' && pendingCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono ms-auto">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono ms-auto shrink-0">
                     {pendingCount}
                   </span>
                 )}
