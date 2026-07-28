@@ -2,9 +2,11 @@
 Offline Sync Engine Test Suite.
 
 Tests batch transaction processing, idempotency, schema versioning,
-version conflict detection, and BR-4 educator grade priority rules.
+BR-6 three-way content merge engine, request gzip decompression, and BR-4 educator grade priority.
 """
 
+import gzip
+import json
 import uuid
 from datetime import datetime, timezone
 from fastapi.testclient import TestClient
@@ -18,6 +20,24 @@ def test_sync_empty_batch(client: TestClient, student_token_headers):
     assert data["synced_count"] == 0
     assert data["error_count"] == 0
     assert data["results"] == []
+
+
+def test_sync_gzipped_payload_accepted(client: TestClient, student_token_headers):
+    """Test that POST /sync accepts gzipped request payloads with Content-Encoding: gzip header."""
+    batch_payload = {
+        "transactions": []
+    }
+    raw_json = json.dumps(batch_payload).encode("utf-8")
+    gzipped_bytes = gzip.compress(raw_json)
+
+    headers = dict(student_token_headers)
+    headers["Content-Encoding"] = "gzip"
+    headers["Content-Type"] = "application/json"
+
+    response = client.post("/sync", content=gzipped_bytes, headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["synced_count"] == 0
 
 
 def test_sync_submission_create_and_idempotency(
@@ -80,11 +100,181 @@ def test_sync_submission_create_and_idempotency(
     assert data2["results"][0]["server_sequence"] == seq1
 
 
+def test_sync_three_way_merge_non_conflicting(
+    client: TestClient, educator_token_headers, student_token_headers
+):
+    """Test BR-6 Three-Way Merge: Stale client version with non-overlapping line additions merges cleanly into server submission."""
+    # 1. Setup course, assignment
+    c_resp = client.post(
+        "/courses/",
+        json={"title": "Merge Test Course", "description": "BR-6 merge testing"},
+        headers=educator_token_headers
+    )
+    course_id = c_resp.json()["id"]
+
+    a_resp = client.post(
+        f"/courses/{course_id}/assignments",
+        json={"title": "Merge Assignment", "description": "3-way merge test", "due_date": "2026-12-31T23:59:59Z"},
+        headers=educator_token_headers
+    )
+    assignment_id = a_resp.json()["id"]
+
+    sub_id = str(uuid.uuid4())
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    # Device 1 syncs version 1
+    tx1 = str(uuid.uuid4())
+    client.post(
+        "/sync",
+        json={
+            "transactions": [
+                {
+                    "transaction_id": tx1,
+                    "entity_type": "submission",
+                    "entity_id": sub_id,
+                    "action": "CREATE",
+                    "payload": {"assignment_id": assignment_id, "content": "Paragraph 1: Introduction\n", "version": 1},
+                    "client_timestamp": now_str,
+                    "schema_version": 1
+                }
+            ]
+        },
+        headers=student_token_headers
+    )
+
+    # Server updates to version 2 (Device A appended Paragraph 2)
+    tx2 = str(uuid.uuid4())
+    client.post(
+        "/sync",
+        json={
+            "transactions": [
+                {
+                    "transaction_id": tx2,
+                    "entity_type": "submission",
+                    "entity_id": sub_id,
+                    "action": "UPDATE",
+                    "payload": {"assignment_id": assignment_id, "content": "Paragraph 1: Introduction\nParagraph 2: Main Body\n", "version": 2},
+                    "client_timestamp": now_str,
+                    "schema_version": 1
+                }
+            ]
+        },
+        headers=student_token_headers
+    )
+
+    # Device B sends stale edit (client_version 1) appending Paragraph 3
+    tx3 = str(uuid.uuid4())
+    merge_resp = client.post(
+        "/sync",
+        json={
+            "transactions": [
+                {
+                    "transaction_id": tx3,
+                    "entity_type": "submission",
+                    "entity_id": sub_id,
+                    "action": "UPDATE",
+                    "payload": {"assignment_id": assignment_id, "content": "Paragraph 1: Introduction\nParagraph 3: Conclusion\n", "version": 1},
+                    "client_timestamp": now_str,
+                    "schema_version": 1
+                }
+            ]
+        },
+        headers=student_token_headers
+    )
+    assert merge_resp.status_code == 200
+    merge_data = merge_resp.json()
+    assert merge_data["synced_count"] == 1
+    assert merge_data["results"][0]["status"] == "accepted"
+
+
+def test_sync_three_way_merge_overlapping_conflict(
+    client: TestClient, educator_token_headers, student_token_headers
+):
+    """Test BR-6 Three-Way Merge: Overlapping edit collision on the exact same line causes SyncStatus.conflict rejection."""
+    c_resp = client.post(
+        "/courses/",
+        json={"title": "Collision Course", "description": "Collision testing"},
+        headers=educator_token_headers
+    )
+    course_id = c_resp.json()["id"]
+
+    a_resp = client.post(
+        f"/courses/{course_id}/assignments",
+        json={"title": "Collision Assignment", "description": "Collision test", "due_date": "2026-12-31T23:59:59Z"},
+        headers=educator_token_headers
+    )
+    assignment_id = a_resp.json()["id"]
+
+    sub_id = str(uuid.uuid4())
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    # Initial submission v1
+    client.post(
+        "/sync",
+        json={
+            "transactions": [
+                {
+                    "transaction_id": str(uuid.uuid4()),
+                    "entity_type": "submission",
+                    "entity_id": sub_id,
+                    "action": "CREATE",
+                    "payload": {"assignment_id": assignment_id, "content": "Answer: Option A", "version": 1},
+                    "client_timestamp": now_str,
+                    "schema_version": 1
+                }
+            ]
+        },
+        headers=student_token_headers
+    )
+
+    # Server updates line to Option B (v2)
+    client.post(
+        "/sync",
+        json={
+            "transactions": [
+                {
+                    "transaction_id": str(uuid.uuid4()),
+                    "entity_type": "submission",
+                    "entity_id": sub_id,
+                    "action": "UPDATE",
+                    "payload": {"assignment_id": assignment_id, "content": "Answer: Option B", "version": 2},
+                    "client_timestamp": now_str,
+                    "schema_version": 1
+                }
+            ]
+        },
+        headers=student_token_headers
+    )
+
+    # Device B sends stale v1 changing same line to Option C
+    conflict_resp = client.post(
+        "/sync",
+        json={
+            "transactions": [
+                {
+                    "transaction_id": str(uuid.uuid4()),
+                    "entity_type": "submission",
+                    "entity_id": sub_id,
+                    "action": "UPDATE",
+                    "payload": {"assignment_id": assignment_id, "content": "Answer: Option C", "version": 1},
+                    "client_timestamp": now_str,
+                    "schema_version": 1
+                }
+            ]
+        },
+        headers=student_token_headers
+    )
+    assert conflict_resp.status_code == 200
+    conflict_data = conflict_resp.json()
+    assert conflict_data["error_count"] == 1
+    assert conflict_data["results"][0]["status"] == "rejected"
+    assert "BR-6 Version Conflict" in conflict_data["results"][0]["error"]
+
+
 def test_sync_educator_grade_write_br4(
     client: TestClient, educator_token_headers, student_token_headers
 ):
     """Test BR-4 rule: Educator grade mutation via sync is accepted and updates grade."""
-    # 1. Setup course, assignment, student submission
     c_resp = client.post(
         "/courses/",
         json={"title": "Grading Course", "description": "Grade testing"},
@@ -102,7 +292,6 @@ def test_sync_educator_grade_write_br4(
     sub_id = str(uuid.uuid4())
     now_str = datetime.now(timezone.utc).isoformat()
 
-    # Create submission via student sync
     sub_tx_id = str(uuid.uuid4())
     client.post(
         "/sync",
@@ -122,7 +311,6 @@ def test_sync_educator_grade_write_br4(
         headers=student_token_headers
     )
 
-    # Educator syncs grade write
     grade_tx_id = str(uuid.uuid4())
     grade_resp = client.post(
         "/sync",

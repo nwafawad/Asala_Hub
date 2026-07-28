@@ -44,14 +44,26 @@ app = FastAPI(
 )
 
 
+from fastapi.middleware.gzip import GZipMiddleware
+from app.core.middleware import (
+    security_and_logging_middleware,
+    gzip_request_decompression_middleware,
+    setup_cors,
+)
+
 # Register custom domain exception handlers
 app.add_exception_handler(DomainException, domain_exception_handler)
 
-# Mount HTTP security headers and request latency middleware
+# Add GZip compression middleware for HTTP responses > 500 bytes
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Mount HTTP request decompression, security headers, and request latency middleware
+app.middleware("http")(gzip_request_decompression_middleware)
 app.middleware("http")(security_and_logging_middleware)
 
 # Configure CORS origins
 setup_cors(app)
+
 
 
 import json

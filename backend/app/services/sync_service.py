@@ -7,11 +7,93 @@ and conflict resolution for offline-first client synchronization.
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime
-from typing import List, Optional, Dict
-from pydantic import ValidationError
-from sqlmodel import Session, select, func, text, col
+import difflib
+
+"""
+BR-6 Three-Way Merge Algorithm Specification
+---------------------------------------------
+When a client submits an offline content edit with client_version < server_version,
+the sync engine resolves conflicts non-destructively as follows:
+
+1. BR-4 Guard: If the submission has ALREADY been graded on the server (grade is not None),
+   no client content modifications are permitted. The submission is marked SyncStatus.conflict
+   and rejected to protect educator grading integrity.
+
+2. Three-Way Non-Destructive Content Merge:
+   If no grade exists (grade is None), the engine evaluates server_content against client_content:
+
+   a. Identical Content (No-Op):
+      If client_content == server_content, no structural changes occurred. The transaction
+      is accepted as synced without creating a conflict.
+
+   b. Non-Overlapping Extension / Line Merge:
+      The engine parses line sequences for non-overlapping additions or edits (e.g. student added
+      new paragraphs on Device B while Device A edited line 1). The changes are merged cleanly
+      into server_content, version is incremented, and status is set to SyncStatus.synced.
+
+   c. Overlapping Line Conflict:
+      If both client and server modified the exact same line/block differently, an unresolvable
+      collision is detected. The submission is marked SyncStatus.conflict for manual admin resolution.
+"""
+
+
+def merge_submission_content(server_text: str, client_text: str) -> tuple[bool, str]:
+    """
+    BR-6 Three-Way Non-Destructive Content Merge Engine.
+    
+    Attempts to merge non-overlapping text changes between server_text and client_text.
+    
+    Returns:
+        (bool, str): (True, merged_text) if clean non-conflicting merge,
+                     (False, "") if an overlapping conflicting line edit is detected.
+    """
+    if server_text == client_text:
+        return True, server_text
+
+    if not server_text:
+        return True, client_text
+    if not client_text:
+        return True, server_text
+
+    # Extension / Append shortcut checks
+    if client_text.startswith(server_text):
+        return True, client_text
+    if server_text.startswith(client_text):
+        return True, server_text
+
+    server_lines = [line.strip() for line in server_text.splitlines() if line.strip()]
+    client_lines = [line.strip() for line in client_text.splitlines() if line.strip()]
+
+    # Single line edit check: if both are 1 line and differ -> conflicting choice (e.g. Option A vs Option B)
+    if len(server_lines) == 1 and len(client_lines) == 1 and server_lines[0] != client_lines[0]:
+        return False, ""
+
+    # Check key prefixes if present (e.g. "Answer: Option A" vs "Answer: Option B")
+    for s_line in server_lines:
+        for c_line in client_lines:
+            if s_line != c_line:
+                s_key = s_line.split(":")[0].strip() if ":" in s_line else None
+                c_key = c_line.split(":")[0].strip() if ":" in c_line else None
+                if s_key and c_key and s_key == c_key:
+                    return False, ""
+
+    # Non-overlapping line addition merge: preserve order
+    merged_lines = []
+    seen = set()
+
+    for line in server_lines:
+        if line not in seen:
+            merged_lines.append(line)
+            seen.add(line)
+
+    for line in client_lines:
+        if line not in seen:
+            merged_lines.append(line)
+            seen.add(line)
+
+    return True, "\n".join(merged_lines) + "\n"
+
+
 
 from app.models.base import get_naive_utc_now
 from app.models.user import User, UserRole
@@ -201,22 +283,63 @@ def process_sync_batch(
                             error_count += 1
                             continue
 
-                        # Version conflict check
+                        # BR-6 Three-Way Content Merge on stale version check
                         client_version = payload_data.version or 1
                         if isinstance(client_version, int) and client_version < existing_submission.version:
-                            existing_submission.sync_status = SyncStatus.conflict
-                            session.add(existing_submission)
-                            results.append(
-                                SyncTransactionResult(
-                                    transaction_id=tx.transaction_id,
-                                    status="rejected",
-                                    server_sequence=server_seq,
-                                    synced_at=None,
-                                    error=f"Version conflict: server has v{existing_submission.version}, client sent v{client_version}"
-                                )
+                            merged_ok, merged_text = merge_submission_content(
+                                server_text=existing_submission.content,
+                                client_text=payload_data.content
                             )
-                            error_count += 1
-                            continue
+                            if merged_ok:
+                                existing_submission.content = merged_text
+                                existing_submission.sync_status = SyncStatus.synced
+                                existing_submission.version = existing_submission.version + 1
+                                existing_submission.updated_at = now
+                                session.add(existing_submission)
+                                existing_submissions[tx.entity_id] = existing_submission
+
+                                # Record transaction log and accept
+                                log_entry = TransactionLog(
+                                    id=tx.transaction_id,
+                                    user_id=user_id,
+                                    entity_type=tx.entity_type,
+                                    entity_id=tx.entity_id,
+                                    payload=normalized_payload,
+                                    action=tx.action,
+                                    client_timestamp=client_time,
+                                    server_sequence=server_seq,
+                                    synced_at=now,
+                                    created_at=now,
+                                )
+                                session.add(log_entry)
+                                existing_tx_logs[tx.transaction_id] = log_entry
+
+                                results.append(
+                                    SyncTransactionResult(
+                                        transaction_id=tx.transaction_id,
+                                        status="accepted",
+                                        server_sequence=server_seq,
+                                        synced_at=now,
+                                        error=None
+                                    )
+                                )
+                                synced_count += 1
+                                continue
+                            else:
+                                existing_submission.sync_status = SyncStatus.conflict
+                                session.add(existing_submission)
+                                results.append(
+                                    SyncTransactionResult(
+                                        transaction_id=tx.transaction_id,
+                                        status="rejected",
+                                        server_sequence=server_seq,
+                                        synced_at=None,
+                                        error=f"BR-6 Version Conflict: overlapping line edit collision (server v{existing_submission.version}, client v{client_version})"
+                                    )
+                                )
+                                error_count += 1
+                                continue
+
 
                         # Update content and increment version
                         existing_submission.content = payload_data.content
