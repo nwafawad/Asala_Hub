@@ -35,7 +35,8 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (typeof window !== 'undefined' && navigator.storage && navigator.storage.estimate) {
         const estimate = await navigator.storage.estimate();
         const used = Math.round(((estimate.usage || 0) / (1024 * 1024)) * 10) / 10;
-        const quota = Math.round(((estimate.quota || 524288000) / (1024 * 1024)) * 10) / 10;
+        const rawQuota = Math.round(((estimate.quota || 524288000) / (1024 * 1024)) * 10) / 10;
+        const quota = Math.min(500, rawQuota > 0 ? rawQuota : 500); // SRS app storage budget cap: 500 MB
         const remainingMb = quota - used;
         const percent = Math.min(100, Math.round((used / quota) * 100));
 

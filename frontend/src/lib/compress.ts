@@ -37,9 +37,10 @@ export function compressPayload(input: string): string {
     const uint8 = new Uint8Array(uint16.buffer, uint16.byteOffset, uint16.byteLength);
     
     let binary = '';
-    const len = uint8.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(uint8[i]);
+    const CHUNK_SIZE = 8192;
+    for (let i = 0; i < uint8.byteLength; i += CHUNK_SIZE) {
+      const chunk = uint8.subarray(i, i + CHUNK_SIZE);
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
     }
     const base64Str = typeof btoa !== 'undefined' ? btoa(binary) : Buffer.from(binary, 'binary').toString('base64');
     return `__ASALA_CMP__${base64Str}`;

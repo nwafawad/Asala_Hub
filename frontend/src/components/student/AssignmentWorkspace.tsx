@@ -40,9 +40,10 @@ import {
 
 interface AssignmentWorkspaceProps {
   onBack?: () => void;
+  assignmentId?: string;
 }
 
-export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack }) => {
+export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack, assignmentId = 'assign-2' }) => {
   const { t, language } = useI18n();
   const { isOnline, addMockOfflineTransaction } = useSync();
   const { showToast } = useOverlay();
@@ -68,11 +69,16 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
   // Bug #5: stable ref always holding the latest draftHistory — avoids stale closure in the autosave timeout
   const draftHistoryRef = useRef<DraftSnapshot[]>([]);
 
-  // Load existing draft & history from IndexedDB
+  // Load existing draft & history from IndexedDB strictly scoped by assignmentId
   useEffect(() => {
+    isFirstRender.current = true;
     async function loadDraft() {
       await seedInitialMockData();
-      const existing = await db.cachedSubmissions.get('sub-102');
+      const existing = await db.cachedSubmissions
+        .where('assignmentId')
+        .equals(assignmentId)
+        .first();
+
       if (existing) {
         let decompressed = content;
         if (existing.content) {
@@ -80,7 +86,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
           decompressed = decompressPayload(decrypted);
         }
         if (existing.content) setContent(decompressed);
-        if (existing.attachments) setAttachments(existing.attachments);
+        setAttachments(existing.attachments || []);
         if (existing.deviceConflictDrafts) setConflictDrafts(existing.deviceConflictDrafts);
         if (existing.draftHistory && existing.draftHistory.length > 0) {
           setDraftHistory(existing.draftHistory);
@@ -95,6 +101,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
           };
           setDraftHistory([initialSnapshot]);
         }
+      } else {
+        setAttachments([]);
+        setDraftHistory([]);
       }
     }
     loadDraft();
@@ -121,7 +130,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
 
     window.addEventListener('asala:version-conflict', handleVersionConflict);
     return () => window.removeEventListener('asala:version-conflict', handleVersionConflict);
-  }, []);
+  }, [assignmentId]);
 
   // Live Autosave relative time ticker (updates secondsAgo every second)
   useEffect(() => {
@@ -179,10 +188,11 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
         const compressed = compressPayload(content);
         const encryptedContent = await encryptText(compressed);
 
+        const targetSubId = `sub-${assignmentId}`;
         await db.cachedSubmissions.put({
-          id: 'sub-102',
-          assignmentId: 'assign-2',
-          assignmentTitle: 'Offline Transaction Log Architecture',
+          id: targetSubId,
+          assignmentId: assignmentId,
+          assignmentTitle: assignmentId === 'assign-1' ? 'Foundations of Aqeedah Homework' : 'Offline Transaction Log Architecture',
           studentName: user?.fullName || 'Asala Student',
           content: encryptedContent,
           attachments,

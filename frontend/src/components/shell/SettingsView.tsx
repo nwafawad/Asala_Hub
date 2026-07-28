@@ -6,6 +6,7 @@ import { useSync } from '@/context/SyncContext';
 import { db } from '@/lib/db';
 import { KeyRound, Lock, ShieldCheck, Check, Sparkles, User, HardDrive, Plus, RefreshCw, Download, Trash2, ShieldAlert, FileCheck } from 'lucide-react';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { isDebugMode } from '@/lib/debug';
 
 export const SettingsView: React.FC = () => {
   const { user, setQuickPin, logout } = useAuth();
@@ -262,17 +263,19 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Integrated Feature Engine Status Badges */}
-        <div className="flex flex-col gap-2 pt-2 border-t border-border">
-          <span className="text-xs font-semibold text-foreground">Integrated Offline Engine Modules</span>
-          <div className="flex flex-wrap gap-2">
-            <StatusPill label="Auth Gate & Role Auto-Route" variant="success" />
-            <StatusPill label="2s IndexedDB Auto-Save" variant="info" />
-            <StatusPill label="Offline Blob Attachments" variant="warning" />
-            <StatusPill label="In-Place Re-Auth Modal" variant="info" dotAnimation />
-            <StatusPill label="Printable Submission Receipts" variant="neutral" />
+        {/* Integrated Feature Engine Status Badges (Gated behind ?debug=true) */}
+        {isDebugMode() && (
+          <div className="flex flex-col gap-2 pt-2 border-t border-border">
+            <span className="text-xs font-semibold text-foreground">Integrated Offline Engine Modules</span>
+            <div className="flex flex-wrap gap-2">
+              <StatusPill label="Auth Gate & Role Auto-Route" variant="success" />
+              <StatusPill label="2s IndexedDB Auto-Save" variant="info" />
+              <StatusPill label="Offline Blob Attachments" variant="warning" />
+              <StatusPill label="In-Place Re-Auth Modal" variant="info" dotAnimation />
+              <StatusPill label="Printable Submission Receipts" variant="neutral" />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Data & Privacy Governance Section (CR-1, CR-2, CR-3) */}

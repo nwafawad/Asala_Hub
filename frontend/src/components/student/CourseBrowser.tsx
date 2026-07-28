@@ -488,30 +488,51 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-border flex items-center justify-between">
+                  <div className="pt-4 border-t border-border flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground font-medium">
                       {totalModsCount} {t.coursesPage.modules}
                     </span>
 
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        toggleCourseCache(course);
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
-                    >
-                      {course.isCachedOffline ? (
-                        <>
-                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                          <span>{t.coursesPage.evictCache}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Download className="w-3.5 h-3.5 text-primary" />
-                          <span>{t.coursesPage.downloadOffline}</span>
-                        </>
+                    <div className="flex items-center gap-2">
+                      {cachePct < 100 && (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            toggleCourseCache(course);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                          title="Cache all remaining modules for offline access"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>
+                            {cachePct > 0
+                              ? `Download Remaining (${totalModsCount - cachedModsCount})`
+                              : t.coursesPage.downloadOffline}
+                          </span>
+                        </button>
                       )}
-                    </button>
+
+                      {cachedModsCount > 0 && (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            // Evict cache for this course
+                            db.cachedCourses.update(course.id, { isCachedOffline: false }).then(async () => {
+                              const courseMods = modulesMap[course.id] || [];
+                              await Promise.all(
+                                courseMods.map(m => db.cachedModules.update(m.id, { isCachedOffline: false }))
+                              );
+                              await loadCourses();
+                              showToast('Cache Evicted', 'info', `${course.code} offline package evicted.`);
+                            });
+                          }}
+                          className="p-1.5 rounded-xl bg-muted text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                          title="Evict local offline package"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
