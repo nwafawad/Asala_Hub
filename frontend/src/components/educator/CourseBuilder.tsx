@@ -28,6 +28,48 @@ export const CourseBuilder: React.FC = () => {
   const { showToast } = useOverlay();
   const [courses, setCourses] = useState<CachedCourse[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [isCreatingCourse, setIsCreatingCourse] = useState<boolean>(false);
+
+  const handleSaveCourse = async (courseTitle: string, courseCode: string, titleAr?: string) => {
+    try {
+      const courseId = `course-${courseCode.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+      const timestamp = new Date().toISOString();
+
+      const newCourse: CachedCourse = {
+        id: courseId,
+        title: courseTitle,
+        titleAr: titleAr || undefined,
+        code: courseCode,
+        educatorName: 'Prof. Educator',
+        moduleCount: 0,
+        isCachedOffline: true,
+        sizeMb: 0.1,
+        updatedAt: timestamp,
+      };
+
+      await db.cachedCourses.put(newCourse);
+
+      // Log UPDATE_COURSE transaction (FR-9, FR-14)
+      const logItem: TransactionLogItem = {
+        offlineId: generateUUID(),
+        action: 'UPDATE_COURSE',
+        entityType: 'course',
+        entityId: courseId,
+        payload: newCourse as unknown as Record<string, unknown>,
+        timestamp,
+        status: 'pending',
+      };
+      await db.transactionLogs.add(logItem);
+
+      showToast('Course Created', 'success', 'New course saved locally to IndexedDB.');
+      setIsCreatingCourse(false);
+      setSelectedCourseId(courseId);
+      await loadCoursesAndModules();
+    } catch (err) {
+      console.error('Error creating new course:', err);
+      showToast('Course Creation Error', 'error', 'Failed to save course locally.');
+    }
+  };
   const [modules, setModules] = useState<CachedModule[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeEditorModule, setActiveEditorModule] = useState<CachedModule | null | 'new'>(null);
@@ -160,13 +202,22 @@ export const CourseBuilder: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setActiveEditorModule('new')}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs shrink-0 self-start md:self-center"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t.educator?.curriculum?.addModule || 'Create Module'}</span>
-        </button>
+        <div className="flex items-center gap-2 self-start md:self-center shrink-0">
+          <button
+            onClick={() => setIsCreatingCourse(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-primary/30 bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors cursor-pointer"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>+ New Course</span>
+          </button>
+          <button
+            onClick={() => setActiveEditorModule('new')}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t.educator?.curriculum?.addModule || 'Create Module'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Grid: Left Course Selector, Right Module List */}
@@ -178,9 +229,12 @@ export const CourseBuilder: React.FC = () => {
               <BookOpen className="w-4 h-4 text-primary" />
               <span>Assigned Courses</span>
             </h3>
-            <span className="text-xs font-mono font-bold text-muted-foreground px-2 py-0.5 rounded bg-muted">
-              {courses.length}
-            </span>
+            <button
+              onClick={() => setIsCreatingCourse(true)}
+              className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+            >
+              + Course
+            </button>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -292,6 +346,14 @@ export const CourseBuilder: React.FC = () => {
         </div>
       </div>
 
+      {/* Course Creator Modal */}
+      {isCreatingCourse && (
+        <CreateCourseModal
+          onSave={handleSaveCourse}
+          onClose={() => setIsCreatingCourse(false)}
+        />
+      )}
+
       {/* Module Editor Modal */}
       {activeEditorModule !== null && (
         <ModuleEditor
@@ -301,6 +363,94 @@ export const CourseBuilder: React.FC = () => {
           onClose={() => setActiveEditorModule(null)}
         />
       )}
+    </div>
+  );
+};
+
+interface CreateCourseModalProps {
+  onSave: (title: string, code: string, titleAr?: string) => Promise<void>;
+  onClose: () => void;
+}
+
+const CreateCourseModal: React.FC<CreateCourseModalProps> = ({ onSave, onClose }) => {
+  const [title, setTitle] = useState('');
+  const [titleAr, setTitleAr] = useState('');
+  const [code, setCode] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !code.trim()) return;
+    setIsSaving(true);
+    await onSave(title, code, titleAr);
+    setIsSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="max-w-md w-full p-6 rounded-2xl bg-card border border-border shadow-2xl flex flex-col gap-5">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <h3 className="text-base font-bold font-heading text-foreground">Author New Course</h3>
+          <button onClick={onClose} className="p-1 rounded hover:bg-muted text-muted-foreground cursor-pointer">
+            ✕
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-foreground">Course Code *</label>
+            <input
+              type="text"
+              value={code}
+              onChange={e => setCode(e.target.value)}
+              placeholder="e.g. CS301"
+              required
+              className="px-3.5 py-2 rounded-xl bg-background border border-border text-xs focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground font-mono uppercase"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-foreground">Course Title (EN) *</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="e.g. Advanced Operating Systems"
+              required
+              className="px-3.5 py-2 rounded-xl bg-background border border-border text-xs focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-foreground">Arabic Title (Optional)</label>
+            <input
+              type="text"
+              value={titleAr}
+              onChange={e => setTitleAr(e.target.value)}
+              placeholder="أنظمة التشغيل المتقدمة"
+              dir="rtl"
+              className="px-3.5 py-2 rounded-xl bg-background border border-border text-xs focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-border text-xs font-semibold text-muted-foreground hover:bg-muted cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 disabled:opacity-50 cursor-pointer"
+            >
+              {isSaving ? 'Creating...' : 'Create Course Offline'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

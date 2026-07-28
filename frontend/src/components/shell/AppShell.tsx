@@ -7,6 +7,7 @@ import { ToastContainer } from '@/components/ui/Toast';
 import { startViewTransition } from '@/lib/view-transition';
 import { useStorage } from '@/context/StorageContext';
 import { useSync } from '@/context/SyncContext';
+import { useAuth } from '@/context/AuthContext';
 import { AlertTriangle, HardDrive, RefreshCw, WifiOff } from 'lucide-react';
 
 interface AppShellProps {
@@ -15,9 +16,19 @@ interface AppShellProps {
 }
 
 export const AppShell: React.FC<AppShellProps> = ({ children, onTabChange }) => {
-  const [activeTab, setActiveTabState] = useState<string>('dashboard');
+  const { user } = useAuth();
+  const defaultTab = user?.role === 'educator' ? 'curriculum' : 'dashboard';
+  const [activeTab, setActiveTabState] = useState<string>(defaultTab);
   const { isNearFull, isQueueFull, usedMb, quotaMb } = useStorage();
   const { syncNow, isOnline } = useSync();
+
+  useEffect(() => {
+    if (user?.role === 'educator' && (activeTab === 'dashboard' || activeTab === 'courses')) {
+      setActiveTabState('curriculum');
+    } else if (user?.role === 'student' && activeTab === 'curriculum') {
+      setActiveTabState('courses');
+    }
+  }, [user?.role]);
 
   const handleSetActiveTab = (tab: string) => {
     if (onTabChange) onTabChange(tab);

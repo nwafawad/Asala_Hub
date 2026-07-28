@@ -97,12 +97,7 @@ export default function Home() {
   return (
     <AppShell onTabChange={() => setOverrideTabState(null)}>
       {(activeTab, setActiveTab) => {
-        let currentTab = overrideTab || activeTab;
-
-        // If Educator, default landing tab is 'curriculum' if on generic student dashboard
-        if (isEducator && (currentTab === 'dashboard' || currentTab === 'courses')) {
-          currentTab = 'curriculum';
-        }
+        const currentTab = overrideTab || activeTab;
 
         switch (currentTab) {
           case 'curriculum':
