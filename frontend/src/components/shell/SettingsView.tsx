@@ -10,12 +10,13 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { isDebugMode } from '@/lib/debug';
 
 export const SettingsView: React.FC = () => {
-  const { user, setQuickPin, logout } = useAuth();
+  const { user, setQuickPin, hasPinConfigured, logout } = useAuth();
   const { t } = useI18n();
   const { showToast } = useOverlay();
   const { pendingCount, addMockOfflineTransaction, syncNow } = useSync();
 
   const [pin, setPin] = useState<string>('');
+  const [confirmPin, setConfirmPin] = useState<string>('');
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState<boolean>(false);
 
@@ -74,13 +75,29 @@ export const SettingsView: React.FC = () => {
       return;
     }
 
+    if (pin !== confirmPin) {
+      showToast('PIN Mismatch', 'warning', 'The 4-digit PIN codes do not match.');
+      return;
+    }
+
     try {
       await setQuickPin(pin);
       setIsSaved(true);
       setPin('');
+      setConfirmPin('');
       setTimeout(() => setIsSaved(false), 3000);
     } catch (err) {
       showToast('Failed to Save PIN', 'error', 'Could not update your security settings.');
+    }
+  };
+
+  const handleRemovePin = async () => {
+    try {
+      await setQuickPin(null);
+      setPin('');
+      setConfirmPin('');
+    } catch (err) {
+      showToast('Failed to Remove PIN', 'error', 'Could not remove quick PIN.');
     }
   };
 
@@ -97,29 +114,32 @@ export const SettingsView: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Quick PIN Setup Card */}
+        {/* Quick PIN Setup & Management Card */}
         <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col justify-between gap-6">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div className="p-3 rounded-xl bg-primary/10 text-primary">
                 <KeyRound className="w-6 h-6" />
               </div>
-              <StatusPill label="Offline Quick Access" variant="info" />
+              <StatusPill
+                label={hasPinConfigured ? 'PIN Active (••••)' : 'No PIN Set'}
+                variant={hasPinConfigured ? 'success' : 'info'}
+              />
             </div>
 
             <div className="flex flex-col gap-1">
               <h3 className="text-base font-bold font-heading text-foreground">
-                Set 4-Digit Quick PIN
+                4-Digit Quick PIN Management
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Configure a 4-digit passcode for instant offline session renewal without needing your full password when disconnected.
+                Configure or update a 4-digit passcode for instant offline session renewal when disconnected.
               </p>
             </div>
 
-            <form onSubmit={handleSavePin} className="flex flex-col gap-3 mt-2">
+            <form onSubmit={handleSavePin} className="flex flex-col gap-3 mt-1">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-foreground">
-                  4-Digit PIN Code
+                  New 4-Digit PIN Code
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -136,22 +156,59 @@ export const SettingsView: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 cursor-pointer shadow-xs mt-1"
-              >
-                {isSaved ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>PIN Updated Successfully!</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Save 4-Digit PIN</span>
-                  </>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-foreground">
+                  Confirm 4-Digit PIN Code
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="password"
+                    maxLength={4}
+                    pattern="[0-9]*"
+                    inputMode="numeric"
+                    value={confirmPin}
+                    onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                    placeholder="••••"
+                    className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-background text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+                {confirmPin.length > 0 && confirmPin !== pin && (
+                  <span className="text-[10px] text-rose-500 font-semibold mt-0.5">
+                    PIN codes do not match
+                  </span>
                 )}
-              </button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-2 mt-1">
+                <button
+                  type="submit"
+                  disabled={!pin || pin.length < 4 || pin !== confirmPin}
+                  className="flex-1 h-10 w-full rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                >
+                  {isSaved ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>PIN Saved!</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>{hasPinConfigured ? 'Update 4-Digit PIN' : 'Save 4-Digit PIN'}</span>
+                    </>
+                  )}
+                </button>
+
+                {hasPinConfigured && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePin}
+                    className="h-10 px-4 rounded-xl border border-border bg-muted/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    Remove PIN
+                  </button>
+                )}
+              </div>
             </form>
           </div>
 

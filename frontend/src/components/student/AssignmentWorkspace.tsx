@@ -69,8 +69,15 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [draftHistory, setDraftHistory] = useState<DraftSnapshot[]>([]);
   const [conflictDrafts, setConflictDrafts] = useState<DraftSnapshot[]>([]);
-  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  const [gradeData, setGradeData] = useState<{
+    score?: number;
+    maxScore?: number;
+    feedback?: string;
+    gradeStatus?: string;
+    gradedAt?: string;
+  } | null>(null);
 
   // Live autosave state
   const [saveStatus, setSaveStatus] = useState<'saving' | 'saved'>('saved');
@@ -118,6 +125,17 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
         }
         setContent(decompressed);
         setAttachments(existing.attachments || []);
+        if (existing.score !== undefined && existing.score !== null) {
+          setGradeData({
+            score: existing.score,
+            maxScore: existing.maxScore || 100,
+            feedback: existing.feedback,
+            gradeStatus: existing.gradeStatus || 'graded',
+            gradedAt: existing.gradedAt,
+          });
+        } else {
+          setGradeData(null);
+        }
         if (existing.syncStatus === 'pending' || existing.syncStatus === 'synced') {
           setIsSubmitted(true);
         }
@@ -128,6 +146,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
       } else {
         setAttachments([]);
         setDraftHistory([]);
+        setGradeData(null);
       }
     }
     loadDraft();
@@ -417,8 +436,14 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
         )}
 
         <StatusPill
-          label={isSubmitted ? t.assignmentPage.submittedOfflineState : 'Drafting Offline'}
-          variant={isSubmitted ? 'success' : 'warning'}
+          label={
+            gradeData?.score !== undefined
+              ? `Graded (${gradeData.score}/${gradeData.maxScore || 100})`
+              : isSubmitted
+              ? 'Submitted (Pending Educator Review)'
+              : 'Drafting Offline'
+          }
+          variant={gradeData?.score !== undefined ? 'success' : isSubmitted ? 'info' : 'warning'}
         />
       </div>
 
@@ -446,13 +471,25 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
         </div>
 
         <div className="flex items-center gap-6 border-l rtl:border-l-0 rtl:border-r border-border pl-6 rtl:pl-0 rtl:pr-6">
-          <div className="flex flex-col text-xs">
-            <span className="text-muted-foreground flex items-center gap-1">
-              <Award className="w-3.5 h-3.5 text-amber-500" />
-              {t.assignmentPage.points}
-            </span>
-            <span className="font-bold text-foreground">Points: {assignmentInfo.points}</span>
-          </div>
+          {gradeData?.score !== undefined ? (
+            <div className="flex flex-col text-xs bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl">
+              <span className="text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                Official Grade Recorded
+              </span>
+              <span className="text-lg font-bold font-heading text-emerald-600 dark:text-emerald-400 mt-0.5">
+                {gradeData.score} / {gradeData.maxScore || 100} Points ({Math.round(((gradeData.score || 0) / (gradeData.maxScore || 100)) * 100)}%)
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-col text-xs">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Award className="w-3.5 h-3.5 text-amber-500" />
+                {t.assignmentPage.points}
+              </span>
+              <span className="font-bold text-foreground">Points: {assignmentInfo.points} Max</span>
+            </div>
+          )}
           <div className="flex flex-col text-xs">
             <span className="text-muted-foreground flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-sky-500" />
@@ -527,6 +564,24 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Educator Feedback Banner */}
+      {gradeData?.feedback && (
+        <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col gap-2.5 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold text-sm">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>Educator Feedback & Review Comments</span>
+            {gradeData.gradedAt && (
+              <span className="text-xs font-normal text-muted-foreground ml-auto">
+                Graded on {new Date(gradeData.gradedAt).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-foreground bg-background p-3.5 rounded-xl border border-emerald-500/20 font-sans leading-relaxed whitespace-pre-wrap">
+            {gradeData.feedback}
+          </p>
         </div>
       )}
 

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { KeyRound, Lock, ArrowRight, Eye, EyeOff, LogOut, User, Loader2 } from 'lucide-react';
 
 export const ReAuthModal: React.FC = () => {
@@ -85,9 +86,16 @@ export const ReAuthModal: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-1">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="reauth-pin-input" className="text-xs font-semibold text-foreground">
-                {t.auth.pinPrompt}
-              </label>
+              <div className="flex items-center gap-1.5">
+                <label htmlFor="reauth-pin-input" className="text-xs font-semibold text-foreground">
+                  {t.auth.pinPrompt || 'Enter Password or 4-Digit Quick PIN'}
+                </label>
+                <InfoTooltip
+                  title="Quick PIN vs Account Password"
+                  content="Enter your full account password or your 4-digit Quick PIN. To configure or update your 4-digit PIN for faster unlock, go to Settings → Security Preferences."
+                  position="bottom"
+                />
+              </div>
               <div className="relative flex items-center">
                 <Lock className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 text-muted-foreground pointer-events-none" />
                 <input

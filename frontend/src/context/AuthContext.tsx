@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { db, seedInitialMockData, type IndexedDBUser, type UserSession } from '@/lib/db';
-import { deriveKeyFromPassword, setInMemoryKey, zeroKey, encryptText, decryptText } from '@/lib/crypto';
+import { deriveKeyFromPassword, setInMemoryKey, getInMemoryKey, zeroKey, encryptText, decryptText } from '@/lib/crypto';
 import { useOverlay } from './OverlayContext';
 
 import { isEducatorUser } from '@/lib/utils';
@@ -15,10 +15,11 @@ interface AuthContextType {
   isOfflineSession: boolean;
   isReAuthModalOpen: boolean;
   isRestoring: boolean;
+  hasPinConfigured: boolean;
   login: (email: string, pass: string, rememberMe: boolean) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   renewSession: (pinOrPassword: string) => Promise<boolean>;
-  setQuickPin: (pin: string) => Promise<void>;
+  setQuickPin: (pin: string | null) => Promise<void>;
   extendSession: () => Promise<void>;
   openReAuthModal: () => void;
   closeReAuthModal: () => void;
@@ -29,6 +30,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isRestoring, setIsRestoring] = useState<boolean>(true);
+  const [hasPinConfigured, setHasPinConfigured] = useState<boolean>(false);
   const [user, setUser] = useState<IndexedDBUser | null>(() => {
     if (typeof window === 'undefined') return null;
     const cachedRole = localStorage.getItem('asala_role');
@@ -64,7 +66,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessions[0];
 
       if (activeSession) {
-        const isExpired = new Date(activeSession.expiresAt).getTime() < Date.now();
+        setHasPinConfigured(!!activeSession.pinCode);
+
+        // Auto-extend session duration (+7 days) for active user sessions
+        const SEVEN_DAYS_MS = 3600000 * 24 * 7;
+        const nowMs = Date.now();
+        const freshExpiresAt = new Date(nowMs + SEVEN_DAYS_MS).toISOString();
+        await db.userSession.update('current_session', { expiresAt: freshExpiresAt });
+        activeSession.expiresAt = freshExpiresAt;
+
+        const isExpired = false;
         const decryptedToken = await decryptText(activeSession.token);
         if (!isExpired) {
           let freshUser = await db.users.where('email').equalsIgnoreCase(activeSession.user.email).first();
@@ -247,6 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setIsOfflineSession(false);
     setIsReAuthModalOpen(false);
+    setHasPinConfigured(false);
   }, []);
 
   const renewSession = useCallback(
@@ -257,23 +269,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const inputClean = pinOrPassword.trim();
         let isValid = false;
+        let decryptedToken = '';
 
-        // If a 4-digit PIN is configured on activeSession, verify PIN first
-        if (activeSession.pinCode) {
-          if (inputClean === activeSession.pinCode.trim()) {
-            isValid = true;
-          }
+        // 1. If a 4-digit PIN is configured on activeSession, verify PIN first
+        if (activeSession.pinCode && inputClean === activeSession.pinCode.trim()) {
+          isValid = true;
+          decryptedToken = await decryptText(activeSession.token);
         }
 
-        // If not matched by PIN (or no PIN set), try password key derivation
+        // 2. If not matched by PIN, test AES-GCM password decryption of activeSession.token
         if (!isValid && inputClean.length >= 4) {
-          const reDerivedKey = await deriveKeyFromPassword(
-            inputClean,
-            undefined,
-            activeSession.user.email
-          );
-          setInMemoryKey(reDerivedKey);
-          isValid = true;
+          const previousKey = getInMemoryKey();
+          try {
+            const candidateKey = await deriveKeyFromPassword(
+              inputClean,
+              undefined,
+              activeSession.user.email
+            );
+            setInMemoryKey(candidateKey);
+
+            // Cryptographic test: decryption succeeds only if AES-GCM auth tag matches candidate key
+            const testToken = await decryptText(activeSession.token);
+            if (testToken && testToken.length > 0) {
+              isValid = true;
+              decryptedToken = testToken;
+            } else {
+              if (previousKey) setInMemoryKey(previousKey);
+            }
+          } catch {
+            if (previousKey) setInMemoryKey(previousKey);
+          }
         }
 
         if (!isValid) {
@@ -285,8 +310,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
         await db.userSession.update('current_session', { expiresAt });
 
-        // Decrypt stored session token and sync React state & web storage
-        const decryptedToken = await decryptText(activeSession.token);
+        // Sync React state & web storage
         setUser(activeSession.user);
         setToken(decryptedToken);
 
@@ -322,9 +346,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const setQuickPin = useCallback(
-    async (pin: string) => {
-      await db.userSession.update('current_session', { pinCode: pin });
-      showToast('PIN Configured', 'success', '4-digit PIN set for quick re-auth.');
+    async (pin: string | null) => {
+      if (pin) {
+        await db.userSession.update('current_session', { pinCode: pin });
+        setHasPinConfigured(true);
+        showToast('PIN Configured', 'success', '4-digit PIN set for quick re-auth.');
+      } else {
+        await db.userSession.update('current_session', { pinCode: undefined });
+        setHasPinConfigured(false);
+        showToast('PIN Removed', 'info', 'Quick PIN authentication removed.');
+      }
     },
     [showToast]
   );
@@ -363,6 +394,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isOfflineSession,
       isReAuthModalOpen,
       isRestoring,
+      hasPinConfigured,
       login,
       logout,
       renewSession,
@@ -378,6 +410,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isOfflineSession,
       isReAuthModalOpen,
       isRestoring,
+      hasPinConfigured,
       login,
       logout,
       renewSession,

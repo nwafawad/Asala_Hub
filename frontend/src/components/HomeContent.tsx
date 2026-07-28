@@ -29,7 +29,7 @@ import { SyncQueueView } from '@/components/student/SyncQueueView';
 
 export function HomeContent() {
   const { t, language } = useI18n();
-  const { isAuthenticated, user, isRestoring } = useAuth();
+  const { isAuthenticated, user, isRestoring, extendSession } = useAuth();
   const { isOnline } = useSync();
   const { showToast } = useOverlay();
   const searchParams = useSearchParams();
@@ -79,6 +79,7 @@ export function HomeContent() {
 
   const handleTabNavigate = (tab: string, setActiveTab?: (t: string) => void) => {
     if (setActiveTab) setActiveTab(tab);
+    if (extendSession) extendSession();
     if (isEducator) {
       localStorage.setItem('asala_educator_tab', tab);
     } else {
