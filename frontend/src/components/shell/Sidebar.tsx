@@ -4,7 +4,7 @@ import React from 'react';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import { LayoutDashboard, BookOpen, FileCheck, Activity, RefreshCw, Settings, Layers } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 
 interface SidebarProps {
   activeTab: string;
@@ -68,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
       <div className="p-4 border-t border-border bg-muted/30">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold uppercase">
-            {user?.fullName?.substring(0, 2) || 'AH'}
+            {getInitials(user?.fullName)}
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-semibold text-foreground truncate">

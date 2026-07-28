@@ -386,14 +386,14 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
               <Award className="w-3.5 h-3.5 text-amber-500" />
               {t.assignmentPage.points}
             </span>
-            <span className="font-bold text-foreground">100 / 100</span>
+            <span className="font-bold text-foreground">Points: -- / 100</span>
           </div>
           <div className="flex flex-col text-xs">
             <span className="text-muted-foreground flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-sky-500" />
               {t.assignmentPage.dueDate}
             </span>
-            <span className="font-bold text-foreground">Tomorrow, 23:59</span>
+            <span className="font-bold text-foreground">Aug 20, 23:59 (CAT / UTC+2)</span>
           </div>
         </div>
       </div>

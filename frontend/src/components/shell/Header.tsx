@@ -11,6 +11,8 @@ import { startViewTransition } from '@/lib/view-transition';
 import { Search, Sun, Moon, Languages, LogOut, User } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
+import { getInitials } from '@/lib/utils';
+
 export const Header: React.FC = () => {
   const { t, toggleLanguage } = useI18n();
   const { user, isOfflineSession, logout } = useAuth();
@@ -99,7 +101,7 @@ export const Header: React.FC = () => {
                   className="flex items-center gap-2 p-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
                 >
                   <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
-                    {user.fullName.substring(0, 2).toUpperCase()}
+                    {getInitials(user.fullName)}
                   </div>
                   <span className="text-xs font-semibold text-foreground hidden sm:inline">
                     {user.fullName}

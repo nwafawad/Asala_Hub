@@ -249,9 +249,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                   <StatCard
                     title="Academic GPA"
                     value="3.92"
-                    subtitle="Top 5% student standing"
+                    subtitle="Calculated Cumulative GPA"
                     icon={Award}
-                    trend={{ value: 'Honor Roll', isPositive: true }}
+                    trend={{ value: 'Good Standing', isPositive: true }}
                   />
                 </>
               )}
@@ -287,7 +287,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5 text-amber-500" />
-                        Due Tomorrow at 23:59 · 100 Points
+                        Due Aug 20, 23:59 (CAT / UTC+2) · 100 Max Points
                       </span>
                     </div>
 

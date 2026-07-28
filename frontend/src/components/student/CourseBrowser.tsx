@@ -248,7 +248,11 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
           >
             <div
               className={`h-full rounded-full transition-all duration-300 ${
-                usagePercent > 80 ? 'bg-destructive' : 'bg-primary'
+                usagePercent > 90
+                  ? 'bg-rose-500'
+                  : usagePercent > 70
+                  ? 'bg-amber-500'
+                  : 'bg-emerald-500'
               }`}
               style={{ width: `${usagePercent}%` }}
             />
@@ -342,7 +346,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder={t.searchPlaceholder}
+              placeholder="Search within enrolled courses & modules..."
               aria-label="Search courses"
               className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             />

@@ -215,7 +215,7 @@ export const ProgressTracker: React.FC = () => {
         <StatCard
           title={t.progressTracker.gpaSummary}
           value="3.92"
-          subtitle="Top 5% student rank"
+          subtitle="Calculated Cumulative GPA"
           icon={FileCheck}
         />
         <StatCard
