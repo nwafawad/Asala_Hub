@@ -49,10 +49,27 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
     try {
       await seedInitialMockData();
 
+      // 1. Instant Load from IndexedDB cache
+      const [allCourses, allModules] = await Promise.all([
+        db.cachedCourses.toArray(),
+        db.cachedModules.toArray(),
+      ]);
+
+      const grouped: Record<string, CachedModule[]> = {};
+      allModules.forEach(mod => {
+        if (!grouped[mod.courseId]) grouped[mod.courseId] = [];
+        grouped[mod.courseId].push(mod);
+      });
+
+      setCourses(allCourses);
+      setModulesMap(grouped);
+      setLoading(false);
+
+      // 2. Optional Background Sync with central API (suppressing modal on 401 fallback)
       const isOfflineToken = token ? token.startsWith('offline-token-') : false;
       if (typeof window !== 'undefined' && navigator.onLine && !isOfflineSession && !isOfflineToken) {
         try {
-          const res = await api.get('/courses/');
+          const res = await api.get('/courses/', { headers: { 'X-Suppress-401-Event': 'true' } });
           if (res.data && Array.isArray(res.data)) {
             const apiCourses: CachedCourse[] = [];
             const apiModules: CachedModule[] = [];
@@ -60,7 +77,9 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
             for (const c of res.data) {
               let modulesForCourse: any[] = [];
               try {
-                const modRes = await api.get(`/courses/${c.id}/modules`);
+                const modRes = await api.get(`/courses/${c.id}/modules`, {
+                  headers: { 'X-Suppress-401-Event': 'true' },
+                });
                 if (modRes.data && Array.isArray(modRes.data)) {
                   modulesForCourse = modRes.data;
                 }
@@ -107,9 +126,17 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
 
             if (apiCourses.length > 0) {
               await db.cachedCourses.bulkPut(apiCourses);
+              setCourses(await db.cachedCourses.toArray());
             }
             if (apiModules.length > 0) {
               await db.cachedModules.bulkPut(apiModules);
+              const updatedMods = await db.cachedModules.toArray();
+              const updatedGrouped: Record<string, CachedModule[]> = {};
+              updatedMods.forEach(mod => {
+                if (!updatedGrouped[mod.courseId]) updatedGrouped[mod.courseId] = [];
+                updatedGrouped[mod.courseId].push(mod);
+              });
+              setModulesMap(updatedGrouped);
             }
           }
         } catch (apiErr) {
@@ -117,20 +144,6 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
         }
       }
 
-      // Offline Cold Start: Read instantly from IndexedDB cache
-      const [allCourses, allModules] = await Promise.all([
-        db.cachedCourses.toArray(),
-        db.cachedModules.toArray(),
-      ]);
-
-      const grouped: Record<string, CachedModule[]> = {};
-      allModules.forEach(mod => {
-        if (!grouped[mod.courseId]) grouped[mod.courseId] = [];
-        grouped[mod.courseId].push(mod);
-      });
-
-      setCourses(allCourses);
-      setModulesMap(grouped);
       await refreshStorageEstimate();
     } catch (err) {
       console.error('Error loading courses from IndexedDB:', err);

@@ -34,13 +34,20 @@ export const ReAuthModal: React.FC = () => {
     setIsSubmitting(true);
     setErrorMsg(null);
 
+    const startTime = Date.now();
     const success = await renewSession(pinOrPass);
+    const elapsed = Date.now() - startTime;
+    const minDelay = 1000; // Deliberate 1-second verification delay requested by user
+    if (elapsed < minDelay) {
+      await new Promise(r => setTimeout(r, minDelay - elapsed));
+    }
+
     setIsSubmitting(false);
 
     if (success) {
       setPinOrPass('');
     } else {
-      setErrorMsg(t.auth.invalidPinOrPass);
+      setErrorMsg(t.auth.invalidPinOrPass || 'Incorrect PIN code or password entered.');
     }
   };
 
