@@ -15,6 +15,37 @@ from app.core.config import settings
 logger = logging.getLogger("asala_hub")
 
 
+import gzip
+
+async def gzip_request_decompression_middleware(request: Request, call_next):
+    """
+    Middleware: Decompress gzipped incoming request bodies when Content-Encoding: gzip is present.
+    Allows endpoints like POST /sync to accept gzipped payloads seamlessly.
+    """
+    content_encoding = request.headers.get("content-encoding", "").lower()
+    if "gzip" in content_encoding:
+        try:
+            body = await request.body()
+            if body:
+                decompressed_body = gzip.decompress(body)
+                request._body = decompressed_body
+
+                async def receive():
+                    return {
+                        "type": "http.request",
+                        "body": decompressed_body,
+                        "more_body": False,
+                    }
+
+                request._receive = receive
+        except Exception as exc:
+            logger.error(f"Failed to decompress gzipped request body: {exc}")
+
+    return await call_next(request)
+
+
+
+
 async def security_and_logging_middleware(request: Request, call_next):
     """
     HTTP Middleware:
@@ -35,6 +66,7 @@ async def security_and_logging_middleware(request: Request, call_next):
 
     logger.info(f"[{request.method}] {request.url.path} -> {response.status_code} ({process_time:.2f}ms)")
     return response
+
 
 
 def setup_cors(app: FastAPI) -> None:

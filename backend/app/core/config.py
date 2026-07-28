@@ -26,7 +26,9 @@ class Settings(BaseSettings):
     # JWT security parameters
     JWT_SECRET_KEY: str = "CHANGE-ME-IN-PRODUCTION-DEFAULT-SECRET-KEY"
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 minutes short-lived access token
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7     # 7 days long-lived refresh token
+
 
     # Database Performance configurations
     ECHO_SQL: bool = False
@@ -52,6 +54,11 @@ class Settings(BaseSettings):
     # Media Storage & Transcoding Configurations
     MEDIA_UPLOAD_DIR: str = "uploads"
     MEDIA_STORAGE_BACKEND: str = "local"
+
+    # Backup & Disaster Recovery Configurations
+    BACKUP_STATUS_FILE: str = "backups/last_backup_status.json"
+
+
 
 
 

@@ -1,5 +1,6 @@
 from app.models.base import BaseIDModel, TimestampModel, SoftDeleteMixin, get_naive_utc_now
 from app.models.user import User, UserRole
+from app.models.auth import RefreshToken
 from app.models.course import Course
 from app.models.module import Module, ContentType
 from app.models.assignment import Assignment, Submission, SyncStatus
@@ -12,6 +13,7 @@ __all__ = [
     "get_naive_utc_now",
     "User",
     "UserRole",
+    "RefreshToken",
     "Course",
     "Module",
     "ContentType",
@@ -20,3 +22,4 @@ __all__ = [
     "SyncStatus",
     "TransactionLog",
 ]
+

@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-asalahub}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-asalahub}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -25,16 +25,39 @@ services:
     restart: always
     volumes:
       - ./backend:/app
+      - ./backups:/backups
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/asalahub}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-http://localhost:3000}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-asala_hub_dev_secret_key_129384729384}
+      - DATABASE_URL=${DATABASE_URL}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
     depends_on:
       db:
         condition: service_healthy
     command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+  db-backup:
+    image: postgres:16-alpine
+    container_name: asala_db_backup
+    restart: always
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-asalahub}
+      - RETENTION_DAYS=14
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/scripts/backup.sh:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        /scripts/backup.sh &&
+        echo '0 2 * * * /scripts/backup.sh >> /var/log/cron.log 2>&1' > /etc/crontabs/root &&
+        crond -f -d 8
+      "
 
   frontend:
     build:
@@ -57,3 +80,4 @@ services:
 
 volumes:
   postgres_data:
+

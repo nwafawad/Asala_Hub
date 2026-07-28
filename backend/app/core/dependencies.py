@@ -45,6 +45,9 @@ def get_token_from_request(
     return token
 
 
+from jose import ExpiredSignatureError, JWTError
+
+
 def get_current_user_claims(
     token: str = Depends(get_token_from_request)
 ) -> UserAuthClaims:
@@ -52,7 +55,7 @@ def get_current_user_claims(
     FastAPI dependency to extract JWT claims without forcing a database query.
     
     Raises:
-        AuthenticationError: If token signature or claims are invalid.
+        AuthenticationError: If token signature or claims are invalid or token is expired.
     Returns:
         UserAuthClaims: Struct containing user_id and role claims.
     """
@@ -63,8 +66,11 @@ def get_current_user_claims(
         if user_id is None or role is None:
             raise AuthenticationError("Could not validate credentials")
         return UserAuthClaims(user_id=uuid.UUID(str(user_id)), role=UserRole(role))
+    except ExpiredSignatureError:
+        raise AuthenticationError("Token has expired")
     except (JWTError, ValueError):
         raise AuthenticationError("Could not validate credentials")
+
 
 
 def get_current_user(
@@ -97,16 +103,15 @@ class RoleChecker:
 
     def __call__(
         self,
-        current_user: Union[User, UserAuthClaims] = Depends(get_current_user_claims)
-    ) -> Union[User, UserAuthClaims]:
+        current_user: User = Depends(get_current_user)
+    ) -> User:
         """
         Enforce the role restrictions against the currently logged-in user.
         
         Raises:
             PermissionDeniedError: 403 Forbidden if the user's role is not allowed.
         """
-        user_role = getattr(current_user, "role", None)
-        if user_role not in self.allowed_roles:
+        if current_user.role not in self.allowed_roles:
             raise PermissionDeniedError("You do not have permission to perform this action")
         return current_user
 
@@ -126,6 +131,7 @@ def require_admin(current_user: User = Depends(require_role(UserRole.admin))) ->
     Dependency helper to enforce that the authenticated user has the Admin role.
     """
     return current_user
+
 
 
 

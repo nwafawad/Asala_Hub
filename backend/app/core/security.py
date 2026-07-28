@@ -70,22 +70,55 @@ def decode_access_token(token: str) -> dict[str, Any]:
     """
     return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
 
-def set_auth_cookie(response: Response, token: str) -> None:
+import hashlib
+import secrets
+
+def hash_refresh_token(token: str) -> str:
     """
-    Helper function to set the HttpOnly authentication cookie consistently across endpoints.
+    Compute SHA-256 hash of a refresh token for secure database storage.
+    """
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def generate_refresh_token_string() -> str:
+    """
+    Generate a secure, high-entropy raw refresh token string.
+    """
+    return secrets.token_urlsafe(48)
+
+
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+    """
+    Helper function to set HttpOnly access_token and refresh_token cookies consistently.
     """
     response.set_cookie(
         key="access_token",
-        value=token,
+        value=access_token,
         httponly=True,
         samesite=settings.COOKIE_SAMESITE,
         secure=settings.effective_cookie_secure,
-        max_age=settings.COOKIE_MAX_AGE
+        max_age=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite=settings.COOKIE_SAMESITE,
+        secure=settings.effective_cookie_secure,
+        max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400
     )
 
-def clear_auth_cookie(response: Response) -> None:
+
+def set_auth_cookie(response: Response, token: str) -> None:
     """
-    Helper function to delete the authentication cookie upon logout.
+    Legacy helper function to set access_token cookie.
+    """
+    set_auth_cookies(response, access_token=token, refresh_token="")
+
+
+def clear_auth_cookies(response: Response) -> None:
+    """
+    Helper function to delete both access_token and refresh_token cookies upon logout.
     """
     response.delete_cookie(
         key="access_token",
@@ -93,6 +126,20 @@ def clear_auth_cookie(response: Response) -> None:
         samesite=settings.COOKIE_SAMESITE,
         secure=settings.effective_cookie_secure
     )
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=True,
+        samesite=settings.COOKIE_SAMESITE,
+        secure=settings.effective_cookie_secure
+    )
+
+
+def clear_auth_cookie(response: Response) -> None:
+    """
+    Legacy helper to delete authentication cookie.
+    """
+    clear_auth_cookies(response)
+
 
 
 

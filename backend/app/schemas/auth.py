@@ -27,10 +27,18 @@ class UserLogin(BaseModel):
 
 class TokenResponse(BaseModel):
     """
-    Schema representing successful JWT authentication response package.
+    Schema representing successful JWT authentication response package containing access and refresh tokens.
     """
     access_token: str
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
+
+class TokenRefreshRequest(BaseModel):
+    """
+    Schema representing explicit token refresh request body payload (optional fallback if HttpOnly cookie not present).
+    """
+    refresh_token: Optional[str] = None
+
 
 class UserRead(BaseModel):
     """
