@@ -148,7 +148,7 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
               ) : (
                 <Square className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
               )}
-              <span>I agree to the Asala Hub Offline Data Policy & Terms (CR-1)</span>
+              <span>I agree to the Asala Hub Offline Data Policy & Terms</span>
             </button>
 
             {/* Minor / Guardian Toggle */}
@@ -168,7 +168,7 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
             {isMinor && (
               <div className="flex flex-col gap-1 pl-6 pt-1 animate-in fade-in duration-150">
                 <label className="text-[11px] font-semibold text-muted-foreground">
-                  Guardian / Institution Email for Consent (CR-2)
+                  Guardian / Institution Email for Consent
                 </label>
                 <input
                   type="email"

@@ -6,6 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { StatCard } from '@/components/ui/StatCard';
 import { formatPreviewContent } from '@/lib/compress';
 import {
@@ -332,7 +333,10 @@ export const ProgressTracker: React.FC = () => {
                 </span>
               )}
             </div>
-            <StatusPill label="SRS 3.3 Protocol" variant="info" />
+            <InfoTooltip
+              title="Sync Lifecycle Protocol"
+              content="Tracks submission transaction stages from local draft to central server confirmation."
+            />
           </div>
 
           {/* 5-Stage Sync Timeline */}

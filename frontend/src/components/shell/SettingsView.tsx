@@ -6,6 +6,7 @@ import { useSync } from '@/context/SyncContext';
 import { db } from '@/lib/db';
 import { KeyRound, Lock, ShieldCheck, Check, Sparkles, User, HardDrive, Plus, RefreshCw, Download, Trash2, ShieldAlert, FileCheck } from 'lucide-react';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { isDebugMode } from '@/lib/debug';
 
 export const SettingsView: React.FC = () => {
@@ -290,11 +291,14 @@ export const SettingsView: React.FC = () => {
                 Data Rights & Privacy Governance
               </h3>
               <p className="text-xs text-muted-foreground">
-                Manage consent, self-service data export, and local device data retention (CR-1, CR-2, CR-3).
+                Manage consent, self-service data export, and local device data retention.
               </p>
             </div>
           </div>
-          <StatusPill label="Institutional Consent Verified" variant="success" />
+          <InfoTooltip
+            title="Institutional Consent Verified"
+            content="Institutional consent records and offline data retention policies are verified and active for your account."
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -311,7 +315,7 @@ export const SettingsView: React.FC = () => {
                 Policy Version: <span className="font-mono text-foreground font-semibold">Asala Hub Data Policy v1.0</span>
               </p>
             </div>
-            <StatusPill label="CR-1 Consented" variant="success" />
+            <StatusPill label="Consent Active" variant="success" />
           </div>
 
           {/* Guardian Consent Status Card (CR-2) */}
@@ -319,7 +323,7 @@ export const SettingsView: React.FC = () => {
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
                 <Lock className="w-4 h-4 text-amber-500" />
-                <span className="text-xs font-bold text-foreground">🔒 Guardian / Institutional Approval (CR-2)</span>
+                <span className="text-xs font-bold text-foreground">🔒 Guardian / Institutional Approval</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Status: <span className="font-semibold text-emerald-600 dark:text-emerald-400">Verified / Institutional Consent Active</span>
@@ -343,7 +347,7 @@ export const SettingsView: React.FC = () => {
                 <span className="text-xs font-bold text-foreground">Self-Service Data Export</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Download a complete JSON copy of all your local IndexedDB records, decrypted submission drafts, notes, and session history (CR-2).
+                Download a complete JSON copy of all your local IndexedDB records, decrypted submission drafts, notes, and session history.
               </p>
             </div>
             <button

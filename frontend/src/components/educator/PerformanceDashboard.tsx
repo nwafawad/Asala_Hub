@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { StatCard } from '@/components/ui/StatCard';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
 export const PerformanceDashboard: React.FC = () => {
   const { t } = useI18n();
@@ -93,7 +94,10 @@ export const PerformanceDashboard: React.FC = () => {
             <h2 className="text-2xl font-bold font-heading text-foreground">
               {t.educator?.analytics?.title || 'Cohort Performance Dashboard'}
             </h2>
-            <StatusPill label="Flat CSS/SVG Low-Power Engine (NFR-7)" variant="info" />
+            <InfoTooltip
+              title="Low-Power Render Engine"
+              content="Flat CSS and SVG graphics rendering engine optimized for low-power offline hardware."
+            />
           </div>
           <p className="text-xs text-muted-foreground">
             {t.educator?.analytics?.subtitle ||

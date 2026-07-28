@@ -20,6 +20,7 @@ import {
   Paperclip,
 } from 'lucide-react';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
 export const GradeBook: React.FC = () => {
   const { t } = useI18n();
@@ -96,7 +97,7 @@ export const GradeBook: React.FC = () => {
       showToast(
         'Grade Saved Offline',
         'success',
-        t.educator?.gradeBook?.gradeSavedToast || 'Grade saved locally. Logged for server sync (BR-4).'
+        t.educator?.gradeBook?.gradeSavedToast || 'Grade saved locally. Logged for server sync.'
       );
 
       setActiveGraderSubmission(null);
@@ -134,7 +135,10 @@ export const GradeBook: React.FC = () => {
             <h2 className="text-2xl font-bold font-heading text-foreground">
               {t.educator?.gradeBook?.title || 'Offline Grade Book & Submissions Grader'}
             </h2>
-            <StatusPill label="BR-4 Sync Precedence Active" variant="success" />
+            <InfoTooltip
+              title="Educator Priority Active"
+              content="Your assigned grades take absolute priority during server synchronization and lock the submission once saved."
+            />
           </div>
           <p className="text-xs text-muted-foreground">
             {t.educator?.gradeBook?.subtitle ||
@@ -143,12 +147,12 @@ export const GradeBook: React.FC = () => {
         </div>
       </div>
 
-      {/* Prominent BR-4 Educator Precedence Banner */}
+      {/* Prominent Educator Precedence Banner */}
       <div className="p-4 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-3">
         <ShieldCheck className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" />
         <span className="font-medium leading-relaxed">
           {t.educator?.gradeBook?.precedenceBanner ||
-            'Educator Authoritative Precedence Active (BR-4): Your grades override student cached states upon central sync.'}
+            'Educator Priority Active: Your grades override student cached states upon central sync.'}
         </span>
       </div>
 
@@ -294,7 +298,7 @@ export const GradeBook: React.FC = () => {
                       <td className="py-3.5 px-4 text-center">
                         {isGraded ? (
                           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            Graded (BR-4)
+                            Graded
                           </span>
                         ) : (
                           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400">

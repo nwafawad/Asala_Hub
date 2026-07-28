@@ -20,6 +20,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
 export const CohortRoster: React.FC = () => {
   const { t } = useI18n();
@@ -137,7 +138,10 @@ export const CohortRoster: React.FC = () => {
             <h2 className="text-2xl font-bold font-heading text-foreground">
               {t.educator?.roster?.title || 'Assigned Cohorts & Student Roster'}
             </h2>
-            <StatusPill label="Role-Restricted Scope" variant="info" />
+            <InfoTooltip
+              title="Role-Restricted Scope"
+              content="Displays student rosters and enrollment statuses scoped to your assigned educator role."
+            />
           </div>
           <p className="text-xs text-muted-foreground">
             {t.educator?.roster?.subtitle || 'Manage enrollment statuses and administrative flags offline.'}

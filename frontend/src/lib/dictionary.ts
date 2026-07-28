@@ -162,7 +162,7 @@ export const dictionary = {
       gradeBook: {
         title: 'Offline Grade Book & Submissions Grader',
         subtitle: 'Review student submissions and record authoritative grades locally.',
-        precedenceBanner: 'Educator Authoritative Precedence Active (BR-4): Your grades override student cached states upon central sync.',
+        precedenceBanner: 'Educator Priority Active: Your assigned grades override student cached states upon central sync.',
         filterCourse: 'Filter by Course',
         filterCohort: 'Filter by Cohort',
         filterStatus: 'Filter Status',
@@ -180,8 +180,8 @@ export const dictionary = {
         passed: 'Passed / Satisfactory',
         needsRevision: 'Needs Revision',
         attachments: 'Binary Attachments',
-        saveGradeButton: 'Save Grade Locally (BR-4 Precedence)',
-        gradeSavedToast: 'Grade saved locally. Logged for server sync (BR-4).',
+        saveGradeButton: 'Save Grade',
+        gradeSavedToast: 'Grade saved locally. Logged for server sync.',
       },
       roster: {
         title: 'Assigned Cohorts & Student Roster',
@@ -367,7 +367,7 @@ export const dictionary = {
       gradeBook: {
         title: 'سجل الدرجات وتقييم التسليمات',
         subtitle: 'مراجعة إجابات الطلاب ورصد الدرجات المعتمدة محلياً.',
-        precedenceBanner: 'أولوية المعلم نشطة (BR-4): الدرجات المرصودة تتجاوز حالات الطلاب عند المزامنة.',
+        precedenceBanner: 'أولوية المعلم نشطة: الدرجات المرصودة تتجاوز حالات الطلاب عند المزامنة.',
         filterCourse: 'تصفية حسب المقرر',
         filterCohort: 'تصفية حسب الشعبة',
         filterStatus: 'تصفية حسب الحالة',
@@ -385,8 +385,8 @@ export const dictionary = {
         passed: 'اجتاز / مرضي',
         needsRevision: 'يحتاج مراجعة',
         attachments: 'الملفات المرفقة',
-        saveGradeButton: 'حفظ الدرجة محلياً (أولوية BR-4)',
-        gradeSavedToast: 'تم حفظ الدرجة محلياً وتوثيق معاملة المزامنة (BR-4).',
+        saveGradeButton: 'حفظ الدرجة',
+        gradeSavedToast: 'تم حفظ الدرجة محلياً وتوثيق المزامنة.',
       },
       roster: {
         title: 'الشُعب المسندة وسجل الطلاب',

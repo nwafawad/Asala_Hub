@@ -100,11 +100,11 @@ export const SubmissionGrader: React.FC<SubmissionGraderProps> = ({
           </button>
         </div>
 
-        {/* BR-4 Educator Precedence Banner */}
+        {/* Educator Precedence Banner */}
         <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2.5">
           <ShieldCheck className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <span className="font-semibold leading-relaxed">
-            BR-4 Sync Rule Active: Educator grade records take absolute precedence over student-side cached state during batch sync.
+            Educator Priority Active: Educator grade records take priority over student cached state during batch sync.
           </span>
         </div>
 
@@ -235,7 +235,7 @@ export const SubmissionGrader: React.FC<SubmissionGraderProps> = ({
               className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-opacity cursor-pointer shadow-xs disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              <span>{isSaving ? 'Saving Grade...' : t.educator?.gradeBook?.saveGradeButton || 'Save Grade (BR-4)'}</span>
+              <span>{isSaving ? 'Saving Grade...' : t.educator?.gradeBook?.saveGradeButton || 'Save Grade'}</span>
             </button>
           </div>
         </form>

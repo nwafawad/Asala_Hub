@@ -22,6 +22,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
 export const CourseBuilder: React.FC = () => {
   const { t, language } = useI18n();
@@ -195,7 +196,10 @@ export const CourseBuilder: React.FC = () => {
             <h2 className="text-2xl font-bold font-heading text-foreground">
               {t.educator?.curriculum?.title || 'Curriculum & Lesson Authoring'}
             </h2>
-            <StatusPill label="Offline Authoring Mode" variant="info" />
+            <InfoTooltip
+              title="Offline Authoring Mode"
+              content="Create and edit course modules locally. Changes auto-save to IndexedDB and sync when online."
+            />
           </div>
           <p className="text-xs text-muted-foreground">
             {t.educator?.curriculum?.subtitle || 'Create course modules, quizzes, and voice note lectures offline.'}

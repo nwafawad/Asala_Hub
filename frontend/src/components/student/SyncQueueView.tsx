@@ -127,7 +127,7 @@ export const SyncQueueView: React.FC = () => {
           </div>
           <p className="text-xs text-muted-foreground">
             {t.syncStatus.queueDrawerSubtitle ||
-              'Itemized transaction logs stored in IndexedDB awaiting backend synchronization (SRS §6.4).'}
+              'Itemized transaction logs stored in IndexedDB awaiting backend synchronization.'}
           </p>
         </div>
 
@@ -459,7 +459,7 @@ export const SyncQueueView: React.FC = () => {
                   {isExpanded && (
                     <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
                       <span className="text-[11px] font-semibold text-foreground flex items-center justify-between">
-                        <span>Payload JSON Inspection (SRS §6.4 Schema):</span>
+                        <span>Payload JSON Inspection:</span>
                         <span className="text-muted-foreground font-mono text-[10px]">
                           {log.nextRetryAt ? `Next Retry At: ${new Date(log.nextRetryAt).toLocaleTimeString()}` : ''}
                         </span>
