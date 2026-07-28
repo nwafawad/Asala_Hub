@@ -19,6 +19,9 @@ import {
   ChevronUp,
   Filter,
   Layers,
+  LayoutList,
+  LayoutGrid,
+  ExternalLink,
 } from 'lucide-react';
 
 export const SyncQueueView: React.FC = () => {
@@ -35,6 +38,7 @@ export const SyncQueueView: React.FC = () => {
   const { showToast } = useOverlay();
 
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'synced' | 'failed'>('all');
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
   const [expandedLogId, setExpandedLogId] = useState<number | string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
@@ -194,25 +198,55 @@ export const SyncQueueView: React.FC = () => {
 
       {/* Queue Inspector Table / List Section */}
       <div className="p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-4">
-        {/* Table Toolbar / Filter */}
+        {/* Table Toolbar / Filter & View Switcher */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs font-semibold text-foreground">Filter Queue:</span>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs font-semibold text-foreground">Filter:</span>
+              <div className="flex items-center gap-1 bg-muted p-1 rounded-xl">
+                {(['all', 'pending', 'synced', 'failed'] as const).map(st => (
+                  <button
+                    key={st}
+                    onClick={() => setFilterStatus(st)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-colors cursor-pointer ${
+                      filterStatus === st
+                        ? 'bg-background text-foreground shadow-xs font-bold'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Section 6 View Mode Switcher */}
             <div className="flex items-center gap-1 bg-muted p-1 rounded-xl">
-              {(['all', 'pending', 'synced', 'failed'] as const).map(st => (
-                <button
-                  key={st}
-                  onClick={() => setFilterStatus(st)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-colors cursor-pointer ${
-                    filterStatus === st
-                      ? 'bg-background text-foreground shadow-xs font-bold'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {st}
-                </button>
-              ))}
+              <button
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-background text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Table View (Section 6 Specs)"
+              >
+                <LayoutList className="w-3.5 h-3.5 text-primary" />
+                <span>Table</span>
+              </button>
+              <button
+                onClick={() => setViewMode('card')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === 'card'
+                    ? 'bg-background text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Card Inspector View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-primary" />
+                <span>Cards</span>
+              </button>
             </div>
           </div>
 
@@ -221,7 +255,7 @@ export const SyncQueueView: React.FC = () => {
           </span>
         </div>
 
-        {/* Itemized List */}
+        {/* Itemized Display */}
         {filteredLogs.length === 0 ? (
           <div className="py-12 px-4 rounded-xl border border-dashed border-border bg-muted/20 text-center flex flex-col items-center justify-center gap-2">
             <CheckCircle2 className="w-8 h-8 text-emerald-500/60" />
@@ -233,6 +267,107 @@ export const SyncQueueView: React.FC = () => {
             <p className="text-[11px] text-muted-foreground">
               New user edits will automatically create collision-safe UUID v4 transaction records.
             </p>
+          </div>
+        ) : viewMode === 'table' ? (
+          /* Section 6 HTML Table View Structure */
+          <div className="overflow-x-auto border border-border rounded-xl">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <th className="py-3 px-4">Action Type</th>
+                  <th className="py-3 px-4">Target Item</th>
+                  <th className="py-3 px-4">Queued At</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border text-xs">
+                {filteredLogs.map(log => {
+                  const logKey = log.id ?? log.offlineId ?? log.timestamp;
+                  const isExpanded = expandedLogId === logKey;
+                  const isPendingOrFailed = log.status === 'pending' || log.status === 'failed';
+
+                  return (
+                    <React.Fragment key={logKey}>
+                      <tr className="hover:bg-muted/30 transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-bold text-foreground">
+                          <div className="flex items-center gap-2">
+                            <span className="p-1 rounded bg-primary/10 text-primary">
+                              <Database className="w-3.5 h-3.5" />
+                            </span>
+                            <span>{log.action}</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-muted-foreground font-mono">
+                          <span className="px-2 py-0.5 rounded bg-muted text-foreground font-medium">
+                            {log.entityType}: {log.entityId.slice(0, 14)}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-muted-foreground text-[11px]">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <StatusPill
+                            label={log.status}
+                            variant={
+                              log.status === 'synced'
+                                ? 'success'
+                                : log.status === 'failed'
+                                ? 'danger'
+                                : 'warning'
+                            }
+                          />
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {isPendingOrFailed && (
+                              <button
+                                onClick={() => handleRetryItem(log)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                                title="Force Retry Transaction"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                <span>Retry Now</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => setExpandedLogId(isExpanded ? null : logKey)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground text-[11px] font-medium transition-colors cursor-pointer"
+                            >
+                              <span>{isExpanded ? 'Hide Payload' : 'Inspect'}</span>
+                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {isExpanded && (
+                        <tr className="bg-muted/20 border-b border-border">
+                          <td colSpan={5} className="p-4">
+                            <div className="flex flex-col gap-2 font-mono text-xs">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-bold text-foreground">
+                                  Payload Inspection (Offline UUID: {log.offlineId || 'N/A'})
+                                </span>
+                                {log.nextRetryAt && (
+                                  <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                                    Next Retry Schedule: {new Date(log.nextRetryAt).toLocaleTimeString()}
+                                  </span>
+                                )}
+                              </div>
+                              <pre className="p-3 rounded-lg bg-card border border-border text-[11px] font-mono text-foreground overflow-x-auto leading-relaxed">
+                                {JSON.stringify(log.payload || log, null, 2)}
+                              </pre>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
