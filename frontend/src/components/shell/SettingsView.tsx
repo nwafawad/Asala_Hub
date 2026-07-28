@@ -5,7 +5,6 @@ import { useOverlay } from '@/context/OverlayContext';
 import { useSync } from '@/context/SyncContext';
 import { db } from '@/lib/db';
 import { KeyRound, Lock, ShieldCheck, Check, Sparkles, User, HardDrive, Plus, RefreshCw, Download, Trash2, ShieldAlert, FileCheck } from 'lucide-react';
-import { StatusPill } from '@/components/ui/StatusPill';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { isDebugMode } from '@/lib/debug';
 
@@ -121,10 +120,16 @@ export const SettingsView: React.FC = () => {
               <div className="p-3 rounded-xl bg-primary/10 text-primary">
                 <KeyRound className="w-6 h-6" />
               </div>
-              <StatusPill
-                label={hasPinConfigured ? 'PIN Active (••••)' : 'No PIN Set'}
-                variant={hasPinConfigured ? 'success' : 'info'}
-              />
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-foreground">
+                  {hasPinConfigured ? 'PIN Active (••••)' : 'No PIN Set'}
+                </span>
+                <InfoTooltip
+                  title="Quick PIN Security"
+                  content="Your 4-digit PIN is stored encrypted locally in IndexedDB for fast offline session renewal."
+                  position="bottom"
+                />
+              </div>
             </div>
 
             <div className="flex flex-col gap-1">
@@ -225,7 +230,16 @@ export const SettingsView: React.FC = () => {
               <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                 <User className="w-6 h-6" />
               </div>
-              <StatusPill label={user?.role?.toUpperCase() || 'STUDENT'} variant="success" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 uppercase">
+                  {user?.role || 'STUDENT'}
+                </span>
+                <InfoTooltip
+                  title="Account Role & Permissions"
+                  content="Your profile role determines offline workspace capabilities and data access."
+                  position="bottom"
+                />
+              </div>
             </div>
 
             <div className="flex flex-col gap-1">
@@ -321,16 +335,22 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Integrated Feature Engine Status Badges (Gated behind ?debug=true) */}
         {isDebugMode() && (
           <div className="flex flex-col gap-2 pt-2 border-t border-border">
-            <span className="text-xs font-semibold text-foreground">Integrated Offline Engine Modules</span>
-            <div className="flex flex-wrap gap-2">
-              <StatusPill label="Auth Gate & Role Auto-Route" variant="success" />
-              <StatusPill label="2s IndexedDB Auto-Save" variant="info" />
-              <StatusPill label="Offline Blob Attachments" variant="warning" />
-              <StatusPill label="In-Place Re-Auth Modal" variant="info" dotAnimation />
-              <StatusPill label="Printable Submission Receipts" variant="neutral" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-foreground">Integrated Offline Engine Modules</span>
+              <InfoTooltip
+                title="Offline Engine Architecture"
+                content="Overview of active client-side engines: 1.5s debounced autosave, binary blob storage, and cryptographic AES-GCM re-authentication."
+                position="bottom"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="px-2.5 py-1 rounded-lg bg-muted border border-border text-foreground font-medium">Auth Gate & Role Auto-Route</span>
+              <span className="px-2.5 py-1 rounded-lg bg-muted border border-border text-foreground font-medium">2s IndexedDB Auto-Save</span>
+              <span className="px-2.5 py-1 rounded-lg bg-muted border border-border text-foreground font-medium">Offline Blob Attachments</span>
+              <span className="px-2.5 py-1 rounded-lg bg-muted border border-border text-foreground font-medium">In-Place Re-Auth Modal</span>
+              <span className="px-2.5 py-1 rounded-lg bg-muted border border-border text-foreground font-medium">Printable Submission Receipts</span>
             </div>
           </div>
         )}
@@ -372,7 +392,17 @@ export const SettingsView: React.FC = () => {
                 Policy Version: <span className="font-mono text-foreground font-semibold">Asala Hub Data Policy v1.0</span>
               </p>
             </div>
-            <StatusPill label="Consent Active" variant="success" />
+            <div className="flex items-center gap-1.5">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                Consent Active
+              </span>
+              <InfoTooltip
+                title="Institutional Privacy Consent"
+                content="Institutional consent records and offline data retention policies are verified and active for your account."
+                position="bottom"
+              />
+            </div>
           </div>
 
           {/* Guardian Consent Status Card (CR-2) */}
