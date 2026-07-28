@@ -41,6 +41,15 @@ class Settings(BaseSettings):
     COOKIE_SECURE: bool = False
     COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
 
+    # Campus Node Deployment Configurations
+    CAMPUS_MODE: bool = False
+    CLOUD_SYNC_ENDPOINT: str = "http://localhost:8000/sync"
+    CAMPUS_SERVICE_ACCOUNT_TOKEN: str = ""
+    CAMPUS_SYNC_INTERVAL_SECONDS: int = 30
+    CAMPUS_SYNC_BATCH_SIZE: int = 50
+    CAMPUS_SYNC_MAX_RETRIES: int = 3
+
+
     @property
     def is_production(self) -> bool:
         """Return True if running in production environment."""
