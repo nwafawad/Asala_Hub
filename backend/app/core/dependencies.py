@@ -45,6 +45,9 @@ def get_token_from_request(
     return token
 
 
+from jose import ExpiredSignatureError, JWTError
+
+
 def get_current_user_claims(
     token: str = Depends(get_token_from_request)
 ) -> UserAuthClaims:
@@ -52,7 +55,7 @@ def get_current_user_claims(
     FastAPI dependency to extract JWT claims without forcing a database query.
     
     Raises:
-        AuthenticationError: If token signature or claims are invalid.
+        AuthenticationError: If token signature or claims are invalid or token is expired.
     Returns:
         UserAuthClaims: Struct containing user_id and role claims.
     """
@@ -63,8 +66,11 @@ def get_current_user_claims(
         if user_id is None or role is None:
             raise AuthenticationError("Could not validate credentials")
         return UserAuthClaims(user_id=uuid.UUID(str(user_id)), role=UserRole(role))
+    except ExpiredSignatureError:
+        raise AuthenticationError("Token has expired")
     except (JWTError, ValueError):
         raise AuthenticationError("Could not validate credentials")
+
 
 
 def get_current_user(

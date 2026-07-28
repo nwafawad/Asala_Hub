@@ -47,9 +47,61 @@ def login(
     )
 
 
+from typing import Optional
+from fastapi import APIRouter, Depends, Request, Response, status
+
+from app.schemas.auth import UserRegister, TokenResponse, TokenRefreshRequest, UserRead
+
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_token(
+    request: Request,
+    response: Response,
+    body: Optional[TokenRefreshRequest] = None,
+    session: Session = Depends(get_session)
+) -> TokenResponse:
+    """
+    Rotate and reissue access token (15 min) and refresh token (7 days) using a valid, non-revoked refresh token.
+    Extracts refresh token from HttpOnly cookie or request body payload.
+    """
+    cookie_refresh = request.cookies.get("refresh_token")
+    body_refresh = body.refresh_token if body and body.refresh_token else None
+    raw_refresh = body_refresh or cookie_refresh
+
+    return auth_service.refresh_tokens(
+        session=session,
+        raw_refresh_token=raw_refresh,
+        response=response
+    )
+
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+def logout(
+    request: Request,
+    response: Response,
+    body: Optional[TokenRefreshRequest] = None,
+    session: Session = Depends(get_session)
+) -> dict:
+    """
+    Revoke current refresh token session and clear HttpOnly authentication cookies.
+    """
+    cookie_refresh = request.cookies.get("refresh_token")
+    body_refresh = body.refresh_token if body and body.refresh_token else None
+    raw_refresh = body_refresh or cookie_refresh
+
+
+    auth_service.logout_user(
+        session=session,
+        raw_refresh_token=raw_refresh,
+        response=response
+    )
+    return {"status": "logged_out", "message": "Logged out successfully and cookies cleared."}
+
+
 @router.get("/me", response_model=UserRead)
 def read_current_user(current_user: User = Depends(get_current_user)) -> User:
     """
     Return the profile info of the currently logged-in user.
     """
     return current_user
+
