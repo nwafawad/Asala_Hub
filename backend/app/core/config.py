@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     MEDIA_UPLOAD_DIR: str = "uploads"
     MEDIA_STORAGE_BACKEND: str = "local"
 
+    # Backup & Disaster Recovery Configurations
+    BACKUP_STATUS_FILE: str = "backups/last_backup_status.json"
+
+
+
 
 
     @property

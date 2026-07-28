@@ -54,6 +54,58 @@ app.middleware("http")(security_and_logging_middleware)
 setup_cors(app)
 
 
+import json
+from datetime import datetime, timezone
+
+
+def _check_backup_health() -> dict:
+    """
+    Check the status and age of the last database backup metadata file.
+    Alerts via log warning if the backup is older than 24 hours or missing.
+    """
+    status_file = settings.BACKUP_STATUS_FILE
+    if not os.path.exists(status_file):
+        alt_file = os.path.join("/backups", "last_backup_status.json")
+        if os.path.exists(alt_file):
+            status_file = alt_file
+
+    if not os.path.exists(status_file):
+        logger.warning("HEALTH ALERT: Backup status metadata file is missing or not yet generated.")
+        return {"status": "missing", "stale": True, "detail": "Backup status file not found"}
+
+    try:
+        with open(status_file, "r") as f:
+            data = json.load(f)
+
+        timestamp_str = data.get("timestamp")
+        if not timestamp_str:
+            logger.warning("HEALTH ALERT: Backup status file contains invalid or missing timestamp.")
+            return {"status": "invalid", "stale": True}
+
+        backup_dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        age_hours = round((now - backup_dt).total_seconds() / 3600.0, 2)
+        stale = age_hours > 24.0
+
+        if stale:
+            logger.warning(
+                f"HEALTH ALERT: Database backup is stale! Last successful backup was {age_hours} hours ago (threshold: 24h)."
+            )
+        else:
+            logger.info(f"Database backup is fresh: last backup was {age_hours} hours ago.")
+
+        return {
+            "status": "stale" if stale else "ok",
+            "timestamp": timestamp_str,
+            "age_hours": age_hours,
+            "stale": stale,
+            "size_bytes": data.get("size_bytes"),
+        }
+    except Exception as exc:
+        logger.error(f"Error checking backup health status: {exc}")
+        return {"status": "error", "stale": True, "detail": str(exc)}
+
+
 # System Health Check Endpoints
 @app.get("/health", tags=["system"])
 def health_check():
@@ -64,15 +116,22 @@ def health_check():
 @app.get("/healthz", tags=["system"])
 def healthz_check(response: Response, session: Session = Depends(get_session)):
     """
-    Readiness check verifying database connection pool health.
+    Readiness check verifying database connection pool health and database backup freshness (<24h).
     """
     try:
         session.exec(select(1))
-        return {"status": "ok", "database": "connected"}
     except Exception as e:
         logger.error(f"Health check DB failure: {e}")
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"status": "error", "database": "disconnected", "detail": str(e)}
+
+    backup_info = _check_backup_health()
+    return {
+        "status": "ok",
+        "database": "connected",
+        "last_backup": backup_info,
+    }
+
 
 
 import os
