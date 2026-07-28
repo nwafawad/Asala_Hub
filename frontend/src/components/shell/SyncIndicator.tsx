@@ -46,7 +46,7 @@ export const SyncIndicator: React.FC = () => {
       <button
         onClick={() => setIsDrawerOpen(true)}
         className="cursor-pointer hover:opacity-80 transition-opacity"
-        title="View Offline Queue"
+        title="Global Campus Intranet Status: Connection & Sync Engine State"
       >
         <StatusPill
           label={labelText}
@@ -84,8 +84,9 @@ export const SyncIndicator: React.FC = () => {
               </div>
               <button
                 onClick={handleSyncClick}
-                disabled={syncState === 'syncing'}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+                disabled={syncState === 'syncing' || pendingCount === 0}
+                title={pendingCount === 0 ? 'Queue is clean — Nothing to sync' : 'Trigger Sync'}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${syncState === 'syncing' ? 'animate-spin' : ''}`} />
                 {t.syncStatus.syncNow}

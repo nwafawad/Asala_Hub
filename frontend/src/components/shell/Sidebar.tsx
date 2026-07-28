@@ -6,6 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import { LayoutDashboard, BookOpen, FileCheck, Activity, RefreshCw, Settings, Layers } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 
+import { useSync } from '@/context/SyncContext';
+
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -14,6 +16,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiveTab }) => {
   const { t } = useI18n();
   const { user } = useAuth();
+  const { pendingCount } = useSync();
 
   const navItems = React.useMemo(() => {
     const isEducator = user?.role === 'educator';
@@ -59,6 +62,11 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
               >
                 <Icon className={cn('w-4 h-4', isActive ? 'text-primary' : 'text-muted-foreground')} />
                 <span>{item.label}</span>
+                {item.id === 'syncQueue' && pendingCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono ms-auto">
+                    {pendingCount}
+                  </span>
+                )}
               </button>
             );
           })}

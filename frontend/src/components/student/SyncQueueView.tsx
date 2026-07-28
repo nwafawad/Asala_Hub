@@ -131,8 +131,9 @@ export const SyncQueueView: React.FC = () => {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleManualSync}
-            disabled={isActionLoading || syncState === 'syncing'}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs disabled:opacity-50"
+            disabled={isActionLoading || syncState === 'syncing' || pendingCount === 0}
+            title={pendingCount === 0 ? 'Queue is clean — Nothing to sync' : 'Trigger Sync'}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncState === 'syncing' ? 'animate-spin' : ''}`} />
             <span>{t.syncStatus.syncNow || 'Trigger Sync'}</span>
