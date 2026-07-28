@@ -53,17 +53,63 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
         try {
           const res = await api.get('/courses/');
           if (res.data && Array.isArray(res.data)) {
-            const apiCourses: CachedCourse[] = res.data.map((c: any) => ({
-              id: c.id,
-              title: c.title,
-              code: c.code || `CS${Math.floor(Math.random() * 899 + 100)}`,
-              educatorName: c.educator_name || 'Asala Educator',
-              moduleCount: c.module_count || 4,
-              isCachedOffline: false,
-              sizeMb: 14.5,
-              updatedAt: c.updated_at || new Date().toISOString(),
-            }));
-            await db.cachedCourses.bulkPut(apiCourses);
+            const apiCourses: CachedCourse[] = [];
+            const apiModules: CachedModule[] = [];
+
+            for (const c of res.data) {
+              let modulesForCourse: any[] = [];
+              try {
+                const modRes = await api.get(`/courses/${c.id}/modules`);
+                if (modRes.data && Array.isArray(modRes.data)) {
+                  modulesForCourse = modRes.data;
+                }
+              } catch (modErr) {
+                // Ignore single course module fetch failure
+              }
+
+              apiCourses.push({
+                id: c.id,
+                title: c.title,
+                code: c.code || `COURSE-${c.title.substring(0, 3).toUpperCase()}`,
+                educatorName: c.educator_name || 'Campus Educator',
+                moduleCount: modulesForCourse.length || c.module_count || 0,
+                isCachedOffline: true,
+                sizeMb: +(1.5 + modulesForCourse.length * 2.1).toFixed(1),
+                updatedAt: c.updated_at || new Date().toISOString(),
+              });
+
+              modulesForCourse.forEach((m: any) => {
+                const modType =
+                  m.content_type === 'assignment'
+                    ? 'assignment'
+                    : m.content_type === 'audio'
+                    ? 'audio'
+                    : m.content_type === 'syllabus'
+                    ? 'syllabus'
+                    : 'reading';
+
+                apiModules.push({
+                  id: m.id,
+                  courseId: c.id,
+                  title: m.title,
+                  type: modType,
+                  sequenceOrder: m.order_index || 1,
+                  isCachedOffline: true,
+                  sizeMb: 1.5,
+                  content: m.content || '',
+                  assignmentId: modType === 'assignment' ? `assign-${m.id}` : undefined,
+                  dueDate: m.due_date || '2026-08-30',
+                  points: m.points || 100,
+                });
+              });
+            }
+
+            if (apiCourses.length > 0) {
+              await db.cachedCourses.bulkPut(apiCourses);
+            }
+            if (apiModules.length > 0) {
+              await db.cachedModules.bulkPut(apiModules);
+            }
           }
         } catch (apiErr) {
           console.warn('Backend courses API offline, using IndexedDB local store');

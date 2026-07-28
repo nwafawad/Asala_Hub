@@ -46,14 +46,23 @@ interface AssignmentWorkspaceProps {
 export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack, assignmentId = 'assign-2' }) => {
   const { t, language } = useI18n();
   const isRtl = language === 'ar';
-  const { isOnline, addMockOfflineTransaction } = useSync();
+  const { isOnline } = useSync();
   const { showToast } = useOverlay();
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'write' | 'preview'>('write');
-  const [content, setContent] = useState<string>(
-    '# Binary Search Tree Implementation\n\n## Overview\nI implemented BST insertion, deletion, and tree traversals in C++.\n\n```cpp\nvoid insert(Node*& root, int val) {\n    if (!root) root = new Node(val);\n    else if (val < root->val) insert(root->left, val);\n    else insert(root->right, val);\n}\n```\n\nAll tests pass locally.'
-  );
+  const [content, setContent] = useState<string>('');
+  const [assignmentInfo, setAssignmentInfo] = useState<{
+    title: string;
+    courseCode: string;
+    points: number;
+    dueDate: string;
+  }>({
+    title: 'Assignment Submission Workspace',
+    courseCode: 'ASSIGNMENT',
+    points: 100,
+    dueDate: '2026-08-30',
+  });
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [draftHistory, setDraftHistory] = useState<DraftSnapshot[]>([]);
   const [conflictDrafts, setConflictDrafts] = useState<DraftSnapshot[]>([]);
@@ -75,32 +84,42 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
     isFirstRender.current = true;
     async function loadDraft() {
       await seedInitialMockData();
+
+      // Attempt to load associated module/assignment info
+      const modules = await db.cachedModules.toArray();
+      const matchModule = modules.find(
+        m => m.assignmentId === assignmentId || m.id === assignmentId
+      );
+      if (matchModule) {
+        const courses = await db.cachedCourses.toArray();
+        const parentCourse = courses.find(c => c.id === matchModule.courseId);
+        setAssignmentInfo({
+          title: matchModule.title,
+          courseCode: parentCourse?.code || 'COURSE',
+          points: matchModule.points || 100,
+          dueDate: matchModule.dueDate || '2026-08-30',
+        });
+      }
+
       const existing = await db.cachedSubmissions
         .where('assignmentId')
         .equals(assignmentId)
         .first();
 
       if (existing) {
-        let decompressed = content;
+        let decompressed = '';
         if (existing.content) {
           const decrypted = await decryptText(existing.content);
           decompressed = decompressPayload(decrypted);
         }
-        if (existing.content) setContent(decompressed);
+        setContent(decompressed);
         setAttachments(existing.attachments || []);
+        if (existing.syncStatus === 'pending' || existing.syncStatus === 'synced') {
+          setIsSubmitted(true);
+        }
         if (existing.deviceConflictDrafts) setConflictDrafts(existing.deviceConflictDrafts);
         if (existing.draftHistory && existing.draftHistory.length > 0) {
           setDraftHistory(existing.draftHistory);
-        } else {
-          // Initialize default history snapshot if none exists
-          const initialSnapshot: DraftSnapshot = {
-            id: `snap-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            content: decompressed,
-            wordCount: decompressed.trim().split(/\s+/).length,
-            sizeKb: +(decompressed.length / 1024).toFixed(2),
-          };
-          setDraftHistory([initialSnapshot]);
         }
       } else {
         setAttachments([]);
@@ -265,13 +284,38 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
   const handleSubmit = async () => {
     setIsSubmitted(true);
     try {
-      // 1. Package submission into IndexedDB Transaction Log Queue
-      await addMockOfflineTransaction('CREATE_SUBMISSION');
+      const nowIso = new Date().toISOString();
+      const submissionId = `sub-${Date.now()}`;
+      const offlineUuid = generateUUID();
 
-      // 2. Update submission status in IndexedDB
-      await db.cachedSubmissions.update('sub-102', {
+      // 1. Package submission into IndexedDB Transaction Log Queue
+      await db.transactionLogs.add({
+        offlineId: offlineUuid,
+        action: 'CREATE_SUBMISSION',
+        entityType: 'submission',
+        entityId: submissionId,
+        payload: {
+          assignment_id: assignmentId,
+          content,
+          submitted_at: nowIso,
+          attachments: attachments.map(a => ({ name: a.name, size: a.size, type: a.type })),
+        },
+        timestamp: nowIso,
+        status: 'pending',
+        retryCount: 0,
+      });
+
+      // 2. Put submission record in IndexedDB cachedSubmissions
+      await db.cachedSubmissions.put({
+        id: submissionId,
+        assignmentId,
+        assignmentTitle: assignmentInfo.title,
+        studentName: user?.fullName || 'Student',
+        content,
+        attachments,
+        submittedAt: nowIso,
         syncStatus: 'pending',
-        submittedAt: new Date().toISOString(),
+        conflictStatus: 'none',
       });
 
       // 3. Trigger network-aware toasts
@@ -368,7 +412,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary uppercase">
-              CS101 — Task #2
+              {assignmentInfo.courseCode}
             </span>
             <StatusPill
               label={isOnline ? 'Online Intranet Sync' : 'Offline Mode'}
@@ -376,7 +420,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
             />
           </div>
           <h2 className="text-xl font-bold font-heading text-foreground">
-            {t.assignmentPage.title}: Offline Transaction Log Architecture
+            {assignmentInfo.title}
           </h2>
           <p className="text-xs text-muted-foreground">{t.assignmentPage.subtitle}</p>
         </div>
@@ -387,14 +431,14 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
               <Award className="w-3.5 h-3.5 text-amber-500" />
               {t.assignmentPage.points}
             </span>
-            <span className="font-bold text-foreground">Points: -- / 100</span>
+            <span className="font-bold text-foreground">Points: {assignmentInfo.points}</span>
           </div>
           <div className="flex flex-col text-xs">
             <span className="text-muted-foreground flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-sky-500" />
               {t.assignmentPage.dueDate}
             </span>
-            <span className="font-bold text-foreground">Aug 20, 23:59 (CAT / UTC+2)</span>
+            <span className="font-bold text-foreground">{assignmentInfo.dueDate}</span>
           </div>
         </div>
       </div>
