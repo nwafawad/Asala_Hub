@@ -11,6 +11,7 @@ import { useSync } from '@/context/SyncContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { useAuth } from '@/context/AuthContext';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   ArrowLeft,
   ArrowRight,
@@ -36,6 +37,8 @@ import {
   GitMerge,
   AlertCircle,
   Check,
+  Trash2,
+  Upload,
 } from 'lucide-react';
 
 interface AssignmentWorkspaceProps {
@@ -72,6 +75,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
   // Live autosave state
   const [saveStatus, setSaveStatus] = useState<'saving' | 'saved'>('saved');
   const [secondsAgo, setSecondsAgo] = useState<number>(0);
+  const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -257,12 +261,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
     }, 0);
   };
 
-  // Handle File Uploads — store as raw ArrayBuffer (Perf #1: ~33% smaller than Base64 dataUrl)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    Array.from(files).forEach(file => {
+  // Helper to process uploaded file objects
+  const processFiles = (files: File[]) => {
+    files.forEach(file => {
       const reader = new FileReader();
       reader.onload = evt => {
         const arrayBuffer = evt.target?.result as ArrayBuffer;
@@ -277,7 +278,21 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
       };
       reader.readAsArrayBuffer(file);
     });
+  };
+
+  // Handle File Uploads
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    processFiles(Array.from(files));
     e.target.value = '';
+  };
+
+  // Handle Attachment Removal
+  const handleRemoveAttachment = (indexToRemove: number) => {
+    const removedFile = attachments[indexToRemove];
+    setAttachments(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    showToast('Attachment Removed', 'info', `${removedFile?.name || 'File'} removed from draft.`);
   };
 
   // Submit Assignment Action — Always Enabled regardless of connectivity
@@ -397,7 +412,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors cursor-pointer shadow-xs"
           >
             <BackIcon className="w-4 h-4 text-primary" />
-            <span>{t.assignmentPage.backToModules}</span>
+            <span>Back to Assignments List</span>
           </button>
         )}
 
@@ -414,9 +429,14 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
             <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary uppercase">
               {assignmentInfo.courseCode}
             </span>
-            <StatusPill
-              label={isOnline ? 'Online Intranet Sync' : 'Offline Mode'}
-              variant={isOnline ? 'info' : 'warning'}
+            <InfoTooltip
+              title={isOnline ? 'Online Intranet Sync' : 'Offline Mode'}
+              content={
+                isOnline
+                  ? 'Connected to central server. Workspace submission drafts auto-sync in real-time.'
+                  : 'Working offline. Your workspace drafts are saved locally in IndexedDB until reconnected.'
+              }
+              position="bottom"
             />
           </div>
           <h2 className="text-xl font-bold font-heading text-foreground">
@@ -690,25 +710,56 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
             />
           </div>
 
-          {attachments.length === 0 ? (
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="p-6 rounded-xl border border-dashed border-border bg-muted/20 text-center text-xs text-muted-foreground hover:bg-muted/40 transition-colors cursor-pointer"
-            >
-              {t.assignmentPage.dropzoneText}
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
+          <div
+            onDragOver={e => {
+              e.preventDefault();
+              setIsDraggingFile(true);
+            }}
+            onDragLeave={e => {
+              e.preventDefault();
+              setIsDraggingFile(false);
+            }}
+            onDrop={e => {
+              e.preventDefault();
+              setIsDraggingFile(false);
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                processFiles(Array.from(e.dataTransfer.files));
+              }
+            }}
+            onClick={() => fileInputRef.current?.click()}
+            className={`p-6 rounded-xl border border-dashed text-center text-xs transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 ${
+              isDraggingFile
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border bg-muted/20 text-muted-foreground hover:bg-muted/40'
+            }`}
+          >
+            <Upload className="w-6 h-6 text-primary shrink-0" />
+            <span>{t.assignmentPage.dropzoneText || 'Drag & drop files here or click to browse offline attachments.'}</span>
+          </div>
+
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1">
               {attachments.map((file, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-background text-xs font-medium text-foreground"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-background text-xs font-medium text-foreground group"
                 >
-                  <FileText className="w-4 h-4 text-primary" />
-                  <span>{file.name}</span>
+                  <FileText className="w-4 h-4 text-primary shrink-0" />
+                  <span className="max-w-[160px] truncate">{file.name}</span>
                   <span className="text-[10px] text-muted-foreground">
                     ({+(file.size / 1024).toFixed(1)} KB)
                   </span>
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleRemoveAttachment(i);
+                    }}
+                    className="p-1 text-muted-foreground hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               ))}
             </div>

@@ -6,8 +6,10 @@ import { AppShell } from '@/components/shell/AppShell';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { StatCard } from '@/components/ui/StatCard';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { SkeletonCard, AppShellSkeleton } from '@/components/ui/Skeletons';
 import { CourseBrowser } from '@/components/student/CourseBrowser';
+import { AssignmentListView } from '@/components/student/AssignmentListView';
 import { AssignmentWorkspace } from '@/components/student/AssignmentWorkspace';
 import { ProgressTracker } from '@/components/student/ProgressTracker';
 import { CourseBuilder } from '@/components/educator/CourseBuilder';
@@ -35,6 +37,7 @@ export function HomeContent() {
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [overrideTab, setOverrideTabState] = useState<string | null>(null);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
 
   const isEducator = isEducatorUser(user);
 
@@ -139,13 +142,21 @@ export function HomeContent() {
           case 'courses':
             return (
               <CourseBrowser
-                onOpenAssignment={_id => handleTabNavigate('assignments', setActiveTab)}
+                onOpenAssignment={id => {
+                  setSelectedAssignmentId(id);
+                  handleTabNavigate('assignments', setActiveTab);
+                }}
               />
             );
           case 'assignments':
-            return (
+            return selectedAssignmentId ? (
               <AssignmentWorkspace
-                onBack={() => handleTabNavigate('courses', setActiveTab)}
+                assignmentId={selectedAssignmentId}
+                onBack={() => setSelectedAssignmentId(null)}
+              />
+            ) : (
+              <AssignmentListView
+                onSelectAssignment={assignId => setSelectedAssignmentId(assignId)}
               />
             );
           case 'progress':
@@ -232,9 +243,14 @@ const DashboardView: React.FC<DashboardViewProps> = ({
             <h2 className="text-2xl font-bold font-heading text-foreground">
               Welcome back, {user?.fullName || 'Student'} 👋
             </h2>
-            <StatusPill
-              label={isOnline ? 'Network Connected' : 'Campus Intranet Offline'}
-              variant={isOnline ? 'success' : 'warning'}
+            <InfoTooltip
+              title={isOnline ? 'Network Connected' : 'Campus Intranet Offline'}
+              content={
+                isOnline
+                  ? 'Connected to central server. All progress and drafts automatically sync in real-time.'
+                  : 'Operating offline. Your progress, drafts, and notes are securely saved locally to your device.'
+              }
+              position="bottom"
             />
           </div>
           <p className="text-xs text-muted-foreground">

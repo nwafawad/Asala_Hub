@@ -4,6 +4,7 @@ import React from 'react';
 import { type CachedCourse, type CachedModule } from '@/lib/db';
 import { useI18n } from '@/context/I18nContext';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   ArrowLeft,
   ArrowRight,
@@ -77,9 +78,14 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
           <span>{t.coursesPage.backToCourses}</span>
         </button>
 
-        <StatusPill
-          label={course.isCachedOffline ? t.coursesPage.cachedOffline : t.coursesPage.partiallySynced}
-          variant={course.isCachedOffline ? 'success' : cachePercentage > 0 ? 'warning' : 'neutral'}
+        <InfoTooltip
+          title={course.isCachedOffline ? t.coursesPage.cachedOffline : t.coursesPage.partiallySynced}
+          content={
+            course.isCachedOffline
+              ? 'All modules and media resources in this course are fully downloaded and available offline.'
+              : 'Some modules in this course are cached locally for offline study.'
+          }
+          position="bottom"
         />
       </div>
 

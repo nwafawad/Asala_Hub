@@ -46,8 +46,8 @@ export const PerformanceDashboard: React.FC = () => {
         db.cachedModules.toArray(),
       ]);
 
-      const totalStudents = enrollments.length || 3;
-      const graded = submissions.filter(s => s.score !== undefined);
+      const totalStudents = enrollments.length;
+      const graded = submissions.filter(s => s.score !== undefined && s.score !== null);
       const pending = submissions.length - graded.length;
 
       let aCount = 0,
@@ -63,19 +63,23 @@ export const PerformanceDashboard: React.FC = () => {
         else fCount++;
       });
 
-      const totalGraded = graded.length || 1;
-      const passRate = Math.round(((aCount + bCount + cCount) / totalGraded) * 100);
+      const totalGraded = graded.length;
+      const passRate = totalGraded > 0 ? Math.round(((aCount + bCount + cCount) / totalGraded) * 100) : 0;
+
+      const completedMods = modules.filter(m => m.isCompleted).length;
+      const totalMods = modules.length;
+      const avgCompletion = totalMods > 0 ? Math.round((completedMods / totalMods) * 100) : 0;
 
       setStats({
         totalEnrolled: totalStudents,
-        avgCompletion: 78,
-        passRate: passRate > 0 ? passRate : 92,
+        avgCompletion,
+        passRate,
         pendingGrading: pending,
         gradeDist: [
-          { range: '90-100% (A)', count: aCount || 2, percentage: Math.round(((aCount || 2) / (totalGraded || 3)) * 100) },
-          { range: '80-89% (B)', count: bCount || 1, percentage: Math.round(((bCount || 1) / (totalGraded || 3)) * 100) },
-          { range: '70-79% (C)', count: cCount || 0, percentage: 0 },
-          { range: '<70% (Needs Revision)', count: fCount || 0, percentage: 0 },
+          { range: '90-100% (A)', count: aCount, percentage: totalGraded > 0 ? Math.round((aCount / totalGraded) * 100) : 0 },
+          { range: '80-89% (B)', count: bCount, percentage: totalGraded > 0 ? Math.round((bCount / totalGraded) * 100) : 0 },
+          { range: '70-79% (C)', count: cCount, percentage: totalGraded > 0 ? Math.round((cCount / totalGraded) * 100) : 0 },
+          { range: '<70% (Needs Revision)', count: fCount, percentage: totalGraded > 0 ? Math.round((fCount / totalGraded) * 100) : 0 },
         ],
       });
     } catch (err) {

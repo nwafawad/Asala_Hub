@@ -188,6 +188,20 @@ export const ProgressTracker: React.FC = () => {
   const totalCourseModules = Math.max(1, courses.reduce((acc, c) => acc + c.total, 0));
   const overallCompletionRate = Math.round((totalCompletedModules / totalCourseModules) * 100);
 
+  const gradedSubmissions = useMemo(() => {
+    return submissions.filter(s => s.score !== undefined && s.score !== null);
+  }, [submissions]);
+
+  const calculatedGpa = useMemo(() => {
+    if (gradedSubmissions.length === 0) return 'N/A';
+    const totalScorePct = gradedSubmissions.reduce(
+      (sum, s) => sum + ((s.score || 0) / (s.maxScore || 100)) * 100,
+      0
+    );
+    const avgPct = totalScorePct / gradedSubmissions.length;
+    return Math.min(4.0, (avgPct / 100) * 4.0).toFixed(2);
+  }, [gradedSubmissions]);
+
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">
       {/* Header Banner */}
@@ -198,7 +212,11 @@ export const ProgressTracker: React.FC = () => {
               <Activity className="w-5 h-5 text-primary" />
               {t.progressTracker.title}
             </h2>
-            <StatusPill label={t.progressTracker.intranetTopology} variant="success" />
+            <InfoTooltip
+              title="Intranet Sync Active"
+              content="Your learning progress, quiz scores, and assignment submissions automatically synchronize with the institutional network."
+              position="bottom"
+            />
           </div>
           <p className="text-xs text-muted-foreground">{t.progressTracker.subtitle}</p>
         </div>
@@ -211,12 +229,19 @@ export const ProgressTracker: React.FC = () => {
           value={`${overallCompletionRate}%`}
           subtitle={`Calculated: ${totalCompletedModules} of ${totalCourseModules} modules`}
           icon={CheckCircle2}
-          trend={{ value: '+12%', isPositive: true }}
+          trend={{
+            value: `${totalCompletedModules} done`,
+            isPositive: totalCompletedModules > 0,
+          }}
         />
         <StatCard
           title={t.progressTracker.gpaSummary}
-          value="3.92"
-          subtitle="Calculated Cumulative GPA"
+          value={calculatedGpa}
+          subtitle={
+            gradedSubmissions.length > 0
+              ? `Calculated from ${gradedSubmissions.length} graded assignments`
+              : 'No graded assignments yet'
+          }
           icon={FileCheck}
         />
         <StatCard

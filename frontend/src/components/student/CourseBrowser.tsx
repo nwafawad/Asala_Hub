@@ -9,6 +9,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { useStorage } from '@/context/StorageContext';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { SkeletonCard } from '@/components/ui/Skeletons';
 import { CourseDetail } from '@/components/student/CourseDetail';
 import { ModuleViewerModal } from '@/components/student/ModuleViewerModal';
@@ -268,7 +269,12 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
         <div className="flex flex-col gap-1">
           <h2 className="text-xl font-bold font-heading text-foreground flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-primary" />
-            {t.coursesPage.title}
+            <span>{t.coursesPage.title}</span>
+            <InfoTooltip
+              title="Offline Course Catalog"
+              content="Browse and download course modules for offline study. Downloaded content is stored locally in your device storage."
+              position="bottom"
+            />
           </h2>
           <p className="text-xs text-muted-foreground">{t.coursesPage.subtitle}</p>
         </div>
