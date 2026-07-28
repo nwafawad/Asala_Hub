@@ -21,8 +21,15 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  const [hasAcceptedConsent, setHasAcceptedConsent] = useState<boolean>(true);
+  const [isMinor, setIsMinor] = useState<boolean>(false);
+  const [guardianEmail, setGuardianEmail] = useState<string>('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasAcceptedConsent) return;
+    if (isMinor && !guardianEmail) return;
+
     setError(null);
     setIsSubmitting(true);
 
@@ -125,11 +132,57 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
             </div>
           </div>
 
+          {/* Consent Checkbox */}
+          <div className="flex flex-col gap-2 pt-1 border-t border-border/60">
+            <button
+              type="button"
+              onClick={() => setHasAcceptedConsent(!hasAcceptedConsent)}
+              className="flex items-start gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-left"
+            >
+              {hasAcceptedConsent ? (
+                <CheckSquare className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              ) : (
+                <Square className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+              )}
+              <span>I agree to the Asala Hub Offline Data Policy & Terms (CR-1)</span>
+            </button>
+
+            {/* Minor / Guardian Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsMinor(!isMinor)}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-left"
+            >
+              {isMinor ? (
+                <CheckSquare className="w-4 h-4 text-primary shrink-0" />
+              ) : (
+                <Square className="w-4 h-4 text-muted-foreground shrink-0" />
+              )}
+              <span>I am under 18 years old (Minor Account)</span>
+            </button>
+
+            {isMinor && (
+              <div className="flex flex-col gap-1 pl-6 pt-1 animate-in fade-in duration-150">
+                <label className="text-[11px] font-semibold text-muted-foreground">
+                  Guardian / Institution Email for Consent (CR-2)
+                </label>
+                <input
+                  type="email"
+                  required={isMinor}
+                  value={guardianEmail}
+                  onChange={e => setGuardianEmail(e.target.value)}
+                  placeholder="guardian@school.edu"
+                  className="w-full h-8 px-3 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            )}
+          </div>
+
           {/* Remember Me Checkbox */}
           <button
             type="button"
             onClick={() => setRememberMe(!rememberMe)}
-            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer self-start my-1"
+            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer self-start"
           >
             {rememberMe ? (
               <CheckSquare className="w-4 h-4 text-primary shrink-0" />
@@ -142,7 +195,7 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
           {/* Submit Action */}
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !hasAcceptedConsent || (isMinor && !guardianEmail)}
             className="w-full h-10 mt-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
           >
             <LogIn className="w-4 h-4 rtl:rotate-180" />

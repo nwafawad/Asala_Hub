@@ -82,9 +82,30 @@ export const MSG = {
     id: 'MSG_CONF_01',
     title: "Some changes were updated by your instructor and have been applied.",
     titleAr: "تم تحديث بعض التغييرات بواسطة المحاضر وتم تطبيقها.",
-    body: "Educator server sequence #104 resolved.",
+    body: "Educator server sequence resolved.",
     bodyAr: "تم تطبيق تسلسل الخادم التابع للمحاضر بنجاح.",
     type: 'info',
     blocking: false,
   },
+  GRADED_REJECTION: {
+    id: 'MSG_CONF_02',
+    title: "Edit not saved — assignment already graded.",
+    titleAr: "لم يتم حفظ التعديل - تم تقييم الواجب بالفعل.",
+    body: "Your educator has graded this assignment. Your edit couldn't be applied. Please contact your educator if you have questions.",
+    bodyAr: "قام المعلم بتقييم هذا الواجب. لا يمكن تطبيق التعديلات. يرجى التواصل مع المعلم لأي استفسارات.",
+    type: 'error',
+    blocking: true,
+  },
+  VERSION_CONFLICT: {
+    id: 'MSG_CONF_03',
+    title: "A newer version of this draft exists.",
+    titleAr: "توجد نسخة أحدث من هذه المسودة.",
+    body: "Your instructor's version has been added to your Draft History. Open the history panel to compare and choose which version to keep.",
+    bodyAr: "تمت إضافة نسخة المحاضر إلى سجل المسودات. افتح لوحة السجل للمقارنة واختيار النسخة المناسبة.",
+    type: 'warning',
+    blocking: false,
+  },
 } as const;
+
+export type MessageKey = keyof typeof MSG;
+

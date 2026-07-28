@@ -126,7 +126,12 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
   };
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 ${isFullscreen ? 'p-0' : 'p-4'}`}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="module-modal-title"
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 ${isFullscreen ? 'p-0' : 'p-4'}`}
+    >
       <div
         className={`relative w-full rounded-2xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col transition-all ${
           isFullscreen ? 'h-full max-w-full rounded-none' : 'max-w-3xl max-h-[90vh]'
@@ -148,7 +153,7 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
                   Module #{module.sequenceOrder}
                 </span>
               </div>
-              <h3 className="text-base font-bold font-heading text-foreground mt-0.5">
+              <h3 id="module-modal-title" className="text-base font-bold font-heading text-foreground mt-0.5">
                 {language === 'ar' && module.titleAr ? module.titleAr : module.title}
               </h3>
             </div>
@@ -156,21 +161,24 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
 
           <div className="flex items-center gap-2">
             {/* Font Size Selector */}
-            <div className="hidden sm:flex items-center border border-border rounded-lg bg-background p-0.5">
+            <div className="hidden sm:flex items-center border border-border rounded-lg bg-background p-0.5" aria-label="Adjust font size">
               <button
                 onClick={() => setFontSize('sm')}
+                aria-label="Small font size"
                 className={`px-2 py-0.5 text-xs font-mono rounded ${fontSize === 'sm' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
               >
                 A-
               </button>
               <button
                 onClick={() => setFontSize('base')}
+                aria-label="Normal font size"
                 className={`px-2 py-0.5 text-xs font-mono rounded ${fontSize === 'base' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
               >
                 A
               </button>
               <button
                 onClick={() => setFontSize('lg')}
+                aria-label="Large font size"
                 className={`px-2 py-0.5 text-xs font-mono rounded ${fontSize === 'lg' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
               >
                 A+
@@ -180,6 +188,7 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
             {/* Distraction-Free Toggle */}
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
+              aria-label="Toggle fullscreen reader"
               className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer"
             >
               {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Reader'}
@@ -187,8 +196,8 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
 
             <button
               onClick={onClose}
+              aria-label="Close module viewer"
               className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-              aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>

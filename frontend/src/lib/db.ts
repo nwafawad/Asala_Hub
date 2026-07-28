@@ -61,6 +61,8 @@ export interface DraftSnapshot {
   content: string;
   wordCount: number;
   sizeKb: number;
+  isServerConflict?: boolean;
+  label?: string;
 }
 
 export interface CachedSubmission {
@@ -85,6 +87,8 @@ export interface IndexedDBUser {
   fullName: string;
   role: 'student' | 'educator';
   preferredLanguage: 'en' | 'ar';
+  requiresGuardianConsent?: boolean;
+  guardianEmail?: string;
 }
 
 export interface UserSession {

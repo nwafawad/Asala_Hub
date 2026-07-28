@@ -245,7 +245,14 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
               {usedMb} MB / {quotaMb} MB
             </span>
           </div>
-          <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+          <div
+            className="w-full h-2 rounded-full bg-muted overflow-hidden"
+            role="meter"
+            aria-label="IndexedDB Storage Quota Meter"
+            aria-valuenow={usedMb}
+            aria-valuemin={0}
+            aria-valuemax={quotaMb}
+          >
             <div
               className={`h-full rounded-full transition-all duration-300 ${
                 usagePercent > 80 ? 'bg-destructive' : 'bg-primary'
@@ -269,6 +276,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
                 await loadCourses();
               }}
               className="text-[10px] font-mono text-muted-foreground hover:text-rose-500 underline cursor-pointer"
+              aria-label="Purge stale synced storage"
             >
               Purge Stale Storage
             </button>
@@ -279,8 +287,10 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
       {/* Filter Tabs, Search & Sort Control Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1 p-1 rounded-xl border border-border bg-card overflow-x-auto">
+        <div className="flex items-center gap-1 p-1 rounded-xl border border-border bg-card overflow-x-auto" role="tablist" aria-label="Course Filter Tabs">
           <button
+            role="tab"
+            aria-selected={filterTab === 'all'}
             onClick={() => setFilterTab('all')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
               filterTab === 'all'
@@ -291,6 +301,8 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
             All Courses ({courses.length})
           </button>
           <button
+            role="tab"
+            aria-selected={filterTab === 'downloaded'}
             onClick={() => setFilterTab('downloaded')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
               filterTab === 'downloaded'
@@ -301,6 +313,8 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
             Downloaded ({courses.filter(c => c.isCachedOffline || (modulesMap[c.id] || []).some(m => m.isCachedOffline)).length})
           </button>
           <button
+            role="tab"
+            aria-selected={filterTab === 'in_progress'}
             onClick={() => setFilterTab('in_progress')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
               filterTab === 'in_progress'
@@ -311,6 +325,8 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
             In Progress
           </button>
           <button
+            role="tab"
+            aria-selected={filterTab === 'completed'}
             onClick={() => setFilterTab('completed')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
               filterTab === 'completed'
@@ -325,13 +341,16 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
         {/* Search & Sort Input Controls */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1 sm:w-64">
+            <label htmlFor="course-search-input" className="sr-only">Search courses</label>
             <Search className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
+              id="course-search-input"
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder={t.searchPlaceholder}
+              aria-label="Search courses"
               className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
@@ -339,6 +358,7 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value as any)}
+            aria-label="Sort courses by"
             className="h-10 px-3 rounded-xl border border-border bg-card text-xs text-foreground font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
           >
             <option value="code">Sort by Code</option>

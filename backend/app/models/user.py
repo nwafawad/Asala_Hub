@@ -33,6 +33,8 @@ class User(TimestampModel, table=True):
         )
     )
     preferred_language: str = Field(default="en")
+    requires_guardian_consent: bool = Field(default=False)
+    guardian_email: str | None = Field(default=None)
 
     # Relationships
     courses: List["Course"] = Relationship(back_populates="educator")

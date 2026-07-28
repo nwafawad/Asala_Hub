@@ -72,7 +72,11 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
       await seedInitialMockData();
       const existing = await db.cachedSubmissions.get('sub-102');
       if (existing) {
-        const decompressed = existing.content ? decompressPayload(existing.content) : content;
+        let decompressed = content;
+        if (existing.content) {
+          const decrypted = await decryptText(existing.content);
+          decompressed = decompressPayload(decrypted);
+        }
         if (existing.content) setContent(decompressed);
         if (existing.attachments) setAttachments(existing.attachments);
         if (existing.deviceConflictDrafts) setConflictDrafts(existing.deviceConflictDrafts);
@@ -92,6 +96,29 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
       }
     }
     loadDraft();
+
+    const handleVersionConflict = (evt: Event) => {
+      const customEvt = evt as CustomEvent;
+      const serverText =
+        customEvt.detail?.serverError ||
+        '# Server Version (Instructor Updated)\n\nThis content was updated on the server/another device.';
+      
+      const serverSnapshot: DraftSnapshot = {
+        id: `server-conflict-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        content: serverText,
+        wordCount: serverText.trim().split(/\s+/).length,
+        sizeKb: +(serverText.length / 1024).toFixed(2),
+        isServerConflict: true,
+        label: '⚠️ Server Version (Instructor Updated)',
+      };
+
+      setDraftHistory(prev => [serverSnapshot, ...prev]);
+      setIsHistoryOpen(true);
+    };
+
+    window.addEventListener('asala:version-conflict', handleVersionConflict);
+    return () => window.removeEventListener('asala:version-conflict', handleVersionConflict);
   }, []);
 
   // Live Autosave relative time ticker (updates secondsAgo every second)
@@ -128,13 +155,15 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
         };
 
         const updatedHistory = [newSnapshot, ...draftHistory.slice(0, 9)];
+        const compressed = compressPayload(content);
+        const encryptedContent = await encryptText(compressed);
 
         await db.cachedSubmissions.put({
           id: 'sub-102',
           assignmentId: 'assign-2',
           assignmentTitle: 'Offline Transaction Log Architecture',
           studentName: user?.fullName || 'Asala Student',
-          content: compressPayload(content),
+          content: encryptedContent,
           attachments,
           submittedAt: now.toISOString(),
           syncStatus: 'pending',
@@ -625,7 +654,11 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
               {draftHistory.map((snap, idx) => (
                 <div
                   key={snap.id || idx}
-                  className="p-2.5 rounded-lg border border-border/60 bg-background flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                  className={`p-2.5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs ${
+                    snap.isServerConflict
+                      ? 'border-amber-500/60 bg-amber-500/10'
+                      : 'border-border/60 bg-background'
+                  }`}
                 >
                   <div className="flex flex-col gap-0.5">
                     <span className="font-semibold text-foreground flex items-center gap-1.5">
@@ -635,7 +668,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
                         minute: '2-digit',
                         second: '2-digit',
                       })}{' '}
-                      — Draft #{draftHistory.length - idx}
+                      — {snap.label || `Draft #${draftHistory.length - idx}`}
                     </span>
                     <span className="text-[11px] text-muted-foreground font-mono">
                       {snap.wordCount} words · {snap.sizeKb} KB
@@ -647,7 +680,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border bg-muted text-[11px] font-semibold text-foreground hover:bg-muted/80 transition-colors cursor-pointer self-start sm:self-center"
                   >
                     <RotateCcw className="w-3 h-3 text-primary" />
-                    <span>{t.assignmentPage.restoreVersion}</span>
+                    <span>{snap.isServerConflict ? 'Use This Version' : t.assignmentPage.restoreVersion}</span>
                   </button>
                 </div>
               ))}

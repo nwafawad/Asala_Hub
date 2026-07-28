@@ -120,8 +120,8 @@ export const dictionary = {
       step2: 'Buffered in Queue',
       step3: 'Compressed Delta Payload',
       step4: 'Synced over TLS 1.2+',
-      step5: 'Graded & Conflict Resolved',
-      lwwConflict: 'Last-Write-Wins Resolved by Timestamp',
+      step5: 'Server Sequence Validation & Conflict Check',
+      serverValidation: 'Server Sequence Validation & Conflict Check',
     },
     actions: {
       toggleTheme: 'Toggle Theme',
@@ -250,8 +250,8 @@ export const dictionary = {
       step2: 'محفوظ بالطابور المحلي',
       step3: 'حزمة البيانات المضغوطة Delta',
       step4: 'تمت المزامنة عبر TLS 1.2+',
-      step5: 'تم التقييم وحل التعارض',
-      lwwConflict: 'تم حل التعارض اعتماداً على البصمة الزمنية (LWW)',
+      step5: 'التحقق من تسلسل الخادم وفحص التعارضات',
+      serverValidation: 'التحقق من تسلسل الخادم وفحص التعارضات',
     },
     actions: {
       toggleTheme: 'تغيير المظهر',

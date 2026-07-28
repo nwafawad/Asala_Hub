@@ -91,7 +91,7 @@ export const ProgressTracker: React.FC = () => {
       { title: t.progressTracker.step2, desc: 'Captured in Dexie transactionLogs queue', icon: Database, done: true },
       { title: t.progressTracker.step3, desc: 'Packaged into compressed flat JSON delta', icon: Layers, done: true },
       { title: t.progressTracker.step4, desc: 'Transmitted over TLS 1.2+ / LAN HTTP', icon: ShieldCheck, done: isOnline && pendingCount === 0 },
-      { title: t.progressTracker.step5, desc: t.progressTracker.lwwConflict, icon: GitCommit, done: true },
+      { title: t.progressTracker.step5, desc: t.progressTracker.serverValidation, icon: GitCommit, done: true },
     ],
     [t, isOnline, pendingCount]
   );

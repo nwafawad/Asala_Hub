@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { db, seedInitialMockData, type IndexedDBUser, type UserSession } from '@/lib/db';
-import { deriveKeyFromPassword, setInMemoryKey, zeroKey } from '@/lib/crypto';
+import { deriveKeyFromPassword, setInMemoryKey, zeroKey, encryptText, decryptText } from '@/lib/crypto';
 import { useOverlay } from './OverlayContext';
 
 interface AuthContextType {
@@ -39,11 +39,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (activeSession) {
         const isExpired = new Date(activeSession.expiresAt).getTime() < Date.now();
+        const decryptedToken = await decryptText(activeSession.token);
         if (!isExpired) {
           setUser(activeSession.user);
-          setToken(activeSession.token);
-          if (typeof window !== 'undefined' && activeSession.token) {
-            localStorage.setItem('asala_token', activeSession.token);
+          setToken(decryptedToken);
+          if (typeof window !== 'undefined' && decryptedToken) {
+            localStorage.setItem('asala_token', decryptedToken);
           }
           if (!navigator.onLine) {
             setIsOfflineSession(true);
@@ -116,9 +117,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
 
             const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
+            const encryptedToken = await encryptText(accessToken);
             const sessionObj: UserSession = {
               id: 'current_session',
-              token: accessToken,
+              token: encryptedToken,
               user: profile,
               rememberMe,
               expiresAt,
@@ -147,9 +149,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (matchUser) {
           const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
           const offlineToken = `offline-token-${Date.now()}`;
+          const encryptedOfflineToken = await encryptText(offlineToken);
           const sessionObj: UserSession = {
             id: 'current_session',
-            token: offlineToken,
+            token: encryptedOfflineToken,
             user: matchUser,
             rememberMe,
             expiresAt,
