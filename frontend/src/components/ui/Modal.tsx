@@ -27,6 +27,7 @@ export const Modal: React.FC<ModalProps> = ({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs transition-opacity animate-in fade-in-0" />
         <Dialog.Content
+          onOpenAutoFocus={e => e.preventDefault()}
           className={cn(
             'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-border bg-card p-6 shadow-xl rounded-2xl transition-all duration-200 animate-in fade-in-0 zoom-in-95',
             className

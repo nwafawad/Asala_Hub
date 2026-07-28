@@ -86,7 +86,7 @@
   --popover: var(--surface);
   --popover-foreground: var(--text);
   --primary: var(--accent);
-  --primary-foreground: #121211;
+  --primary-foreground: #ffffff;
   --secondary: #262624;
   --secondary-foreground: var(--text);
   --muted: #262624;

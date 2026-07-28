@@ -45,7 +45,7 @@ export const OverlayProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const newToast: ToastItem = { id, type, title, message };
     
-    setToasts(prev => [...prev, newToast]);
+    setToasts(prev => [...prev.slice(-2), newToast]);
 
     const timer = setTimeout(() => {
       removeToast(id);
