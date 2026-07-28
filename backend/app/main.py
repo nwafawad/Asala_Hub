@@ -75,6 +75,9 @@ def healthz_check(response: Response, session: Session = Depends(get_session)):
         return {"status": "error", "database": "disconnected", "detail": str(e)}
 
 
+import os
+from fastapi.staticfiles import StaticFiles
+
 # Include feature routers
 app.include_router(auth.router)
 app.include_router(courses.router)
@@ -82,4 +85,10 @@ app.include_router(modules.router)
 app.include_router(assignments.router)
 app.include_router(sync.router)
 app.include_router(admin.router)
+
+# Mount media uploads directory for serving static media assets
+uploads_dir = settings.MEDIA_UPLOAD_DIR
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+
 

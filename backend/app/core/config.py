@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     CAMPUS_SYNC_BATCH_SIZE: int = 50
     CAMPUS_SYNC_MAX_RETRIES: int = 3
 
+    # Media Storage & Transcoding Configurations
+    MEDIA_UPLOAD_DIR: str = "uploads"
+    MEDIA_STORAGE_BACKEND: str = "local"
+
+
 
     @property
     def is_production(self) -> bool:

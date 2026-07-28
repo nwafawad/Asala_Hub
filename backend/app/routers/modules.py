@@ -1,13 +1,7 @@
-"""
-Module API Routers.
-
-Exposes endpoints for creating, list-reading, detail-reading, updating,
-and deleting course Modules. Enforces course ownership validations.
-"""
-
+import os
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, status
 from sqlmodel import Session
 
 from app.core.database import get_session
@@ -25,9 +19,15 @@ from app.schemas.modules import (
     ModuleRead,
     ModuleSyllabusRead,
 )
+from app.services.media_service import (
+    get_module_storage_dir,
+    save_uploaded_file_chunked,
+    process_media_transcoding,
+)
 import app.crud.modules as crud_modules
 
 router = APIRouter(prefix="/courses", tags=["modules"])
+
 
 
 def _get_module_or_raise(
@@ -100,6 +100,47 @@ def update_module(
     return crud_modules.update_module(session, module, module_in)
 
 
+@router.post("/{course_id}/modules/{module_id}/media", status_code=status.HTTP_202_ACCEPTED)
+
+def upload_module_media(
+    course_id: uuid.UUID,
+    module_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_role(UserRole.educator)),
+    session: Session = Depends(get_session)
+):
+    """
+    Accept chunked media upload for a course module, store original file,
+    and trigger background FFmpeg audio extraction & text summary generation per FR-8.
+    Requires Educator role and ownership of parent course.
+    """
+    module = _get_module_or_raise(session, module_id, course_id, current_user.id)
+    target_dir = get_module_storage_dir(module_id)
+    original_filename = file.filename or "media.mp4"
+    ext = os.path.splitext(original_filename)[1].lower() or ".mp4"
+    dest_path = os.path.join(target_dir, f"original{ext}")
+
+    # Chunked stream save to disk
+    save_uploaded_file_chunked(file, dest_path)
+
+    # Queue background transcoding task
+    background_tasks.add_task(
+        process_media_transcoding,
+        module_id=module_id,
+        original_file_path=dest_path,
+        original_filename=original_filename,
+        module_title=module.title
+    )
+
+    return {
+        "status": "processing",
+        "message": "Media file uploaded successfully and transcoding job queued.",
+        "module_id": str(module_id),
+        "original_filename": original_filename,
+    }
+
+
 @router.delete("/{course_id}/modules/{module_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_module(
     course_id: uuid.UUID,
@@ -114,3 +155,4 @@ def delete_module(
     module = _get_module_or_raise(session, module_id, course_id, current_user.id)
     crud_modules.delete_module(session, module)
     return None
+
