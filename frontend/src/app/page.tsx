@@ -18,6 +18,8 @@ import { SettingsView } from '@/components/shell/SettingsView';
 import { db, seedInitialMockData } from '@/lib/db';
 import { BookOpen, FileText, CheckCircle2, Award, Clock, ArrowRight, Play, Sparkles, Layers } from 'lucide-react';
 
+import { SyncQueueView } from '@/components/student/SyncQueueView';
+
 export default function Home() {
   const { t, language } = useI18n();
   const { isAuthenticated, user } = useAuth();
@@ -106,6 +108,8 @@ export default function Home() {
             );
           case 'progress':
             return <ProgressTracker />;
+          case 'syncQueue':
+            return <SyncQueueView />;
           case 'settings':
             return <SettingsView />;
           case 'dashboard':
@@ -149,7 +153,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   stats,
   t,
   onNavigate,
-}) => (
+}) => {
+  const { pendingCount, pendingSubmissionsCount } = useSync();
+
+  return (
   <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">
             {/* Header Greeting Banner */}
             <div className="p-6 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -228,8 +235,16 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                   <StatCard
                     title="Submitted Assignments"
                     value={stats.submissionCount}
-                    subtitle="Ready or synced offline"
+                    subtitle={
+                      pendingSubmissionsCount > 0 || pendingCount > 0
+                        ? `${pendingSubmissionsCount} submission / ${pendingCount} tx pending`
+                        : 'All submissions synced'
+                    }
                     icon={FileText}
+                    trend={{
+                      value: pendingSubmissionsCount > 0 ? `${pendingSubmissionsCount} pending` : 'Synced',
+                      isPositive: pendingSubmissionsCount === 0,
+                    }}
                   />
                   <StatCard
                     title="Academic GPA"
@@ -341,4 +356,5 @@ const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
           </div>
-);
+  );
+};

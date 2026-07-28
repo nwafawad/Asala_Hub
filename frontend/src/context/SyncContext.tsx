@@ -14,9 +14,11 @@ interface SyncContextType {
   syncState: SyncState;
   pendingLogs: TransactionLogItem[];
   pendingCount: number;
+  pendingSubmissionsCount: number;
   syncNow: () => Promise<void>;
   addMockOfflineTransaction: (action?: 'CREATE_SUBMISSION' | 'UPDATE_COURSE') => Promise<void>;
   clearSyncedLogs: () => Promise<void>;
+  refreshLogs: () => Promise<void>;
 }
 
 const SyncContext = createContext<SyncContextType | undefined>(undefined);
@@ -25,6 +27,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [syncState, setSyncState] = useState<SyncState>('synced');
   const [pendingLogs, setPendingLogs] = useState<TransactionLogItem[]>([]);
+  const [pendingSubmissionsCount, setPendingSubmissionsCount] = useState<number>(0);
   const { showSystemMessage, blockingMessage, closeBlockingMessage } = useSystemMessage();
   // Bug #2: mutex ref — prevents concurrent sync requests from rapid clicks or simultaneous online events
   const isSyncingRef = useRef<boolean>(false);
@@ -35,13 +38,18 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load and count pending logs from Dexie IndexedDB
   const refreshLogs = useCallback(async () => {
     try {
-      const logs = await db.transactionLogs.toArray();
+      const [logs, subs] = await Promise.all([
+        db.transactionLogs.toArray(),
+        db.cachedSubmissions.toArray(),
+      ]);
       setPendingLogs(logs);
       const pendingCount = logs.filter(l => l.status === 'pending').length;
+      const pendingSubs = subs.filter(s => s.syncStatus === 'pending').length;
+      setPendingSubmissionsCount(pendingSubs);
 
       if (!navigator.onLine) {
-        setSyncState(pendingCount > 0 ? 'pending' : 'offline');
-      } else if (pendingCount > 0) {
+        setSyncState(pendingCount > 0 || pendingSubs > 0 ? 'pending' : 'offline');
+      } else if (pendingCount > 0 || pendingSubs > 0) {
         setSyncState(prev => (prev === 'error' ? 'error' : 'pending'));
       } else {
         setSyncState('synced');
@@ -297,11 +305,23 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncState,
       pendingLogs,
       pendingCount,
+      pendingSubmissionsCount,
       syncNow,
       addMockOfflineTransaction,
       clearSyncedLogs,
+      refreshLogs,
     }),
-    [isOnline, syncState, pendingLogs, pendingCount, syncNow, addMockOfflineTransaction, clearSyncedLogs]
+    [
+      isOnline,
+      syncState,
+      pendingLogs,
+      pendingCount,
+      pendingSubmissionsCount,
+      syncNow,
+      addMockOfflineTransaction,
+      clearSyncedLogs,
+      refreshLogs,
+    ]
   );
 
   return (
