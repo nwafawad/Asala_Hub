@@ -30,6 +30,13 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
   const { pendingCount } = useSync();
 
   const navItems = React.useMemo(() => {
+    if (user?.role === 'admin') {
+      return [
+        { id: 'adminConsole', label: 'Admin Console', icon: Settings },
+        { id: 'settings', label: t.nav.settings, icon: Settings },
+      ];
+    }
+
     const isEducator = isEducatorUser(user);
     if (isEducator) {
       return [

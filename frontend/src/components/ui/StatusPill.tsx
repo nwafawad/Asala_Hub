@@ -4,10 +4,12 @@ import { cn } from '@/lib/utils';
 export type StatusVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
 interface StatusPillProps {
-  label: string;
+  label?: string;
+  status?: string;
   variant?: StatusVariant;
   className?: string;
   dotAnimation?: boolean;
+  children?: React.ReactNode;
 }
 
 const variantStyles: Record<StatusVariant, { pill: string; dot: string }> = {
@@ -35,11 +37,28 @@ const variantStyles: Record<StatusVariant, { pill: string; dot: string }> = {
 
 export const StatusPill: React.FC<StatusPillProps> = React.memo(({
   label,
-  variant = 'neutral',
+  status,
+  variant,
   className,
   dotAnimation = false,
+  children,
 }) => {
-  const styles = variantStyles[variant];
+  const text = label || children || status || '';
+  const statusStr = String(status || label || children || '').toLowerCase();
+
+  let computedVariant: StatusVariant = variant || 'neutral';
+  if (!variant) {
+    if (statusStr.includes('synced') || statusStr.includes('active') || statusStr.includes('healthy') || statusStr.includes('operational') || statusStr.includes('ok')) {
+      computedVariant = 'success';
+    } else if (statusStr.includes('pending') || statusStr.includes('warning') || statusStr.includes('stale')) {
+      computedVariant = 'warning';
+    } else if (statusStr.includes('error') || statusStr.includes('suspended') || statusStr.includes('degraded') || statusStr.includes('failed')) {
+      computedVariant = 'danger';
+    }
+  }
+
+  const styles = variantStyles[computedVariant];
+
   return (
     <span
       className={cn(
@@ -55,7 +74,7 @@ export const StatusPill: React.FC<StatusPillProps> = React.memo(({
           dotAnimation && 'animate-pulse'
         )}
       />
-      {label}
+      {text}
     </span>
   );
 });

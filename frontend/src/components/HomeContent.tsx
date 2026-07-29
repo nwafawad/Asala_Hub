@@ -94,13 +94,25 @@ export function HomeContent() {
     return <AppShellSkeleton />;
   }
 
+  // Admin Role Guard: redirect to /admin console
+  if (user && user.role === 'admin') {
+    if (typeof window !== 'undefined') {
+      router.replace('/admin');
+    }
+    return null;
+  }
+
   if (!isAuthenticated && !user) {
     return (
       <LoginForm
         onSuccess={role => {
           showToast('Authentication Successful', 'success', `Welcome back!`);
-          const targetTab = role === 'student' ? 'courses' : 'curriculum';
-          router.replace(`/?tab=${targetTab}`, { scroll: false });
+          if (role === 'admin') {
+            router.replace('/admin', { scroll: false });
+          } else {
+            const targetTab = role === 'student' ? 'courses' : 'curriculum';
+            router.replace(`/?tab=${targetTab}`, { scroll: false });
+          }
         }}
       />
     );

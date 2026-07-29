@@ -161,12 +161,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               headers: { Authorization: `Bearer ${accessToken}` },
             });
 
+            const userRole: 'student' | 'educator' | 'admin' =
+              meRes.data.role === 'admin' ? 'admin' : meRes.data.role === 'educator' ? 'educator' : 'student';
+
             const profile: IndexedDBUser = {
               id: meRes.data.id || `user-${Date.now()}`,
               email: meRes.data.email,
               fullName: meRes.data.full_name || cleanEmail.split('@')[0],
-              role: meRes.data.role === 'educator' ? 'educator' : 'student',
+              role: userRole,
               preferredLanguage: meRes.data.preferred_language || 'en',
+              status: meRes.data.status || 'active',
             };
 
             const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
@@ -193,6 +197,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsOfflineSession(false);
             return { success: true };
           } catch (apiErr: any) {
+            // Intercept 403 ACCOUNT_SUSPENDED error from backend
+            if (apiErr?.response?.status === 403 && (apiErr?.response?.data?.detail?.includes('suspended') || apiErr?.response?.data?.error_code === 'ACCOUNT_SUSPENDED')) {
+              return { success: false, error: 'ACCOUNT_SUSPENDED' };
+            }
             console.warn('API auth failed, checking offline IndexedDB fallback...', apiErr);
           }
         }

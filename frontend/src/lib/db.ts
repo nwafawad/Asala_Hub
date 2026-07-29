@@ -121,8 +121,9 @@ export interface IndexedDBUser {
   id: string;
   email: string;
   fullName: string;
-  role: 'student' | 'educator';
+  role: 'student' | 'educator' | 'admin';
   preferredLanguage: 'en' | 'ar';
+  status?: 'active' | 'suspended';
   requiresGuardianConsent?: boolean;
   guardianEmail?: string;
 }

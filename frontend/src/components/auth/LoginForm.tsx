@@ -8,7 +8,7 @@ import { useTheme } from 'next-themes';
 import { Layers, Lock, Mail, AlertCircle, CheckSquare, Square, LogIn, Languages, Sun, Moon } from 'lucide-react';
 
 interface LoginFormProps {
-  onSuccess: (role: 'student' | 'educator') => void;
+  onSuccess: (role: 'student' | 'educator' | 'admin') => void;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) => {
@@ -40,10 +40,15 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
         const cleanEmail = email.trim().toLowerCase();
         const userObj = await db.users.where('email').equalsIgnoreCase(cleanEmail).first();
         const isEducatorEmail = cleanEmail.includes('educator') || cleanEmail.includes('prof') || cleanEmail.includes('teacher');
-        const role = userObj?.role || (isEducatorEmail ? 'educator' : 'student');
+        const isAdminEmail = cleanEmail.includes('admin');
+        const role = userObj?.role || (isAdminEmail ? 'admin' : isEducatorEmail ? 'educator' : 'student');
         onSuccess(role);
       } else {
-        setError(result.error || t.auth.invalidCredentials);
+        if (result.error === 'ACCOUNT_SUSPENDED') {
+          setError('Your account has been suspended. Contact your administrator.');
+        } else {
+          setError(result.error || t.auth.invalidCredentials);
+        }
       }
     } catch (err) {
       setError(t.auth.invalidCredentials);
