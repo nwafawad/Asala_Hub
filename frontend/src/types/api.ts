@@ -1,5 +1,8 @@
 import { UserRoleType, AccountStatusType } from './admin';
 
+export const CURRENT_SCHEMA_VERSION = 1;
+export const MIN_SUPPORTED_SCHEMA_VERSION = 1;
+
 // User & Auth DTOs
 export interface UserReadDTO {
   id: string;

@@ -230,7 +230,8 @@ def process_sync_batch(
 
                 if tx.entity_type == "submission":
                     existing_submission = existing_submissions.get(tx.entity_id)
-                    is_grade_write = "grade" in normalized_payload
+                    action_upper = tx.action.upper()
+                    is_grade_write = action_upper == "GRADE_ASSIGNMENT" or "grade" in normalized_payload
 
                     if is_grade_write:
                         # BR-4: Only educators can submit grade writes via sync

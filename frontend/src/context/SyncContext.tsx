@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { db, type TransactionLogItem } from '@/lib/db';
 import { generateUUID } from '@/lib/uuid';
 import { api } from '@/lib/api';
+import { CURRENT_SCHEMA_VERSION } from '@/types/api';
 import { useSystemMessage } from '@/hooks/useSystemMessage';
 import { SystemModal } from '@/components/ui/SystemModal';
 
@@ -118,7 +119,11 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
           if (item.id) {
-            await db.transactionLogs.update(item.id, { status: 'failed', errorMessage: errText });
+            await db.transactionLogs.update(item.id, {
+              status: 'failed',
+              errorMessage: errText,
+              serverSeqNum: result?.server_sequence || undefined,
+            });
           }
         } else {
           serverSeqCounter = result?.server_sequence || serverSeqCounter + 1;
@@ -216,13 +221,13 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const payload = {
         client_last_acked_id: lastAckedId,
         transactions: pending.map(tx => ({
-          transaction_id: tx.offlineId || generateUUID(),
+          transaction_id: tx.offlineId,
           entity_type: tx.entityType.toLowerCase(),
           entity_id: tx.entityId,
           action: tx.action,
           payload: tx.payload,
           client_timestamp: tx.timestamp,
-          schema_version: 2,
+          schema_version: CURRENT_SCHEMA_VERSION,
         })),
       };
 

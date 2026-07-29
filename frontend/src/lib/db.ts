@@ -3,7 +3,7 @@ import { generateUUID } from './uuid';
 
 export interface TransactionLogItem {
   id?: number;
-  offlineId?: string; // UUID v4 collision-safe offline record ID (FR-14)
+  offlineId: string; // UUID v4 collision-safe offline record ID (FR-14)
   action:
     | 'CREATE_SUBMISSION'
     | 'UPDATE_COURSE'
