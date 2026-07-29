@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { db, seedInitialMockData, type IndexedDBUser, type UserSession } from '@/lib/db';
 import { deriveKeyFromPassword, setInMemoryKey, getInMemoryKey, zeroKey, encryptText, decryptText } from '@/lib/crypto';
 import { useOverlay } from './OverlayContext';
+import { rehydrateStorage } from '@/lib/rehydrate';
 
 import { isEducatorUser } from '@/lib/utils';
 
@@ -100,6 +101,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!navigator.onLine) {
             setIsOfflineSession(true);
             showToast('Offline Mode Active', 'warning', 'Signed in with your last saved session.');
+          } else {
+            rehydrateStorage();
           }
         } else {
           // Token expired -> trigger re-auth modal if user profile exists

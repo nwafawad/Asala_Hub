@@ -206,21 +206,27 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .first();
       const lastAckedId = lastSynced?.id || 0;
 
+      const BATCH_SIZE = 50;
+
       // Fetch pending logs created after lastAckedId
-      const pending = await db.transactionLogs
+      const allPending = await db.transactionLogs
         .where('status')
         .equals('pending')
         .filter(l => (l.id || 0) > lastAckedId)
         .toArray();
 
-      if (pending.length === 0) {
+      if (allPending.length === 0) {
         setSyncState('synced');
         return;
       }
 
+      // Slice into max 50-log chunks per sync batch request to prevent payload overflow
+      const pendingBatch = allPending.slice(0, BATCH_SIZE);
+      const hasMore = allPending.length > BATCH_SIZE;
+
       const payload = {
         client_last_acked_id: lastAckedId,
-        transactions: pending.map(tx => ({
+        transactions: pendingBatch.map(tx => ({
           transaction_id: tx.offlineId,
           entity_type: tx.entityType.toLowerCase(),
           entity_id: tx.entityId,
@@ -235,10 +241,17 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const res = await api.post('/sync/', payload);
         const serverResults = res.data && Array.isArray(res.data.results) ? res.data.results : [];
         const startSeq = (lastSynced?.serverSeqNum || 100) + 1;
-        await handleBatchSuccess(pending, serverResults, startSeq);
+        await handleBatchSuccess(pendingBatch, serverResults, startSeq);
+
+        // If additional pending logs remain, schedule next chunk drain immediately
+        if (hasMore && navigator.onLine) {
+          setTimeout(() => {
+            syncNowRef.current();
+          }, 100);
+        }
       } catch (netErr: any) {
         console.warn('Network sync POST failed, activating exponential backoff schedule:', netErr);
-        await handleBackoffRetry(pending);
+        await handleBackoffRetry(pendingBatch);
       }
     } catch (err) {
       console.error('Sync process error:', err);
