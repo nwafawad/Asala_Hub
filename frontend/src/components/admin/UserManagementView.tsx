@@ -11,6 +11,7 @@ import { PasswordResetModal } from './PasswordResetModal';
 import { SuspendConfirmModal } from './SuspendConfirmModal';
 import { UserDetailDrawer } from './UserDetailDrawer';
 import { CreateUserModal } from './CreateUserModal';
+import { BulkUserImportModal } from './BulkUserImportModal';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
@@ -28,6 +29,7 @@ import {
   RefreshCw,
   AlertTriangle,
   UserPlus,
+  FileSpreadsheet,
   Copy,
   Check,
 } from 'lucide-react';
@@ -51,6 +53,7 @@ export const UserManagementView: React.FC = () => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState<boolean>(false);
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState<boolean>(false);
 
   // Success result popup state (for temporary password)
   const [creationResult, setCreationResult] = useState<{
@@ -192,6 +195,14 @@ export const UserManagementView: React.FC = () => {
           >
             <UserPlus className="w-4 h-4" />
             <span>Add Account</span>
+          </button>
+
+          <button
+            onClick={() => setIsBulkModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-card border border-border text-xs font-semibold hover:bg-muted text-foreground transition-colors cursor-pointer shadow-xs"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <span>Bulk Import CSV</span>
           </button>
 
           <button
@@ -462,6 +473,13 @@ export const UserManagementView: React.FC = () => {
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={fetchUsers}
         onRequestReAuth={handleRequestCreateAccount}
+      />
+
+      {/* Bulk Account Import Modal */}
+      <BulkUserImportModal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        onSuccess={fetchUsers}
       />
 
       {/* Temporary Password Result Dialog */}

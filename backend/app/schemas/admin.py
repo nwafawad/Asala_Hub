@@ -141,6 +141,29 @@ class AdminUserCreateResponse(BaseModel):
     message: str
 
 
+class BulkUserCreatedItem(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    email: str
+    role: UserRole
+    temporary_password: str
+
+
+class BulkUserImportError(BaseModel):
+    row_number: int
+    email: Optional[str] = None
+    reason: str
+
+
+class BulkUserImportResponse(BaseModel):
+    total_rows: int
+    success_count: int
+    skipped_count: int
+    created_users: List[BulkUserCreatedItem] = []
+    errors: List[BulkUserImportError] = []
+    message: str
+
+
 class PasswordResetRequest(BaseModel):
     """
     Payload for administrative password reset.

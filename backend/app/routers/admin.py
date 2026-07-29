@@ -13,7 +13,7 @@ from __future__ import annotations
 import uuid
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status, Query, File, UploadFile
 from pydantic import BaseModel, EmailStr
 from sqlmodel import Session
 
@@ -30,6 +30,7 @@ from app.schemas.admin import (
     AdminUserDetail,
     AdminUserCreatePayload,
     AdminUserCreateResponse,
+    BulkUserImportResponse,
     PasswordResetRequest,
     PasswordResetResponse,
     SuspendResponse,
@@ -138,6 +139,28 @@ def create_user_for_admin(
     return crud_admin.create_user_by_admin(
         session=session,
         payload=payload,
+        admin_user=current_user,
+    )
+
+
+@router.post("/users/bulk-import", response_model=BulkUserImportResponse)
+async def bulk_import_users(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> BulkUserImportResponse:
+    """
+    Bulk import student and educator accounts from a CSV file.
+    CSV file must include 'full_name' and 'email' header columns.
+    Generates temporary passwords for created accounts and returns detailed execution report.
+    """
+    if file.filename and not file.filename.lower().endswith(".csv") and file.content_type not in ("text/csv", "application/vnd.ms-excel", "text/plain", "application/octet-stream"):
+        raise DomainException("Uploaded file must be a valid CSV file (.csv)", status_code=status.HTTP_400_BAD_REQUEST)
+
+    contents = await file.read()
+    return crud_admin.bulk_import_users_by_admin(
+        session=session,
+        csv_bytes=contents,
         admin_user=current_user,
     )
 

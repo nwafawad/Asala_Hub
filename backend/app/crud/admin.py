@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import json
 import secrets
 import uuid
@@ -19,6 +21,9 @@ from app.schemas.admin import (
     AdminUserDetail,
     AdminUserCreatePayload,
     AdminUserCreateResponse,
+    BulkUserCreatedItem,
+    BulkUserImportError,
+    BulkUserImportResponse,
     CourseBasicInfo,
     SubmissionBasicInfo,
     AuditEventRead,
@@ -261,6 +266,134 @@ def create_user_by_admin(
         user=user_read,
         temporary_password=temp_password,
         message=f"Successfully created {role_str} account for {new_user.full_name}."
+    )
+
+
+def bulk_import_users_by_admin(
+    session: Session,
+    csv_bytes: bytes,
+    admin_user: User,
+) -> BulkUserImportResponse:
+    """
+    Parse CSV data to batch-create student and educator accounts.
+    Expects headers: full_name, email, role (optional preferred_language).
+    """
+    content = csv_bytes.decode("utf-8-sig", errors="replace")
+    stream = io.StringIO(content)
+    reader = csv.DictReader(stream)
+
+    if not reader.fieldnames:
+        return BulkUserImportResponse(
+            total_rows=0,
+            success_count=0,
+            skipped_count=0,
+            created_users=[],
+            errors=[BulkUserImportError(row_number=0, reason="Empty or invalid CSV file format")],
+            message="CSV file is empty or missing headers."
+        )
+
+    field_map = {f.strip().lower(): f for f in reader.fieldnames if f}
+    if "full_name" not in field_map or "email" not in field_map:
+        return BulkUserImportResponse(
+            total_rows=0,
+            success_count=0,
+            skipped_count=0,
+            created_users=[],
+            errors=[BulkUserImportError(row_number=0, reason="CSV must contain 'full_name' and 'email' header columns.")],
+            message="Missing required headers ('full_name' and 'email')."
+        )
+
+    name_col = field_map["full_name"]
+    email_col = field_map["email"]
+    role_col = field_map.get("role")
+    lang_col = field_map.get("preferred_language") or field_map.get("language")
+
+    created_items: List[BulkUserCreatedItem] = []
+    errors: List[BulkUserImportError] = []
+    row_idx = 0
+
+    for row in reader:
+        row_idx += 1
+        raw_name = (row.get(name_col) or "").strip()
+        raw_email = (row.get(email_col) or "").strip().lower()
+        raw_role = (row.get(role_col) or "student").strip().lower() if role_col else "student"
+        raw_lang = (row.get(lang_col) or "en").strip() if lang_col else "en"
+
+        if not raw_name or not raw_email:
+            errors.append(BulkUserImportError(row_number=row_idx, email=raw_email or None, reason="Name and email are required"))
+            continue
+
+        if "@" not in raw_email:
+            errors.append(BulkUserImportError(row_number=row_idx, email=raw_email, reason="Invalid email format"))
+            continue
+
+        existing = session.exec(select(User).where(col(User.email) == raw_email)).first()
+        if existing:
+            errors.append(BulkUserImportError(row_number=row_idx, email=raw_email, reason=f"Account with email '{raw_email}' already exists"))
+            continue
+
+        if raw_role in ("educator", "teacher"):
+            user_role = UserRole.educator
+        elif raw_role in ("admin", "administrator"):
+            user_role = UserRole.admin
+        else:
+            user_role = UserRole.student
+
+        temp_password = secrets.token_urlsafe(10)
+        now = get_naive_utc_now()
+
+        new_user = User(
+            full_name=raw_name,
+            email=raw_email,
+            role=user_role,
+            password_hash=get_password_hash(temp_password),
+            status=AccountStatus.active,
+            must_change_password=True,
+            preferred_language=raw_lang,
+            created_at=now,
+            updated_at=now,
+        )
+
+        session.add(new_user)
+        session.commit()
+        session.refresh(new_user)
+
+        created_items.append(
+            BulkUserCreatedItem(
+                id=new_user.id,
+                full_name=new_user.full_name,
+                email=new_user.email,
+                role=new_user.role,
+                temporary_password=temp_password,
+            )
+        )
+
+    success_count = len(created_items)
+    skipped_count = len(errors)
+
+    if success_count > 0:
+        create_audit_event(
+            session=session,
+            actor_id=admin_user.id,
+            action_type=AdminActionType.bulk_accounts_created,
+            target_user_id=None,
+            metadata_dict={
+                "total_rows": row_idx,
+                "success_count": success_count,
+                "skipped_count": skipped_count,
+            },
+            commit=True,
+        )
+
+    msg = f"Bulk import complete: {success_count} accounts created, {skipped_count} skipped."
+
+    return BulkUserImportResponse(
+        total_rows=row_idx,
+        success_count=success_count,
+        skipped_count=skipped_count,
+        created_users=created_items,
+        errors=errors,
+        message=msg
     )
 
 

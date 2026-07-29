@@ -120,3 +120,32 @@ def test_admin_create_user_flow(client: TestClient, admin_token_headers: dict, s
     assert audit_event is not None
     assert audit_event.action_type == AdminActionType.account_created
 
+
+def test_admin_bulk_import_user_flow(client: TestClient, admin_token_headers: dict, session: Session):
+    """Test bulk CSV account import processing, duplicate handling, and summary report."""
+    csv_content = (
+        "full_name,email,role\n"
+        "Bilal Qasim,bilal.qasim@asala.edu,student\n"
+        "Nora Saeed,nora.saeed@asala.edu,educator\n"
+        "Bilal Qasim,bilal.qasim@asala.edu,student\n"
+    )
+
+    files = {"file": ("roster.csv", csv_content.encode("utf-8"), "text/csv")}
+    response = client.post("/admin/users/bulk-import", files=files, headers=admin_token_headers)
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["total_rows"] == 3
+    assert data["success_count"] == 2
+    assert data["skipped_count"] == 1
+    assert len(data["created_users"]) == 2
+    assert len(data["errors"]) == 1
+    assert "already exists" in data["errors"][0]["reason"]
+
+    # Verify created users in DB
+    user_bilal = session.exec(select(User).where(User.email == "bilal.qasim@asala.edu")).first()
+    assert user_bilal is not None
+    assert user_bilal.role == UserRole.student
+    assert user_bilal.must_change_password is True
+

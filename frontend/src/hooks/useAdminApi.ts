@@ -7,6 +7,7 @@ import {
   AdminUserDetail,
   AdminUserCreatePayload,
   AdminUserCreateResponse,
+  BulkUserImportResponse,
   PasswordResetResponse,
   SuspendResponse,
   AdminDashboardStats,
@@ -80,10 +81,22 @@ export function useAdminApi() {
     return res.data;
   }, []);
 
+  const bulkImportUsers = useCallback(async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post<BulkUserImportResponse>('/admin/users/bulk-import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  }, []);
+
   return {
     getUsers,
     getUserDetail,
     createUser,
+    bulkImportUsers,
     resetPassword,
     suspendUser,
     reactivateUser,

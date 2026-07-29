@@ -63,6 +63,29 @@ export interface AdminUserCreateResponse {
   message: string;
 }
 
+export interface BulkUserCreatedItem {
+  id: string;
+  full_name: string;
+  email: string;
+  role: UserRoleType;
+  temporary_password: string;
+}
+
+export interface BulkUserImportError {
+  row_number: number;
+  email?: string;
+  reason: string;
+}
+
+export interface BulkUserImportResponse {
+  total_rows: number;
+  success_count: number;
+  skipped_count: number;
+  created_users: BulkUserCreatedItem[];
+  errors: BulkUserImportError[];
+  message: string;
+}
+
 export interface AuditEventRead {
   id: string;
   actor_id: string;
