@@ -18,6 +18,8 @@ class AdminActionType(str, Enum):
     account_suspended = "account_suspended"
     account_reactivated = "account_reactivated"
     force_logout = "force_logout"
+    account_created = "account_created"
+    bulk_accounts_created = "bulk_accounts_created"
 
 
 class AdminAuditEvent(TimestampModel, table=True):

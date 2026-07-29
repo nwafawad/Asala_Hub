@@ -48,12 +48,27 @@ export interface SuspendResponse {
   message: string;
 }
 
+export interface AdminUserCreatePayload {
+  full_name: string;
+  email: string;
+  role: UserRoleType;
+  preferred_language?: string;
+  mode: 'generate' | 'custom';
+  custom_password?: string;
+}
+
+export interface AdminUserCreateResponse {
+  user: AdminUserRead;
+  temporary_password: string;
+  message: string;
+}
+
 export interface AuditEventRead {
   id: string;
   actor_id: string;
   actor_name: string;
   actor_email: string;
-  action_type: 'password_reset' | 'account_suspended' | 'account_reactivated' | 'force_logout';
+  action_type: 'password_reset' | 'account_suspended' | 'account_reactivated' | 'force_logout' | 'account_created' | 'bulk_accounts_created';
   target_user_id?: string;
   target_user_name?: string;
   target_user_email?: string;

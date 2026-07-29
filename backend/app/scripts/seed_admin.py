@@ -1,8 +1,8 @@
 """
 Admin User Seeder Script.
 
-Seeds system administrator account (admin@asalahub.dev) and mock campus users
-with varied roles and account statuses for development and testing.
+Seeds a system administrator account using environment variables (ADMIN_EMAIL, ADMIN_PASSWORD)
+or clean defaults.
 """
 
 import sys
@@ -23,49 +23,27 @@ logging.basicConfig(level=logging.INFO)
 def seed_admin_and_users():
     from sqlmodel import SQLModel
     SQLModel.metadata.create_all(engine)
+
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@asalahub.org").strip().lower()
+    admin_password = os.getenv("ADMIN_PASSWORD", "AdminPassword123!").strip()
+
     with Session(engine) as session:
-        logger.info("Checking for existing Admin user...")
-        admin = session.exec(select(User).where(User.email == "admin@asalahub.dev")).first()
+        logger.info(f"Checking for existing Admin user ({admin_email})...")
+        admin = session.exec(select(User).where(User.email == admin_email)).first()
         if not admin:
             admin = User(
                 full_name="System Administrator",
-                email="admin@asalahub.dev",
-                password_hash=get_password_hash("admin123"),
+                email=admin_email,
+                password_hash=get_password_hash(admin_password),
                 role=UserRole.admin,
                 status=AccountStatus.active,
                 preferred_language="en",
             )
             session.add(admin)
-            logger.info("Created admin user: admin@asalahub.dev / admin123")
-
-        # Mock students and educators with varied statuses
-        mock_accounts = [
-            ("Layla Al-Mansoor", "layla@campus.edu", UserRole.student, AccountStatus.active),
-            ("Omar Khattab", "omar@campus.edu", UserRole.student, AccountStatus.suspended),
-            ("Fatima Hassan", "fatima@campus.edu", UserRole.student, AccountStatus.active),
-            ("Youssef Nabil", "youssef@campus.edu", UserRole.student, AccountStatus.active),
-            ("Aisha Al-Zahra", "aisha@campus.edu", UserRole.student, AccountStatus.suspended),
-            ("Prof. Tariq Al-Mansoor", "tariq@campus.edu", UserRole.educator, AccountStatus.active),
-            ("Dr. Nadia Khalil", "nadia@campus.edu", UserRole.educator, AccountStatus.active),
-            ("Prof. Kareem Ibrahim", "kareem@campus.edu", UserRole.educator, AccountStatus.suspended),
-        ]
-
-        for name, email, role, acc_status in mock_accounts:
-            existing = session.exec(select(User).where(User.email == email)).first()
-            if not existing:
-                u = User(
-                    full_name=name,
-                    email=email,
-                    password_hash=get_password_hash("password123"),
-                    role=role,
-                    status=acc_status,
-                    preferred_language="en",
-                )
-                session.add(u)
-                logger.info(f"Created {role} user: {email} ({acc_status.value})")
-
-        session.commit()
-        logger.info("Seeding completed successfully.")
+            session.commit()
+            logger.info(f"Created system admin user: {admin_email}")
+        else:
+            logger.info(f"Admin user {admin_email} already exists.")
 
 
 if __name__ == "__main__":

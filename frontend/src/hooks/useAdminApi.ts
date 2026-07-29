@@ -5,6 +5,8 @@ import { api } from '@/lib/api';
 import {
   AdminUserRead,
   AdminUserDetail,
+  AdminUserCreatePayload,
+  AdminUserCreateResponse,
   PasswordResetResponse,
   SuspendResponse,
   AdminDashboardStats,
@@ -73,9 +75,15 @@ export function useAdminApi() {
     return res.data;
   }, []);
 
+  const createUser = useCallback(async (payload: AdminUserCreatePayload) => {
+    const res = await api.post<AdminUserCreateResponse>('/admin/users', payload);
+    return res.data;
+  }, []);
+
   return {
     getUsers,
     getUserDetail,
+    createUser,
     resetPassword,
     suspendUser,
     reactivateUser,

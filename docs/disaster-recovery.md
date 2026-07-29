@@ -1,8 +1,8 @@
 # Asala Hub — Disaster Recovery & Backup Operating Procedures
 
-## 1. Executive Summary & NFR-16 Compliance Objectives
+## 1. Executive Summary & Traceability Objectives
 
-This document establishes the official Disaster Recovery (DR) standard operating procedures for **Asala Hub**. The system architecture is designed to meet strict non-functional recovery requirements (**NFR-16**) across both Cloud and On-Campus edge deployments.
+This document establishes the official Disaster Recovery (DR) standard operating procedures for **Asala Hub**, traced directly to **SRS §2.5** (*Offline Intranet Communication*), **SRS §3.4** (*Communications Interfaces*), **NFR 1** (*Local Offline Data Security*), and **NFR 7** (*Multi-Environment Dockerization*). The system architecture is designed to meet strict non-functional recovery requirements across both Cloud and On-Campus edge deployments.
 
 ### Service Level Objectives (SLOs) & Targets
 
@@ -17,9 +17,9 @@ This document establishes the official Disaster Recovery (DR) standard operating
 
 ---
 
-## 2. Backup Architecture & Sidecar Container
+## 2. Backup Architecture & Sidecar Container (SRS §2.5 & §3.4)
 
-Backups are handled by a dedicated Docker sidecar container (`asala_db_backup`) running `postgres:16-alpine`.
+Backups and local campus edge node snapshots are handled by a dedicated Docker sidecar container (`asala_db_backup`) running `postgres:16-alpine` (traced to SRS §2.5 *Offline Intranet Communication*, SRS §3.4 *Communications Interfaces*, and NFR 7 *Multi-Environment Dockerization*).
 
 ### Key System Characteristics:
 1. **Cron Automation**: Executes `/scripts/backup.sh` daily at `02:00 UTC`.

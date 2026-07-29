@@ -72,7 +72,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ currentTab, children, on
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
 
-        {/* Local Campus Mode vs Cloud Connected Mode Badge Strip (§1.1) */}
+        {/* FR 1.1 (Local Static Asset Caching) & FR 3.1 (Network Status Detection) - Local Campus Mode vs Cloud Connected Mode Strip */}
         <div className="bg-purple-500/10 border-b border-purple-500/20 px-6 py-2 flex items-center justify-between gap-4 text-xs font-semibold">
           <div className="flex items-center gap-2.5">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-mono text-[11px]">

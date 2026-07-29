@@ -1,5 +1,6 @@
 /**
- * Standardized User-Facing Message Catalog (SRS Section 5.9)
+ * Standardized User-Facing Message Catalog
+ * Implementation addition not specified in SRS (traced to notification behavior in SRS §3.1; supports FR 1.1-FR 3.3 & NFR 1).
  * Centralizes all sync, storage, session, and conflict messaging.
  * Distinguishes blocking (modal overlays) from non-blocking (toasts/pills).
  */
@@ -104,6 +105,15 @@ export const MSG = {
     bodyAr: "تمت إضافة نسخة المحاضر إلى سجل المسودات. افتح لوحة السجل للمقارنة واختيار النسخة المناسبة.",
     type: 'warning',
     blocking: false,
+  },
+  UNAUTHORIZED_OFFLINE_SESSION: {
+    id: 'MSG_AUTH_02',
+    title: "Online sync requires server authentication.",
+    titleAr: "تتطلب المزامنة عبر الإنترنت تسجيل الدخول بالحساب الرسمي.",
+    body: "You are currently signed in with a local offline session. Please log in with a registered server account to sync changes.",
+    bodyAr: "أنت مسجل الدخول حالياً بجلسة محليّة. يرجى تسجيل الدخول بحساب الخادم المسجّل للمزامنة.",
+    type: 'warning',
+    blocking: true,
   },
 } as const;
 

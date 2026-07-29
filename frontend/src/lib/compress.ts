@@ -1,7 +1,8 @@
 /**
  * Compression utility for IndexedDB draft strings and base64 attachments.
  * Uses UTF-8 byte-level LZ dictionary encoding with Base64 serialization.
- * Guarantees 100% loss-free round-trip encoding for English, Arabic, and Unicode text (SRS §6.3).
+ * Traced to SRS §2.5 ("small and highly compressed delta flat JSON strings") for FR 3.2 & NFR 4.
+ * Note: Lossless LZ compression is an engineering implementation choice exceeding spec, not a mandatory SRS requirement.
  */
 
 export function compressPayload(input: string): string {

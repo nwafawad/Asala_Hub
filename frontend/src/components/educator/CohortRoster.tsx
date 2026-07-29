@@ -85,7 +85,7 @@ export const CohortRoster: React.FC = () => {
       // Put into Dexie cohortEnrollments
       await db.cohortEnrollments.put(updatedEnrollment);
 
-      // Write UPDATE_ROSTER transaction log (Section 2.3, FR-14)
+      // Write UPDATE_ROSTER transaction log (FR 2.2 Transaction Log Queueing & FR 5.2 Asynchronous Grade Updating)
       const logItem: TransactionLogItem = {
         offlineId: generateUUID(),
         action: 'UPDATE_ROSTER',

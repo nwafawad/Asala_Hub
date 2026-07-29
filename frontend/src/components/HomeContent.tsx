@@ -118,12 +118,20 @@ export function HomeContent() {
     );
   }
 
-  const rawTab = searchParams.get('tab');
-  const savedTab = isEducator
-    ? (typeof window !== 'undefined' && localStorage.getItem('asala_educator_tab')) || 'curriculum'
-    : (typeof window !== 'undefined' && localStorage.getItem('asala_student_tab')) || 'courses';
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !searchParams.get('tab')) {
+      const savedTab = isEducator
+        ? localStorage.getItem('asala_educator_tab')
+        : localStorage.getItem('asala_student_tab');
+      if (savedTab) {
+        setOverrideTabState(savedTab);
+      }
+    }
+  }, [isEducator, searchParams]);
 
-  let currentTab = overrideTab || rawTab || savedTab;
+  const rawTab = searchParams.get('tab');
+  const defaultTab = isEducator ? 'curriculum' : 'courses';
+  let currentTab = overrideTab || rawTab || defaultTab;
 
   // Role Sanitization Guard
   if (isEducator && (currentTab === 'courses' || currentTab === 'dashboard')) {

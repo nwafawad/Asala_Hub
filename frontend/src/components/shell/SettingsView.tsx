@@ -259,7 +259,7 @@ export const SettingsView: React.FC = () => {
 
               <div className="flex items-center justify-between text-xs border-b border-border pb-2.5">
                 <span className="text-muted-foreground">Email Address:</span>
-                <span className="font-mono text-foreground">{user?.email || 'user@asalahub.dev'}</span>
+                <span className="font-mono text-foreground">{user?.email || '—'}</span>
               </div>
 
               <div className="flex items-center justify-between text-xs border-b border-border pb-2.5">
@@ -325,7 +325,8 @@ export const SettingsView: React.FC = () => {
           <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-1">
             <span className="text-[11px] font-medium text-muted-foreground">Intranet Protocol</span>
             <span className="text-lg font-mono font-bold text-emerald-600 dark:text-emerald-400">TLS 1.2+ / HTTP</span>
-            <span className="text-[10px] text-muted-foreground">SRS 3.3 Protocol Active</span>
+            {/* FR 3.1-FR 3.3 Automated Cache Synchronization Engine */}
+            <span className="text-[10px] text-muted-foreground">Sync Protocol Active</span>
           </div>
 
           <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-1">

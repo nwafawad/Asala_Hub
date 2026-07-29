@@ -105,7 +105,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, children, onTabC
       </div>
       <ToastContainer />
 
-      {/* Blocking Storage / Queue Governance Overlay Modal (FR-18, NFR-13, Section 5.9) */}
+      {/* Blocking Storage / Queue Governance Overlay Modal (FR 2.2 Transaction Log Queueing & NFR 1 Local Offline Data Security) */}
       {showBlockingModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="max-w-md w-full p-6 rounded-2xl bg-card border border-destructive/30 shadow-2xl flex flex-col gap-4 text-center">

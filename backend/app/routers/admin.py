@@ -28,6 +28,8 @@ from app.schemas.admin import (
     AdminHealthResponse,
     AdminUserRead,
     AdminUserDetail,
+    AdminUserCreatePayload,
+    AdminUserCreateResponse,
     PasswordResetRequest,
     PasswordResetResponse,
     SuspendResponse,
@@ -122,6 +124,23 @@ def get_dashboard_stats(
 
 
 # --- User Management Endpoints ---
+
+@router.post("/users", response_model=AdminUserCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_user_for_admin(
+    payload: AdminUserCreatePayload,
+    current_user: User = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> AdminUserCreateResponse:
+    """
+    Directly provision a new student or educator account. Requires elevated admin authentication.
+    Generates temporary credentials and sets must_change_password=True.
+    """
+    return crud_admin.create_user_by_admin(
+        session=session,
+        payload=payload,
+        admin_user=current_user,
+    )
+
 
 @router.get("/users", response_model=List[AdminUserRead])
 def list_users_for_admin(

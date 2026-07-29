@@ -117,7 +117,7 @@ export const LoginForm: React.FC<LoginFormProps> = React.memo(({ onSuccess }) =>
                 dir="ltr"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="email@asalahub.dev"
+                placeholder="name@example.com"
                 className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 text-left rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-sans"
               />
             </div>

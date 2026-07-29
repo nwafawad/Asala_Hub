@@ -128,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
               {user?.fullName || 'Asala User'}
             </span>
             <span className="text-[10px] text-muted-foreground truncate">
-              {user?.email || 'user@asalahub.dev'} ({user?.role || 'student'})
+              {user?.email ? `${user.email} (${user?.role || 'student'})` : user?.role || 'student'}
             </span>
           </div>
         </div>

@@ -221,7 +221,7 @@ export const SyncQueueView: React.FC = () => {
               </div>
             </div>
 
-            {/* Section 6 View Mode Switcher */}
+            {/* FR 3.2 (Delta Payload Transmission) View Mode Switcher */}
             <div className="flex items-center gap-1 bg-muted p-1 rounded-xl">
               <button
                 onClick={() => setViewMode('table')}
@@ -230,7 +230,7 @@ export const SyncQueueView: React.FC = () => {
                     ? 'bg-background text-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
-                title="Table View (Section 6 Specs)"
+                title="Table View"
               >
                 <LayoutList className="w-3.5 h-3.5 text-primary" />
                 <span>Table</span>
@@ -269,7 +269,7 @@ export const SyncQueueView: React.FC = () => {
             </p>
           </div>
         ) : viewMode === 'table' ? (
-          /* Section 6 HTML Table View Structure */
+          /* FR 3.2 (Delta Payload Transmission) HTML Table View Structure */
           <div className="overflow-x-auto border border-border rounded-xl">
             <table className="w-full text-left border-collapse">
               <thead>

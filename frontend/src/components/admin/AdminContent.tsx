@@ -58,9 +58,17 @@ export function AdminContent() {
     return null;
   }
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem('asala_admin_tab');
+      if (savedTab && !searchParams.get('tab')) {
+        setOverrideTab(savedTab);
+      }
+    }
+  }, [searchParams]);
+
   const rawTab = searchParams.get('tab');
-  const savedTab = typeof window !== 'undefined' ? localStorage.getItem('asala_admin_tab') : 'adminDashboard';
-  const currentTab = overrideTab || rawTab || savedTab || 'adminDashboard';
+  const currentTab = overrideTab || rawTab || 'adminDashboard';
 
   return (
     <AdminShell currentTab={currentTab} onTabChange={tab => handleTabNavigate(tab)}>
@@ -74,22 +82,24 @@ export function AdminContent() {
             return <UserManagementView />;
           case 'syncConflicts':
             return (
+              /* FR 3.2 (Delta Payload Transmission) & FR 3.3 (Conflict State Resolution) */
               <ComingSoonStub
-                title="Sync & Conflict Resolution Queue (§3.2)"
+                title="Sync & Conflict Resolution Queue"
                 description="Rule-engine suggestions, diff inspection drawer, campus node reconciliation, and bulk conflict resolution for offline student submissions and educator grades."
                 icon={GitMerge}
                 plannedFeatures={[
                   'Student submission version conflict resolution',
                   'Educator grade precedence review',
-                  'Campus node delta reconciliation (FR-19)',
+                  'Campus node delta reconciliation',
                   'Rule-engine merge recommendation chips',
                 ]}
               />
             );
           case 'systemHealth':
             return (
+              /* NFR 2 (Resource-Constrained Execution) & NFR 5 (High-Concurrency Async Sync Processing) */
               <ComingSoonStub
-                title="System Health & Infrastructure Monitor (§3.3)"
+                title="System Health & Infrastructure Monitor"
                 description="Docker container health metrics grid, PostgreSQL connection pool telemetry, media transcoding pipeline queue depth, and central API gateway log viewer."
                 icon={Activity}
                 plannedFeatures={[
@@ -102,13 +112,14 @@ export function AdminContent() {
             );
           case 'backups':
             return (
+              /* NFR 7 (Multi-Environment Dockerization & Disaster Recovery) */
               <ComingSoonStub
-                title="Backups & Disaster Recovery (§3.4)"
+                title="Backups & Disaster Recovery"
                 description="Automated database backup history, trigger backup workflow, RTO/RPO dashboard, and database migration rollback tools."
                 icon={Database}
                 plannedFeatures={[
-                  'Trigger instant PostgreSQL backup (NFR-9, NFR-16)',
-                  'RTO (< 1 hour) & RPO (< 15 min) compliance metrics',
+                  'Trigger instant PostgreSQL backup',
+                  'RTO (< 4 hours) & RPO (< 24 hours) compliance metrics',
                   'Automated backup freshness verification (< 24h)',
                   'Point-in-time database restoration & rollback',
                 ]}
@@ -116,22 +127,24 @@ export function AdminContent() {
             );
           case 'auditLogs':
             return (
+              /* NFR 1 (Local Offline Data Security & Audit Compliance) */
               <ComingSoonStub
-                title="Audit & Compliance (§3.6)"
-                description="Compliance audit trail logging, data retention/purge governance (NFR-14, CR-3), and student personal data breach response panel (CR-6)."
+                title="Audit & Compliance"
+                description="Compliance audit trail logging, data retention/purge governance, and student personal data breach response panel."
                 icon={ScrollText}
                 plannedFeatures={[
                   'Complete administrative audit log search & export',
-                  'Student PII protection & encryption verification (CR-1, CR-2)',
-                  'Data retention schedule & automated purge (NFR-14)',
-                  'Data breach incident response & quarantine workflow (CR-6)',
+                  'Student PII protection & encryption verification',
+                  'Data retention schedule & automated purge',
+                  'Data breach incident response & quarantine workflow',
                 ]}
               />
             );
           case 'adminSettings':
             return (
+              /* NFR 5 (High-Concurrency Async Sync Processing) & NFR 7 (Multi-Environment Dockerization) */
               <ComingSoonStub
-                title="Admin Settings & Alerting Config (§3.7)"
+                title="Admin Settings & Alerting Config"
                 description="Elevated step-up re-authentication defaults, infrastructure failure alerting webhook configuration, and system maintenance mode toggles."
                 icon={Settings}
                 plannedFeatures={[

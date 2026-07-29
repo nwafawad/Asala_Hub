@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 from app.models.assignment import SyncStatus
 from app.models.user import UserRole, AccountStatus
@@ -114,6 +114,31 @@ class AdminUserDetail(AdminUserRead):
     courses: List[CourseBasicInfo] = []
     recent_submissions: List[SubmissionBasicInfo] = []
     active_session_count: int = 0
+
+
+class AdminUserCreatePayload(BaseModel):
+    """
+    Payload for administrative direct account creation.
+    """
+    full_name: str = Field(..., min_length=2, max_length=100)
+    email: EmailStr
+    role: UserRole = UserRole.student
+    preferred_language: str = Field(default="en", max_length=10)
+    mode: Literal["generate", "custom"] = "generate"
+    custom_password: Optional[str] = Field(
+        default=None,
+        min_length=6,
+        description="Custom initial password string when mode is 'custom'"
+    )
+
+
+class AdminUserCreateResponse(BaseModel):
+    """
+    Response package for administrative account creation.
+    """
+    user: AdminUserRead
+    temporary_password: str
+    message: str
 
 
 class PasswordResetRequest(BaseModel):

@@ -32,26 +32,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isRestoring, setIsRestoring] = useState<boolean>(true);
   const [hasPinConfigured, setHasPinConfigured] = useState<boolean>(false);
-  const [user, setUser] = useState<IndexedDBUser | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const cachedRole = localStorage.getItem('asala_role');
-    const cachedEmail = localStorage.getItem('asala_email');
-    const cachedName = localStorage.getItem('asala_name');
-    if (cachedRole && cachedEmail) {
-      return {
-        id: 'boot-user',
-        email: cachedEmail,
-        fullName: cachedName || cachedEmail.split('@')[0],
-        role: cachedRole as 'student' | 'educator',
-        preferredLanguage: 'en',
-      };
-    }
-    return null;
-  });
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token');
-  });
+  const [user, setUser] = useState<IndexedDBUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isOfflineSession, setIsOfflineSession] = useState<boolean>(false);
   const [isReAuthModalOpen, setIsReAuthModalOpen] = useState<boolean>(false);
   const { showToast } = useOverlay();
@@ -108,6 +90,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Token expired -> trigger re-auth modal if user profile exists
           setUser(activeSession.user);
           setIsReAuthModalOpen(true);
+        }
+      } else if (typeof window !== 'undefined') {
+        const cachedRole = localStorage.getItem('asala_role');
+        const cachedEmail = localStorage.getItem('asala_email');
+        const cachedName = localStorage.getItem('asala_name');
+        const cachedToken = localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token');
+        if (cachedRole && cachedEmail) {
+          setUser({
+            id: 'boot-user',
+            email: cachedEmail,
+            fullName: cachedName || cachedEmail.split('@')[0],
+            role: cachedRole as 'student' | 'educator' | 'admin',
+            preferredLanguage: 'en',
+          });
+          setToken(cachedToken);
         }
       }
     } catch (err) {
@@ -204,23 +201,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (apiErr?.response?.status === 403 && (apiErr?.response?.data?.detail?.includes('suspended') || apiErr?.response?.data?.error_code === 'ACCOUNT_SUSPENDED')) {
               return { success: false, error: 'ACCOUNT_SUSPENDED' };
             }
-            console.warn('API auth failed, checking offline IndexedDB fallback...', apiErr);
+            // Return invalid credentials error immediately for 401/400 online auth responses
+            if (apiErr?.response?.status === 401 || apiErr?.response?.status === 400) {
+              return { success: false, error: 'Invalid email or password.' };
+            }
+            console.warn('API auth unreachable, falling back to offline IndexedDB mode...', apiErr);
           }
         }
 
         // Offline / Fallback Mode: Validate credentials against IndexedDB db.users
         let matchUser = await db.users.where('email').equalsIgnoreCase(cleanEmail).first();
         if (!matchUser) {
-          const isEducator =
-            cleanEmail.includes('educator') || cleanEmail.includes('prof') || cleanEmail.includes('teacher');
-          matchUser = {
-            id: isEducator ? 'user-educator-1' : `user-${Date.now()}`,
-            email: cleanEmail,
-            fullName: isEducator ? 'Prof. Tariq Al-Mansoor' : cleanEmail.split('@')[0],
-            role: isEducator ? 'educator' : 'student',
-            preferredLanguage: 'en',
-          };
-          await db.users.put(matchUser);
+          return { success: false, error: 'Account not found in local offline storage. Connect online to sign in.' };
         }
 
         if (matchUser) {

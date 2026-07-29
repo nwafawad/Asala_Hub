@@ -89,3 +89,34 @@ def test_admin_dashboard_stats(client: TestClient, admin_token_headers: dict):
     assert "active_accounts" in data
     assert "suspended_accounts" in data
     assert "recent_audit_events" in data
+
+
+def test_admin_create_user_flow(client: TestClient, admin_token_headers: dict, session: Session):
+    """Test direct user provisioning by admin with audit logging and password constraints."""
+    payload = {
+        "full_name": "Tariq Aziz",
+        "email": "tariq.aziz@asala.edu",
+        "role": "student",
+        "mode": "generate"
+    }
+    response = client.post("/admin/users", json=payload, headers=admin_token_headers)
+    assert response.status_code == 201
+    data = response.json()
+
+    assert data["user"]["full_name"] == "Tariq Aziz"
+    assert data["user"]["email"] == "tariq.aziz@asala.edu"
+    assert data["user"]["role"] == "student"
+    assert data["user"]["must_change_password"] is True
+    assert len(data["temporary_password"]) > 6
+
+    # Verify duplicate email conflict error
+    dup_res = client.post("/admin/users", json=payload, headers=admin_token_headers)
+    assert dup_res.status_code == 409
+
+    # Verify audit event recorded
+    new_user = session.exec(select(User).where(User.email == "tariq.aziz@asala.edu")).first()
+    assert new_user is not None
+    audit_event = session.exec(select(AdminAuditEvent).where(AdminAuditEvent.target_user_id == new_user.id)).first()
+    assert audit_event is not None
+    assert audit_event.action_type == AdminActionType.account_created
+

@@ -17,12 +17,15 @@ from app.schemas.admin import (
     AdminHealthResponse,
     AdminUserRead,
     AdminUserDetail,
+    AdminUserCreatePayload,
+    AdminUserCreateResponse,
     CourseBasicInfo,
     SubmissionBasicInfo,
     AuditEventRead,
     AdminDashboardStats,
 )
 from app.core.security import get_password_hash
+from app.core.exceptions import ResourceConflictError
 
 
 def create_audit_event(
@@ -188,6 +191,78 @@ def get_admin_health_metrics(session: Session) -> AdminHealthResponse:
 
 
 # --- User Management CRUD ---
+
+def create_user_by_admin(
+    session: Session,
+    payload: AdminUserCreatePayload,
+    admin_user: User,
+) -> AdminUserCreateResponse:
+    """
+    Directly provision a new student or educator account, generate temporary password,
+    force password change on first login, and log an administrative audit event.
+    """
+    existing_user = session.exec(select(User).where(col(User.email) == payload.email)).first()
+    if existing_user:
+        raise ResourceConflictError(f"A user with email '{payload.email}' already exists.")
+
+    if payload.mode == "custom" and payload.custom_password:
+        temp_password = payload.custom_password
+    else:
+        temp_password = secrets.token_urlsafe(10)
+
+    now = get_naive_utc_now()
+    new_user = User(
+        full_name=payload.full_name,
+        email=payload.email,
+        role=payload.role,
+        password_hash=get_password_hash(temp_password),
+        status=AccountStatus.active,
+        must_change_password=True,
+        preferred_language=payload.preferred_language,
+        created_at=now,
+        updated_at=now,
+    )
+
+    session.add(new_user)
+    session.commit()
+    session.refresh(new_user)
+
+    role_str = new_user.role.value if hasattr(new_user.role, "value") else str(new_user.role)
+
+    create_audit_event(
+        session=session,
+        actor_id=admin_user.id,
+        action_type=AdminActionType.account_created,
+        target_user_id=new_user.id,
+        metadata_dict={
+            "created_email": new_user.email,
+            "assigned_role": role_str,
+            "creation_mode": payload.mode,
+        },
+        commit=True,
+    )
+
+    user_read = AdminUserRead(
+        id=new_user.id,
+        full_name=new_user.full_name,
+        email=new_user.email,
+        role=new_user.role,
+        status=new_user.status,
+        must_change_password=new_user.must_change_password,
+        preferred_language=new_user.preferred_language,
+        created_at=new_user.created_at,
+        updated_at=new_user.updated_at,
+        course_count=0,
+        submission_count=0,
+        pending_sync_count=0,
+    )
+
+    return AdminUserCreateResponse(
+        user=user_read,
+        temporary_password=temp_password,
+        message=f"Successfully created {role_str} account for {new_user.full_name}."
+    )
+
 
 def get_users_for_admin(
     session: Session,
@@ -491,7 +566,7 @@ def get_recent_audit_events(session: Session, limit: int = 50) -> List[AuditEven
                 id=e.id,
                 actor_id=e.actor_id,
                 actor_name=actor.full_name if actor else "Unknown Admin",
-                actor_email=actor.email if actor else "admin@asalahub.dev",
+                actor_email=actor.email if actor else "system",
                 action_type=e.action_type,
                 target_user_id=e.target_user_id,
                 target_user_name=target.full_name if target else None,

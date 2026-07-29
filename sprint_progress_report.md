@@ -20,42 +20,42 @@ As of today (Wednesday, July 29, 2026), **Sprint 1 (Foundation)**, **Sprint 2 (O
 ## 📋 Detailed Progress Checklist
 
 ### Sprint 1 — Foundation (Mon Jul 13 – Sun Jul 19)
-- [x] **Mon 7/13**: Repo + `docker-compose.yml` (FastAPI, Postgres); SQLModel schema — User, Course, Module, Assignment, Submission, TransactionLog; first Alembic migration
-- [x] **Tue 7/14**: Auth: JWT register/login, bcrypt hashing, role field (student/educator), RBAC dependency
-- [x] **Wed 7/15**: Course + Module CRUD (educator writes, both read); seed script — 1 educator, 1 student, 1 course, 3 modules
-- [x] **Thu 7/16**: Next.js scaffold (App Router + Tailwind); layout shell with placeholder Sync Status bar; login/register pages wired to API
-- [x] **Fri 7/17**: Educator dashboard (create course/module) + student dashboard (browse/view), wired end to end
-- [x] **Sat 7/18**: PWA manifest + Workbox service worker registration — app-shell precache only; mobile-responsive pass
+- [x] **Mon 7/13**: Repo + `docker-compose.yml` (FastAPI, Postgres; **NFR 7 Multi-Environment Dockerization**); SQLModel schema — User, Course, Module, Assignment, Submission, TransactionLog; first Alembic migration
+- [x] **Tue 7/14**: Auth: JWT register/login, bcrypt hashing, role field (**FR 5.1 / RBAC Auth Guards**)
+- [x] **Wed 7/15**: Course + Module CRUD (**FR 1.2 Offline Course Navigation**, **FR 5.1 Offline Lesson Compiling**); seed script
+- [x] **Thu 7/16**: Next.js scaffold (App Router + Tailwind CSS); layout shell with persistent Sync Status indicator
+- [x] **Fri 1/17**: Educator dashboard (**FR 5.1**) + student dashboard (**FR 1.2**), wired end to end
+- [x] **Sat 7/18**: PWA manifest + Workbox service worker registration — app-shell precache (**FR 1.1 Local Static Asset Caching**, **NFR 4 Lightweight Storage Footprint**)
 - [x] **Sun 7/19**: Sprint Review & Online Demo Flow
 
 ---
 
 ### Sprint 2 — Offline Sync Engine (Mon Jul 20 – Sun Jul 26)
-- [x] **Mon 7/20**: Add Dexie.js; define local schema mirroring TransactionLog + a Course/Module cache table
-- [x] **Tue 7/21**: Extend Workbox to runtime-cache Course/Module API responses
-- [x] **Wed 7/22**: Offline-aware assignment submission: write straight to Dexie + create a timestamped TransactionLog entry
-- [x] **Thu 7/23**: Network status detection (online/offline events + heartbeats); trigger `syncNow()` on reconnect
-- [x] **Fri 7/24**: Build the delta payload from unsynced logs, batch into compressed JSON, POST to FastAPI `/sync` endpoint
-- [x] **Sat 7/25**: Wire success/failure handling, status UI updates, retries
+- [x] **Mon 7/20**: Add Dexie.js; define local schema mirroring TransactionLog + Course/Module cache table (**FR 2.1 Local IndexedDB Write**, **FR 2.2 Transaction Log Queueing**)
+- [x] **Tue 7/21**: Extend Workbox to runtime-cache Course/Module API responses (**FR 1.1 Local Static Asset Caching**, **FR 1.2 Offline Course Navigation**)
+- [x] **Wed 7/22**: Offline-aware assignment submission: write to Dexie + create timestamped TransactionLog entry (**FR 2.1 Local IndexedDB Write**, **FR 2.2 Transaction Log Queueing**)
+- [x] **Thu 7/23**: Network status detection (`online`/`offline` events + heartbeats); trigger `syncNow()` on reconnect (**FR 3.1 Network Status Detection**)
+- [x] **Fri 7/24**: Build delta payload from unsynced logs, batch into compressed JSON, POST to FastAPI `/sync` endpoint (**FR 3.2 Delta Payload Transmission**, **NFR 4 Lightweight Storage Footprint**)
+- [x] **Sat 7/25**: Wire success/failure handling, status UI updates, retries (**FR 3.3 Conflict State Resolution**, **NFR 6 Fault-Tolerant Network Resiliency**)
 - [x] **Sun 7/26**: Sprint Review (Demonstrate offline submission to Postgres sync)
 
 ---
 
 ### Sprint 3 — Grading Loop, Polish, Triage (Mon Jul 27 – Sun Aug 2)
-- [x] **Mon 7/27**: Educator: submissions list & grading UI (`GradeBook.tsx`, `SubmissionGrader.tsx`, Educator Priority Sync Precedence)
-- [x] **Tue 7/28**: Student: sync progress tracker & metrics refactoring (`ProgressTracker.tsx`, dynamic 4.0 GPA scale, `AssignmentListView.tsx`, `AssignmentWorkspace.tsx` drag-and-drop & printable receipts)
-- [x] **Wed 7/29**: Triage checkpoint & UI Polish:
+- [x] **Mon 7/27**: Educator: submissions list & grading UI (`GradeBook.tsx`, `SubmissionGrader.tsx`, **FR 5.2 Asynchronous Grade Updating**)
+- [x] **Tue 7/28**: Student: sync progress tracker & metrics refactoring (`ProgressTracker.tsx`, dynamic 4.0 GPA scale, `AssignmentListView.tsx`, `AssignmentWorkspace.tsx` drag-and-drop & printable receipts; **FR 2.1**, **FR 2.2**)
+- [x] **Wed 7/29**: Triage checkpoint, Requirement Traceability (§9 & §4) & UI Polish:
+  - Strip legacy `§X.X` section numbers from all rendered UI titles, tooltips, and status badges
+  - Correct SRS traceability: Re-trace Message Catalog to SRS §3.1, LZ payload compression to SRS §2.5 (exceeding spec via lossless encoding), and backup sidecar to SRS §2.5 & §3.4
+  - Preserve/update internal developer code comments with exact SRS FR 1.1–FR 7 and NFR 1–7 titles
+  - Document Deferred Scope (**FR 6.1 Portfolio Studio Creation**, **FR 7 Marketplace Checkout Processing**) in README.md tables while omitting from UI
   - Fixed sidebar positioning (`sticky top-0 h-screen`), `whitespace-nowrap` single-line buttons
-  - ReAuthModal 1-second loading delay + AES-GCM decryption password verification + wrong password error feedback
-  - 2-step PIN setup (New PIN + Confirm PIN) and PIN removal options in `SettingsView.tsx`
-  - ReAuthModal `InfoTooltip` question mark popover explaining Quick PIN vs Account Password
-  - Replaced all `StatusPill` components with accessible `InfoTooltip` question mark popovers (`position="bottom"`)
-  - Active session keep-alive on tab navigation to eliminate premature re-auth popups
-  - Docker frontend container rebuilt and verified (`npm run build` code 0)
-- [ ] **Thu 7/30**: Stretch item part 1
-- [ ] **Fri 7/31**: Stretch item part 2 / buffer
-- [ ] **Sat 8/1**: Bug bash & simulated packet-loss resilience testing
-- [ ] **Sun 8/2**: Clean deploy validation & backup demo video
+  - ReAuthModal AES-GCM decryption password verification (**NFR 1 Local Offline Data Security**)
+  - Docker frontend container rebuilt and verified (`npm run build` code 0; **NFR 7**)
+- [ ] **Thu 7/30**: Stretch item part 1 (**FR 4.1 Automated Media Interception**, **FR 4.2 Video-to-Audio/Text Compression**)
+- [ ] **Fri 7/31**: Stretch item part 2 / buffer (**NFR 3 Bidirectional Internationalization**)
+- [ ] **Sat 8/1**: Bug bash & simulated packet-loss resilience testing (**NFR 6 Fault-Tolerant Network Resiliency**)
+- [ ] **Sun 8/2**: Clean deploy validation & backup demo video (**NFR 7 Multi-Environment Dockerization**)
 
 ---
 

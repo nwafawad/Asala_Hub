@@ -185,7 +185,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Core sync trigger
   const syncNow = useCallback(async () => {
-    // Bug #2: guard against re-entrant concurrent sync operations
+    // Guard against re-entrant concurrent sync operations or offline status
     if (isSyncingRef.current || !navigator.onLine) {
       if (!navigator.onLine) {
         setSyncState('offline');
@@ -193,6 +193,18 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return;
     }
+
+    // Intercept synthetic offline session tokens before issuing HTTP sync requests
+    const token = typeof window !== 'undefined'
+      ? localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token')
+      : null;
+
+    if (token && token.startsWith('offline-token-')) {
+      setSyncState('error');
+      showSystemMessage('UNAUTHORIZED_OFFLINE_SESSION');
+      return;
+    }
+
     isSyncingRef.current = true;
     setSyncState('syncing');
     showSystemMessage('SYNC_IN_PROGRESS');
@@ -238,7 +250,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       try {
-        const res = await api.post('/sync/', payload);
+        const res = await api.post('/sync', payload);
         const serverResults = res.data && Array.isArray(res.data.results) ? res.data.results : [];
         const startSeq = (lastSynced?.serverSeqNum || 100) + 1;
         await handleBatchSuccess(pendingBatch, serverResults, startSeq);
