@@ -206,9 +206,10 @@ def create_user_by_admin(
     Directly provision a new student or educator account, generate temporary password,
     force password change on first login, and log an administrative audit event.
     """
-    existing_user = session.exec(select(User).where(col(User.email) == payload.email)).first()
+    clean_email = payload.email.strip().lower()
+    existing_user = session.exec(select(User).where(func.lower(User.email) == clean_email)).first()
     if existing_user:
-        raise ResourceConflictError(f"A user with email '{payload.email}' already exists.")
+        raise ResourceConflictError(f"A user with email '{clean_email}' already exists.")
 
     if payload.mode == "custom" and payload.custom_password:
         temp_password = payload.custom_password
@@ -217,13 +218,13 @@ def create_user_by_admin(
 
     now = get_naive_utc_now()
     new_user = User(
-        full_name=payload.full_name,
-        email=payload.email,
+        full_name=payload.full_name.strip(),
+        email=clean_email,
         role=payload.role,
         password_hash=get_password_hash(temp_password),
         status=AccountStatus.active,
         must_change_password=True,
-        preferred_language=payload.preferred_language,
+        preferred_language=payload.preferred_language or "en",
         created_at=now,
         updated_at=now,
     )

@@ -177,10 +177,6 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
                 </div>
               )}
 
-              <div className="p-3 rounded-xl bg-muted/40 border border-border text-xs text-muted-foreground">
-                Flags account: <code className="font-mono text-foreground font-bold">mustChangePasswordAtNextLogin = true</code>
-              </div>
-
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"

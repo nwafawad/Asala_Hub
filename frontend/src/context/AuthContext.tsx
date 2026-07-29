@@ -185,12 +185,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               hasAcceptedConsent: true,
             };
 
-            if (rememberMe) {
-              localStorage.setItem('asala_token', accessToken);
-              await db.userSession.put(sessionObj);
-            } else {
-              sessionStorage.setItem('asala_token', accessToken);
+            // ALWAYS persist active user session to IndexedDB db.userSession
+            await db.userSession.put(sessionObj);
+
+            if (typeof window !== 'undefined') {
+              const targetStorage = rememberMe ? localStorage : sessionStorage;
+              targetStorage.setItem('asala_token', accessToken);
+              targetStorage.setItem('asala_role', profile.role);
+              targetStorage.setItem('asala_email', profile.email);
+              targetStorage.setItem('asala_name', profile.fullName);
             }
+
+            await db.users.put(profile);
 
             setUser(profile);
             setToken(accessToken);
@@ -229,8 +235,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             hasAcceptedConsent: true,
           };
 
-          if (rememberMe) {
-            await db.userSession.put(sessionObj);
+          // ALWAYS persist active user session to IndexedDB db.userSession
+          await db.userSession.put(sessionObj);
+
+          if (typeof window !== 'undefined') {
+            const targetStorage = rememberMe ? localStorage : sessionStorage;
+            targetStorage.setItem('asala_token', offlineToken);
+            targetStorage.setItem('asala_role', matchUser.role);
+            targetStorage.setItem('asala_email', matchUser.email);
+            targetStorage.setItem('asala_name', matchUser.fullName);
           }
 
           setUser(matchUser);
@@ -250,11 +263,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const logout = useCallback(async () => {
-    localStorage.removeItem('asala_token');
-    localStorage.removeItem('asala_role');
-    localStorage.removeItem('asala_email');
-    localStorage.removeItem('asala_name');
-    sessionStorage.removeItem('asala_token');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('asala_token');
+      localStorage.removeItem('asala_role');
+      localStorage.removeItem('asala_email');
+      localStorage.removeItem('asala_name');
+      sessionStorage.removeItem('asala_token');
+      sessionStorage.removeItem('asala_role');
+      sessionStorage.removeItem('asala_email');
+      sessionStorage.removeItem('asala_name');
+    }
     zeroKey(); // Zero in-memory crypto key on logout (BR-7)
     await db.userSession.clear();
     setUser(null);

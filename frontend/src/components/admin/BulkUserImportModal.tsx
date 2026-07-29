@@ -14,9 +14,7 @@ import {
   Copy,
   Check,
   Loader2,
-  RefreshCw,
   X,
-  Users,
 } from 'lucide-react';
 
 interface BulkUserImportModalProps {

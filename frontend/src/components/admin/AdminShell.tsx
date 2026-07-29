@@ -5,7 +5,6 @@ import { Header } from '@/components/shell/Header';
 import { AdminSidebar } from './AdminSidebar';
 import { ToastContainer } from '@/components/ui/Toast';
 import { startViewTransition } from '@/lib/view-transition';
-import { Server, Wifi } from 'lucide-react';
 
 interface AdminShellProps {
   currentTab?: string;
@@ -31,21 +30,16 @@ export const AdminShell: React.FC<AdminShellProps> = ({ currentTab, children, on
     });
   };
 
-  // Keyboard Shortcuts (Alt+1 .. Alt+7)
+  // Keyboard Shortcuts (Alt+1 .. Alt+2)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && !e.ctrlKey && !e.metaKey) {
         const keyNum = parseInt(e.key, 10);
-        if (keyNum >= 1 && keyNum <= 7) {
+        if (keyNum >= 1 && keyNum <= 2) {
           e.preventDefault();
           const adminTabs = [
             'adminDashboard',
-            'syncConflicts',
-            'systemHealth',
-            'backups',
             'userManagement',
-            'auditLogs',
-            'adminSettings',
           ];
           const target = adminTabs[keyNum - 1];
           if (target) {
@@ -71,30 +65,6 @@ export const AdminShell: React.FC<AdminShellProps> = ({ currentTab, children, on
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
-
-        {/* FR 1.1 (Local Static Asset Caching) & FR 3.1 (Network Status Detection) - Local Campus Mode vs Cloud Connected Mode Strip */}
-        <div className="bg-purple-500/10 border-b border-purple-500/20 px-6 py-2 flex items-center justify-between gap-4 text-xs font-semibold">
-          <div className="flex items-center gap-2.5">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-mono text-[11px]">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Cloud Connected Mode
-            </span>
-            <span className="text-muted-foreground text-[11px]">
-              Connected to central institutional cloud API gateway. Operational sync active.
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-mono">
-            <span className="flex items-center gap-1">
-              <Server className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-              PostgreSQL: Healthy
-            </span>
-            <span className="flex items-center gap-1">
-              <Wifi className="w-3.5 h-3.5 text-emerald-500" />
-              Latency: 12ms
-            </span>
-          </div>
-        </div>
 
         <main id="admin-main-content" className="flex-1 p-8 overflow-y-auto" tabIndex={-1}>
           {children(effectiveActiveTab, handleSetActiveTab)}

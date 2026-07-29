@@ -5,12 +5,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { AdminDashboardView } from '@/components/admin/AdminDashboardView';
 import { UserManagementView } from '@/components/admin/UserManagementView';
-import { ComingSoonStub } from '@/components/admin/ComingSoonStub';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { AppShellSkeleton } from '@/components/ui/Skeletons';
 import { useAuth } from '@/context/AuthContext';
 import { useOverlay } from '@/context/OverlayContext';
-import { GitMerge, Activity, Database, ScrollText, Settings } from 'lucide-react';
 
 export function AdminContent() {
   const { isAuthenticated, user, isRestoring } = useAuth();
@@ -85,81 +83,6 @@ export function AdminContent() {
             return <AdminDashboardView onNavigateTab={tab => handleTabNavigate(tab, setActiveTab)} />;
           case 'userManagement':
             return <UserManagementView />;
-          case 'syncConflicts':
-            return (
-              /* FR 3.2 (Delta Payload Transmission) & FR 3.3 (Conflict State Resolution) */
-              <ComingSoonStub
-                title="Sync & Conflict Resolution Queue"
-                description="Rule-engine suggestions, diff inspection drawer, campus node reconciliation, and bulk conflict resolution for offline student submissions and educator grades."
-                icon={GitMerge}
-                plannedFeatures={[
-                  'Student submission version conflict resolution',
-                  'Educator grade precedence review',
-                  'Campus node delta reconciliation',
-                  'Rule-engine merge recommendation chips',
-                ]}
-              />
-            );
-          case 'systemHealth':
-            return (
-              /* NFR 2 (Resource-Constrained Execution) & NFR 5 (High-Concurrency Async Sync Processing) */
-              <ComingSoonStub
-                title="System Health & Infrastructure Monitor"
-                description="Docker container health metrics grid, PostgreSQL connection pool telemetry, media transcoding pipeline queue depth, and central API gateway log viewer."
-                icon={Activity}
-                plannedFeatures={[
-                  'Docker container status grid (CPU, Memory, Uptime)',
-                  'PostgreSQL connection pool & query latency',
-                  'FFmpeg lecture media transcoding queue',
-                  'Real-time centralized log viewer & tailing',
-                ]}
-              />
-            );
-          case 'backups':
-            return (
-              /* NFR 7 (Multi-Environment Dockerization & Disaster Recovery) */
-              <ComingSoonStub
-                title="Backups & Disaster Recovery"
-                description="Automated database backup history, trigger backup workflow, RTO/RPO dashboard, and database migration rollback tools."
-                icon={Database}
-                plannedFeatures={[
-                  'Trigger instant PostgreSQL backup',
-                  'RTO (< 4 hours) & RPO (< 24 hours) compliance metrics',
-                  'Automated backup freshness verification (< 24h)',
-                  'Point-in-time database restoration & rollback',
-                ]}
-              />
-            );
-          case 'auditLogs':
-            return (
-              /* NFR 1 (Local Offline Data Security & Audit Compliance) */
-              <ComingSoonStub
-                title="Audit & Compliance"
-                description="Compliance audit trail logging, data retention/purge governance, and student personal data breach response panel."
-                icon={ScrollText}
-                plannedFeatures={[
-                  'Complete administrative audit log search & export',
-                  'Student PII protection & encryption verification',
-                  'Data retention schedule & automated purge',
-                  'Data breach incident response & quarantine workflow',
-                ]}
-              />
-            );
-          case 'adminSettings':
-            return (
-              /* NFR 5 (High-Concurrency Async Sync Processing) & NFR 7 (Multi-Environment Dockerization) */
-              <ComingSoonStub
-                title="Admin Settings & Alerting Config"
-                description="Elevated step-up re-authentication defaults, infrastructure failure alerting webhook configuration, and system maintenance mode toggles."
-                icon={Settings}
-                plannedFeatures={[
-                  'Configure elevated re-auth timeout & requirements',
-                  'System failure alerting channels (Log / Webhook)',
-                  'Campus Node vs Cloud sync interval settings',
-                  'Maintenance mode & campus intranet lockdown',
-                ]}
-              />
-            );
           default:
             return <AdminDashboardView onNavigateTab={tab => handleTabNavigate(tab, setActiveTab)} />;
         }

@@ -3,16 +3,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAdminApi } from '@/hooks/useAdminApi';
 import { useOverlay } from '@/context/OverlayContext';
-import { AdminUserRead, UserRoleType, AccountStatusType } from '@/types/admin';
+import { AdminUserRead, UserRoleType } from '@/types/admin';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SkeletonCard } from '@/components/ui/Skeletons';
-import { AdminReAuthModal } from './AdminReAuthModal';
 import { PasswordResetModal } from './PasswordResetModal';
 import { SuspendConfirmModal } from './SuspendConfirmModal';
 import { UserDetailDrawer } from './UserDetailDrawer';
 import { CreateUserModal } from './CreateUserModal';
 import { BulkUserImportModal } from './BulkUserImportModal';
-import * as Dialog from '@radix-ui/react-dialog';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   Users,
@@ -27,15 +25,12 @@ import {
   Eye,
   LogOut,
   RefreshCw,
-  AlertTriangle,
   UserPlus,
   FileSpreadsheet,
-  Copy,
-  Check,
 } from 'lucide-react';
 
 export const UserManagementView: React.FC = () => {
-  const { getUsers, createUser, reactivateUser, forceLogout } = useAdminApi();
+  const { getUsers, reactivateUser, forceLogout } = useAdminApi();
   const { showToast } = useOverlay();
 
   // Directory filter state
@@ -54,28 +49,6 @@ export const UserManagementView: React.FC = () => {
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState<boolean>(false);
-
-  // Success result popup state (for temporary password)
-  const [creationResult, setCreationResult] = useState<{
-    fullName: string;
-    email: string;
-    role: string;
-    tempPassword: string;
-  } | null>(null);
-  const [isCopied, setIsCopied] = useState<boolean>(false);
-
-  // Re-Auth Modal control state for elevated step-up auth
-  const [reAuthPendingAction, setReAuthPendingAction] = useState<{
-    type: 'reset_password' | 'suspend' | 'reactivate' | 'create_user';
-    targetUser?: AdminUserRead;
-    createPayload?: {
-      fullName: string;
-      email: string;
-      role: UserRoleType;
-      mode: 'generate' | 'custom';
-      customPassword?: string;
-    };
-  } | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -97,70 +70,23 @@ export const UserManagementView: React.FC = () => {
     fetchUsers();
   }, [fetchUsers]);
 
-  // Initiate elevated re-auth before a sensitive action
-  const requestElevatedAction = (
-    type: 'reset_password' | 'suspend' | 'reactivate',
-    targetUser: AdminUserRead
-  ) => {
-    setReAuthPendingAction({ type, targetUser });
+  const handleResetPassword = (targetUser: AdminUserRead) => {
+    setSelectedUser(targetUser);
+    setIsPasswordModalOpen(true);
   };
 
-  const handleRequestCreateAccount = (payload: {
-    fullName: string;
-    email: string;
-    role: UserRoleType;
-    mode: 'generate' | 'custom';
-    customPassword?: string;
-  }) => {
-    setIsCreateModalOpen(false);
-    setReAuthPendingAction({
-      type: 'create_user',
-      createPayload: payload,
-    });
+  const handleSuspend = (targetUser: AdminUserRead) => {
+    setSelectedUser(targetUser);
+    setIsSuspendModalOpen(true);
   };
 
-  // Called after elevated re-auth password verification passes
-  const handleReAuthConfirmed = async () => {
-    if (!reAuthPendingAction) return;
-
-    const { type, targetUser, createPayload } = reAuthPendingAction;
-    setReAuthPendingAction(null);
-
-    if (type === 'create_user' && createPayload) {
-      try {
-        const res = await createUser({
-          full_name: createPayload.fullName,
-          email: createPayload.email,
-          role: createPayload.role,
-          mode: createPayload.mode,
-          custom_password: createPayload.customPassword,
-        });
-
-        showToast('Account Created', 'success', `Created ${createPayload.role} account for ${createPayload.fullName}.`);
-        setCreationResult({
-          fullName: createPayload.fullName,
-          email: createPayload.email,
-          role: createPayload.role,
-          tempPassword: res.temporary_password,
-        });
-        fetchUsers();
-      } catch (err: any) {
-        showToast('Creation Failed', 'error', err?.response?.data?.detail || 'Unable to create account.');
-      }
-    } else if (type === 'reset_password' && targetUser) {
-      setSelectedUser(targetUser);
-      setIsPasswordModalOpen(true);
-    } else if (type === 'suspend' && targetUser) {
-      setSelectedUser(targetUser);
-      setIsSuspendModalOpen(true);
-    } else if (type === 'reactivate' && targetUser) {
-      try {
-        await reactivateUser(targetUser.id);
-        showToast('Account Reactivated', 'success', `Reactivated ${targetUser.full_name}.`);
-        fetchUsers();
-      } catch (err: any) {
-        showToast('Reactivation Failed', 'error', err?.response?.data?.detail || 'Unable to reactivate account.');
-      }
+  const handleReactivate = async (targetUser: AdminUserRead) => {
+    try {
+      await reactivateUser(targetUser.id);
+      showToast('Account Reactivated', 'success', `Reactivated ${targetUser.full_name}.`);
+      fetchUsers();
+    } catch (err: any) {
+      showToast('Reactivation Failed', 'error', err?.response?.data?.detail || 'Unable to reactivate account.');
     }
   };
 
@@ -215,7 +141,7 @@ export const UserManagementView: React.FC = () => {
         </div>
       </div>
 
-      {/* FR 5.1 (Offline Lesson Compiling / RBAC Roles) - Role Toggle Tabs */}
+      {/* Role Toggle Tabs */}
       <div className="flex items-center gap-2 border-b border-border pb-3">
         <button
           onClick={() => setActiveRoleTab('student')}
@@ -364,7 +290,7 @@ export const UserManagementView: React.FC = () => {
                             </DropdownMenu.Item>
 
                             <DropdownMenu.Item
-                              onClick={() => requestElevatedAction('reset_password', u)}
+                              onClick={() => handleResetPassword(u)}
                               className="flex items-center gap-2 px-3 py-2 rounded-lg text-foreground hover:bg-muted cursor-pointer outline-none"
                             >
                               <KeyRound className="w-3.5 h-3.5 text-amber-500" />
@@ -373,7 +299,7 @@ export const UserManagementView: React.FC = () => {
 
                             {u.status === 'active' ? (
                               <DropdownMenu.Item
-                                onClick={() => requestElevatedAction('suspend', u)}
+                                onClick={() => handleSuspend(u)}
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 cursor-pointer outline-none font-semibold"
                               >
                                 <UserX className="w-3.5 h-3.5" />
@@ -381,7 +307,7 @@ export const UserManagementView: React.FC = () => {
                               </DropdownMenu.Item>
                             ) : (
                               <DropdownMenu.Item
-                                onClick={() => requestElevatedAction('reactivate', u)}
+                                onClick={() => handleReactivate(u)}
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer outline-none font-semibold"
                               >
                                 <UserCheck className="w-3.5 h-3.5" />
@@ -410,17 +336,6 @@ export const UserManagementView: React.FC = () => {
         )}
       </div>
 
-      {/* Elevated Re-Auth Step-Up Modal */}
-      {reAuthPendingAction && (
-        <AdminReAuthModal
-          isOpen={!!reAuthPendingAction}
-          onClose={() => setReAuthPendingAction(null)}
-          onConfirm={handleReAuthConfirmed}
-          actionTitle={`${reAuthPendingAction.type.replace('_', ' ').toUpperCase()} for ${reAuthPendingAction.targetUser?.full_name || reAuthPendingAction.createPayload?.fullName || 'User'}`}
-          actionDescription="This sensitive administrative action requires step-up authentication. Please re-enter your administrator password to proceed."
-        />
-      )}
-
       {/* Password Reset Modal */}
       <PasswordResetModal
         isOpen={isPasswordModalOpen}
@@ -445,19 +360,19 @@ export const UserManagementView: React.FC = () => {
         onTriggerReset={() => {
           if (selectedUser) {
             setIsDetailDrawerOpen(false);
-            requestElevatedAction('reset_password', selectedUser);
+            handleResetPassword(selectedUser);
           }
         }}
         onTriggerSuspend={() => {
           if (selectedUser) {
             setIsDetailDrawerOpen(false);
-            requestElevatedAction('suspend', selectedUser);
+            handleSuspend(selectedUser);
           }
         }}
         onTriggerReactivate={() => {
           if (selectedUser) {
             setIsDetailDrawerOpen(false);
-            requestElevatedAction('reactivate', selectedUser);
+            handleReactivate(selectedUser);
           }
         }}
         onTriggerForceLogout={() => {
@@ -472,7 +387,6 @@ export const UserManagementView: React.FC = () => {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={fetchUsers}
-        onRequestReAuth={handleRequestCreateAccount}
       />
 
       {/* Bulk Account Import Modal */}
@@ -481,72 +395,6 @@ export const UserManagementView: React.FC = () => {
         onClose={() => setIsBulkModalOpen(false)}
         onSuccess={fetchUsers}
       />
-
-      {/* Temporary Password Result Dialog */}
-      {creationResult && (
-        <Dialog.Root open={!!creationResult} onOpenChange={open => !open && setCreationResult(null)}>
-          <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 animate-in fade-in-0" />
-            <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl z-50 animate-in fade-in-0 zoom-in-95">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                  <UserPlus className="w-5 h-5" />
-                </div>
-                <div>
-                  <Dialog.Title className="text-base font-bold text-foreground">
-                    Account Created Successfully
-                  </Dialog.Title>
-                  <Dialog.Description className="text-xs text-muted-foreground">
-                    Copy the temporary credentials below for {creationResult.fullName}.
-                  </Dialog.Description>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-muted/50 border border-border flex flex-col gap-2.5 my-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Name:</span>
-                  <span className="font-semibold text-foreground">{creationResult.fullName}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Email:</span>
-                  <span className="font-mono text-foreground">{creationResult.email}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Role:</span>
-                  <span className="font-semibold text-purple-600 capitalize">{creationResult.role}</span>
-                </div>
-
-                <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[10px] text-muted-foreground uppercase font-semibold">Temporary Password</span>
-                    <span className="font-mono font-bold text-sm text-foreground truncate">{creationResult.tempPassword}</span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(creationResult.tempPassword);
-                      setIsCopied(true);
-                      setTimeout(() => setIsCopied(false), 2000);
-                    }}
-                    className="p-2 rounded-lg bg-background border border-border hover:bg-muted text-foreground transition-colors cursor-pointer shrink-0"
-                    title="Copy Password"
-                  >
-                    {isCopied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={() => setCreationResult(null)}
-                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition-colors cursor-pointer"
-                >
-                  Done
-                </button>
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
-      )}
     </div>
   );
 };

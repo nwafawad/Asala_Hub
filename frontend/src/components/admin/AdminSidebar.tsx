@@ -6,12 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard,
-  GitMerge,
-  Activity,
-  Database,
   Users,
-  ScrollText,
-  Settings,
   ShieldCheck,
   ArrowLeftRight,
 } from 'lucide-react';
@@ -29,12 +24,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = React.memo(({ activeTab
   const navItems = React.useMemo(
     () => [
       { id: 'adminDashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'syncConflicts', label: 'Sync & Conflicts', icon: GitMerge },
-      { id: 'systemHealth', label: 'System Health', icon: Activity },
-      { id: 'backups', label: 'Backups & Recovery', icon: Database },
       { id: 'userManagement', label: 'Users & Accounts', icon: Users },
-      { id: 'auditLogs', label: 'Audit & Compliance', icon: ScrollText },
-      { id: 'adminSettings', label: 'Admin Settings', icon: Settings },
     ],
     []
   );

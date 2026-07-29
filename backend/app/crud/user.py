@@ -21,7 +21,7 @@ def get_user_by_email(session: Session, email: str) -> Optional[User]:
         Optional[User]: The matching user model instance, or None.
     """
     normalized_email = email.strip().lower()
-    return session.exec(select(User).where(col(User.email) == normalized_email)).first()
+    return session.exec(select(User).where(func.lower(User.email) == normalized_email)).first()
 
 def get_user_by_id(session: Session, user_id: uuid.UUID) -> Optional[User]:
     """

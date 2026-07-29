@@ -213,6 +213,17 @@ export function useAdminApi() {
   const createUser = useCallback(async (payload: AdminUserCreatePayload) => {
     try {
       const res = await api.post<AdminUserCreateResponse>('/admin/users', payload);
+      const createdUser = res.data.user;
+      if (createdUser) {
+        await db.users.put({
+          id: createdUser.id,
+          email: createdUser.email.trim().toLowerCase(),
+          fullName: createdUser.full_name,
+          role: createdUser.role,
+          status: createdUser.status,
+          preferredLanguage: (createdUser.preferred_language as any) || 'en',
+        });
+      }
       return res.data;
     } catch (err: any) {
       if (err?.response?.status === 409 || err?.response?.data?.detail?.includes('already exists')) {
