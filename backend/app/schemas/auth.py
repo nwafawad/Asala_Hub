@@ -48,6 +48,8 @@ class UserRead(BaseModel):
     full_name: str
     email: str
     role: UserRole
+    status: str = "active"
+    must_change_password: bool = False
     preferred_language: str
     requires_guardian_consent: bool = False
     guardian_email: Optional[str] = None
