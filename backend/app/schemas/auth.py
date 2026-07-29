@@ -40,6 +40,13 @@ class TokenRefreshRequest(BaseModel):
     refresh_token: Optional[str] = None
 
 
+class RoleSwitchRequest(BaseModel):
+    """
+    Schema representing a request to switch the active role of an authenticated user.
+    """
+    role: UserRole
+
+
 class UserRead(BaseModel):
     """
     Schema representing read-only user profile structure returned in API responses.

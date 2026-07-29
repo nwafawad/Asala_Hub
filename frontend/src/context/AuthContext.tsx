@@ -374,6 +374,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchRole = useCallback(
     async (newRole: 'student' | 'educator') => {
       if (!user) return;
+
+      if (typeof window !== 'undefined' && navigator.onLine) {
+        try {
+          const res = await api.post('/auth/switch-role', { role: newRole });
+          const newToken = res.data.access_token;
+          if (localStorage.getItem('asala_token')) {
+            localStorage.setItem('asala_token', newToken);
+          } else {
+            sessionStorage.setItem('asala_token', newToken);
+          }
+          setToken(newToken);
+        } catch (err) {
+          console.warn('Online role switch API call failed, updating local state only:', err);
+        }
+      }
+
       const updatedUser: IndexedDBUser = {
         ...user,
         role: newRole,

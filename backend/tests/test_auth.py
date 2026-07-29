@@ -2,7 +2,8 @@
 Authentication Endpoints Test Suite.
 
 Tests registration, credentials authentication, refresh token issuance & rotation,
-logout revocation, expired access token 401 handling, and user profile retrieval (/auth/me).
+logout revocation, expired access token 401 handling, user profile retrieval (/auth/me),
+and online role switching (/auth/switch-role).
 """
 
 from datetime import timedelta
@@ -142,3 +143,17 @@ def test_expired_access_token_handling(client: TestClient, test_student):
     res = client.get("/auth/me", headers={"Authorization": f"Bearer {expired_token}"})
     assert res.status_code == 401
     assert res.json()["detail"] == "Token has expired"
+
+
+def test_switch_role_success(client: TestClient, test_student, student_token_headers):
+    """Test switching user role via POST /auth/switch-role re-issues token with new role claim."""
+    res = client.post("/auth/switch-role", json={"role": "educator"}, headers=student_token_headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert "access_token" in data
+
+    # Verify updated profile via /auth/me
+    new_headers = {"Authorization": f"Bearer {data['access_token']}"}
+    me_res = client.get("/auth/me", headers=new_headers)
+    assert me_res.status_code == 200
+    assert me_res.json()["role"] == "educator"

@@ -105,3 +105,26 @@ def read_current_user(current_user: User = Depends(get_current_user)) -> User:
     """
     return current_user
 
+
+from app.schemas.auth import RoleSwitchRequest
+from app.models.base import get_naive_utc_now
+
+@router.post("/switch-role", response_model=TokenResponse)
+def switch_role(
+    body: RoleSwitchRequest,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+) -> TokenResponse:
+    """
+    Update the authenticated user's active role in the database
+    and re-issue signed JWT access & refresh tokens containing the updated role claim.
+    """
+    current_user.role = body.role
+    current_user.updated_at = get_naive_utc_now()
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+
+    return auth_service._issue_tokens_and_session(session, current_user, response)
+
