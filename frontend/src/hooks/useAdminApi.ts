@@ -214,12 +214,22 @@ export function useAdminApi() {
     try {
       const res = await api.post<AdminUserCreateResponse>('/admin/users', payload);
       return res.data;
-    } catch (err) {
-      console.warn('Backend create user failed, creating in local IndexedDB:', err);
+    } catch (err: any) {
+      if (err?.response?.status === 409 || err?.response?.data?.detail?.includes('already exists')) {
+        throw err;
+      }
+      console.warn('Backend create user failed, checking local IndexedDB:', err);
+      const cleanEmail = payload.email.trim().toLowerCase();
+      const existingInDb = await db.users.where('email').equalsIgnoreCase(cleanEmail).first();
+      if (existingInDb) {
+        const conflictErr: any = new Error(`A user with email '${cleanEmail}' already exists.`);
+        conflictErr.response = { data: { detail: `A user with email '${cleanEmail}' already exists.` } };
+        throw conflictErr;
+      }
       const tempPassword = payload.custom_password || `Temp${Math.random().toString(36).slice(-6)}!`;
       const newUser: IndexedDBUser = {
         id: `user-${Date.now()}`,
-        email: payload.email,
+        email: cleanEmail,
         fullName: payload.full_name,
         role: payload.role as any,
         status: 'active',

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useAdminApi } from '@/hooks/useAdminApi';
 import { useOverlay } from '@/context/OverlayContext';
+import { db } from '@/lib/db';
 import { UserRoleType, AdminUserCreateResponse } from '@/types/admin';
 import { UserPlus, Copy, Check, Loader2, ShieldCheck, KeyRound } from 'lucide-react';
 
@@ -34,7 +35,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   const [mode, setMode] = useState<'generate' | 'custom'>('generate');
   const [customPassword, setCustomPassword] = useState<string>('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!fullName.trim()) {
@@ -50,10 +51,17 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
       return;
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    const existingUser = await db.users.where('email').equalsIgnoreCase(cleanEmail).first();
+    if (existingUser) {
+      showToast('User Already Exists', 'error', `A user account with email "${cleanEmail}" already exists.`);
+      return;
+    }
+
     // Trigger elevated re-auth step-up
     onRequestReAuth({
       fullName: fullName.trim(),
-      email: email.trim(),
+      email: cleanEmail,
       role,
       mode,
       customPassword: mode === 'custom' ? customPassword : undefined,
