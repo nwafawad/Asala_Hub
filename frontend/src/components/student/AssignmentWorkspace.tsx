@@ -226,7 +226,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
               } as DraftSnapshot,
               ...latestSnaps.slice(0, 9),
             ]
-          : latestSnaps;
+          : latestSnaps.slice(0, 10);
 
         const compressed = compressPayload(content);
         const encryptedContent = await encryptText(compressed);

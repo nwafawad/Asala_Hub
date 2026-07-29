@@ -365,3 +365,80 @@ def test_sync_student_unauthorized_grade_rejection(
     assert data["error_count"] == 1
     assert data["results"][0]["status"] == "rejected"
     assert "Unauthorized" in data["results"][0]["error"]
+
+
+def test_sync_offline_course_and_module_authoring_educator(
+    client: TestClient, educator_token_headers
+):
+    """Test educator creating a course and module via offline batch sync transaction."""
+    course_id = str(uuid.uuid4())
+    module_id = str(uuid.uuid4())
+    tx1 = str(uuid.uuid4())
+    tx2 = str(uuid.uuid4())
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    res = client.post(
+        "/sync",
+        json={
+            "transactions": [
+                {
+                    "transaction_id": tx1,
+                    "entity_type": "course",
+                    "entity_id": course_id,
+                    "action": "CREATE_COURSE",
+                    "payload": {"title": "Offline Authoring Course", "description": "Created while offline"},
+                    "client_timestamp": now_str,
+                    "schema_version": 1
+                },
+                {
+                    "transaction_id": tx2,
+                    "entity_type": "module",
+                    "entity_id": module_id,
+                    "action": "CREATE_MODULE",
+                    "payload": {"title": "Offline Module 1", "content_type": "reading", "content": "Text content", "course_id": course_id, "order_index": 0},
+                    "client_timestamp": now_str,
+                    "schema_version": 1
+                }
+            ]
+        },
+        headers=educator_token_headers
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["synced_count"] == 2
+    assert data["error_count"] == 0
+    assert data["results"][0]["status"] == "accepted"
+    assert data["results"][1]["status"] == "accepted"
+
+
+def test_sync_offline_course_creation_unauthorized_student(
+    client: TestClient, student_token_headers
+):
+    """Test student attempting to create a course via sync batch is rejected."""
+    course_id = str(uuid.uuid4())
+    tx_id = str(uuid.uuid4())
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    res = client.post(
+        "/sync",
+        json={
+            "transactions": [
+                {
+                    "transaction_id": tx_id,
+                    "entity_type": "course",
+                    "entity_id": course_id,
+                    "action": "CREATE_COURSE",
+                    "payload": {"title": "Unauthorized Student Course"},
+                    "client_timestamp": now_str,
+                    "schema_version": 1
+                }
+            ]
+        },
+        headers=student_token_headers
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["error_count"] == 1
+    assert data["results"][0]["status"] == "rejected"
+    assert "Unauthorized" in data["results"][0]["error"]
+

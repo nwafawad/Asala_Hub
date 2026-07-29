@@ -95,8 +95,11 @@ def merge_submission_content(server_text: str, client_text: str) -> tuple[bool, 
 
 
 
+import uuid
 from app.models.base import get_naive_utc_now
 from app.models.user import User, UserRole
+from pydantic import ValidationError
+from app.models import Course, Module, ContentType
 from app.models.transaction import TransactionLog
 from app.models.assignment import Submission, SyncStatus
 from app.schemas.sync import (
@@ -364,6 +367,73 @@ def process_sync_batch(
                         )
                         session.add(new_submission)
                         existing_submissions[tx.entity_id] = new_submission
+
+                elif tx.entity_type in ("course", "module"):
+                    # RBAC check: only educators and admins can mutate courses or modules
+                    if not acting_user or acting_user.role not in (UserRole.educator, UserRole.admin):
+                        results.append(
+                            SyncTransactionResult(
+                                transaction_id=tx.transaction_id,
+                                status="rejected",
+                                server_sequence=server_seq,
+                                synced_at=None,
+                                error=f"Unauthorized: Only educators can create or edit {tx.entity_type}s"
+                            )
+                        )
+                        error_count += 1
+                        continue
+
+                    if tx.entity_type == "course":
+                        course_in_db = session.get(Course, tx.entity_id)
+                        title = normalized_payload.get("title", "Untitled Course")
+                        desc = normalized_payload.get("description", "")
+                        if course_in_db:
+                            course_in_db.title = title
+                            course_in_db.description = desc
+                            course_in_db.updated_at = now
+                            session.add(course_in_db)
+                        else:
+                            new_course = Course(
+                                id=tx.entity_id,
+                                title=title,
+                                description=desc,
+                                educator_id=user_id,
+                                created_at=now,
+                                updated_at=now,
+                            )
+                            session.add(new_course)
+                        session.flush()
+
+                    elif tx.entity_type == "module":
+                        module_in_db = session.get(Module, tx.entity_id)
+                        title = normalized_payload.get("title", "Untitled Module")
+                        raw_type = str(normalized_payload.get("content_type", "text")).lower()
+                        c_type = ContentType.video if raw_type == "video" else ContentType.text
+                        content = normalized_payload.get("content", "")
+                        order_idx = int(normalized_payload.get("order_index", 0))
+                        raw_course_id = normalized_payload.get("course_id", tx.entity_id)
+                        course_id_uuid = uuid.UUID(str(raw_course_id))
+
+                        if module_in_db:
+                            module_in_db.title = title
+                            module_in_db.content_type = c_type
+                            module_in_db.content = content
+                            module_in_db.order_index = order_idx
+                            module_in_db.updated_at = now
+                            session.add(module_in_db)
+                        else:
+                            new_module = Module(
+                                id=tx.entity_id,
+                                course_id=course_id_uuid,
+                                title=title,
+                                content_type=c_type,
+                                content=content,
+                                order_index=order_idx,
+                                created_at=now,
+                                updated_at=now,
+                            )
+                            session.add(new_module)
+                        session.flush()
 
                 # Record transaction log entry
                 log_entry = TransactionLog(

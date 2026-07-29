@@ -275,6 +275,40 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearTimeout(timer);
   }, [syncState, pendingLogs, syncNow]);
 
+  // Periodic Grade Pull Heartbeat (every 30s when online)
+  useEffect(() => {
+    if (!isOnline) return;
+
+    const pullGrades = async () => {
+      try {
+        const token = localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token');
+        if (!token || token.startsWith('offline-token-')) return;
+
+        const res = await api.get('/assignments/my-submissions', {
+          headers: { 'X-Suppress-401-Event': 'true' },
+        }).catch(() => null);
+
+        if (res?.data && Array.isArray(res.data)) {
+          for (const sub of res.data) {
+            const cached = await db.cachedSubmissions.get(sub.id);
+            if (cached && sub.grade !== null && sub.grade !== undefined && cached.score !== sub.grade) {
+              await db.cachedSubmissions.update(sub.id, {
+                score: sub.grade,
+                gradeStatus: 'graded',
+                syncStatus: 'synced',
+              });
+            }
+          }
+        }
+      } catch {
+        // Silent catch for background heartbeat
+      }
+    };
+
+    const interval = setInterval(pullGrades, 30000);
+    return () => clearInterval(interval);
+  }, [isOnline]);
+
   const addMockOfflineTransaction = async (action: 'CREATE_SUBMISSION' | 'UPDATE_COURSE' = 'CREATE_SUBMISSION') => {
     const offlineUuid = generateUUID();
     const newItem: TransactionLogItem = {
