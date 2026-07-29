@@ -15,6 +15,8 @@ class UserRegister(BaseModel):
     password: str
     role: UserRole = UserRole.student
     preferred_language: str = "en"
+    requires_guardian_consent: bool = False
+    guardian_email: Optional[str] = None
 
 class UserLogin(BaseModel):
     """
@@ -46,7 +48,11 @@ class UserRead(BaseModel):
     full_name: str
     email: str
     role: UserRole
+    status: str = "active"
+    must_change_password: bool = False
     preferred_language: str
+    requires_guardian_consent: bool = False
+    guardian_email: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

@@ -10,11 +10,11 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from fastapi import Response
+from fastapi import Response, status
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.core.exceptions import ResourceConflictError, AuthenticationError
+from app.core.exceptions import ResourceConflictError, AuthenticationError, DomainException
 from app.core.security import (
     verify_password,
     create_access_token,
@@ -23,7 +23,7 @@ from app.core.security import (
     set_auth_cookies,
     clear_auth_cookies,
 )
-from app.models import User, RefreshToken
+from app.models import User, RefreshToken, AccountStatus
 from app.models.base import get_naive_utc_now
 from app.schemas.auth import UserRegister, TokenResponse
 from app.crud import user as crud_user
@@ -95,6 +95,13 @@ def authenticate_user(
 
     if not user or not password_correct:
         raise AuthenticationError("Incorrect email or password")
+
+    # Check account suspension status (§3.5 — blocked login for suspended accounts)
+    if hasattr(user, 'status') and user.status == AccountStatus.suspended:
+        raise DomainException(
+            "Your account has been suspended. Contact your administrator.",
+            status_code=status.HTTP_403_FORBIDDEN
+        )
 
     return _issue_tokens_and_session(session, user, response)
 

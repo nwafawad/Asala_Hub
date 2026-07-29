@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column
 import sqlalchemy as sa
 
@@ -20,10 +20,17 @@ class UserRole(str, Enum):
     admin = "admin"
 
 
+class AccountStatus(str, Enum):
+    """
+    Account status for admin-managed suspension and reactivation.
+    """
+    active = "active"
+    suspended = "suspended"
+
 
 class User(TimestampModel, table=True):
     """
-    Database model representing an authenticated user account (student or educator).
+    Database model representing an authenticated user account (student, educator, or admin).
     """
     full_name: str
     email: str = Field(unique=True, index=True)
@@ -34,7 +41,18 @@ class User(TimestampModel, table=True):
             nullable=False,
         )
     )
+    status: AccountStatus = Field(
+        default=AccountStatus.active,
+        sa_column=Column(
+            sa.Enum(AccountStatus, native_enum=False, values_callable=lambda x: [e.value for e in x]),
+            nullable=False,
+            server_default="active",
+        )
+    )
+    must_change_password: bool = Field(default=False)
     preferred_language: str = Field(default="en")
+    requires_guardian_consent: bool = Field(default=False)
+    guardian_email: Optional[str] = Field(default=None)
 
     # Relationships
     courses: List["Course"] = Relationship(back_populates="educator")
@@ -43,4 +61,3 @@ class User(TimestampModel, table=True):
         sa_relationship_kwargs={"primaryjoin": "User.id == Submission.student_id"}
     )
     transaction_logs: List["TransactionLog"] = Relationship(back_populates="user")
-

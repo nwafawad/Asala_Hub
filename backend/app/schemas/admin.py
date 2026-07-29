@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Optional, Dict, Literal
+from typing import Optional, List, Dict, Literal
 from pydantic import BaseModel, Field
 
 from app.models.assignment import SyncStatus
+from app.models.user import UserRole, AccountStatus
+from app.models.audit import AdminActionType
 
 
 class ConflictResolutionRequest(BaseModel):
@@ -67,3 +69,114 @@ class AdminHealthResponse(BaseModel):
     unresolved_conflicts: int
     max_server_sequence: int
     users_count: Dict[str, int]
+
+
+class AdminUserRead(BaseModel):
+    """
+    Schema for user directory table rows in the admin console.
+    """
+    id: uuid.UUID
+    full_name: str
+    email: str
+    role: UserRole
+    status: AccountStatus
+    must_change_password: bool
+    preferred_language: str
+    created_at: datetime
+    updated_at: datetime
+    course_count: int = 0
+    submission_count: int = 0
+    pending_sync_count: int = 0
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class CourseBasicInfo(BaseModel):
+    id: uuid.UUID
+    title: str
+    code: str
+
+
+class SubmissionBasicInfo(BaseModel):
+    id: uuid.UUID
+    assignment_title: str
+    submitted_at: datetime
+    sync_status: str
+    grade: Optional[float] = None
+
+
+class AdminUserDetail(AdminUserRead):
+    """
+    Extended user detail schema for the account drawer view.
+    """
+    courses: List[CourseBasicInfo] = []
+    recent_submissions: List[SubmissionBasicInfo] = []
+    active_session_count: int = 0
+
+
+class PasswordResetRequest(BaseModel):
+    """
+    Payload for administrative password reset.
+    """
+    mode: Literal["generate", "custom"] = "generate"
+    custom_password: Optional[str] = Field(
+        default=None,
+        min_length=6,
+        description="Custom password string when mode is 'custom'"
+    )
+
+
+class PasswordResetResponse(BaseModel):
+    """
+    Response package for administrative password reset.
+    """
+    success: bool
+    temporary_password: Optional[str] = Field(
+        default=None,
+        description="Generated temporary password string (shown once)"
+    )
+    message: str
+
+
+class SuspendResponse(BaseModel):
+    """
+    Response package for account suspension.
+    """
+    success: bool
+    had_unsynced_work: bool = False
+    message: str
+
+
+class AuditEventRead(BaseModel):
+    """
+    Response schema for single audit event log item.
+    """
+    id: uuid.UUID
+    actor_id: uuid.UUID
+    actor_name: str
+    actor_email: str
+    action_type: AdminActionType
+    target_user_id: Optional[uuid.UUID] = None
+    target_user_name: Optional[str] = None
+    target_user_email: Optional[str] = None
+    created_at: datetime
+    metadata_json: Optional[str] = None
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class AdminDashboardStats(BaseModel):
+    """
+    Aggregated summary statistics for the admin dashboard.
+    """
+    total_students: int = 0
+    total_educators: int = 0
+    active_accounts: int = 0
+    suspended_accounts: int = 0
+    unresolved_conflicts: int = 0
+    pending_sync_items: int = 0
+    recent_audit_events: List[AuditEventRead] = []

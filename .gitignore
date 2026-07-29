@@ -102,3 +102,12 @@ uploads/
 *.mov
 *.avi
 
+# Database Backups & Automated Dumps
+backups/
+**/backups/
+*.tar.gz
+*.tgz
+*.zip
+*.dump
+last_backup_status.json
+
