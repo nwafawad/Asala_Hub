@@ -20,6 +20,23 @@ export function AdminContent() {
 
   const [overrideTab, setOverrideTab] = useState<string | null>(null);
 
+  // RBAC Guard Effect: Non-admin users redirected back to main portal
+  useEffect(() => {
+    if (user && user.role !== 'admin') {
+      router.replace('/');
+    }
+  }, [user, router]);
+
+  // Tab restoration effect
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem('asala_admin_tab');
+      if (savedTab && !searchParams.get('tab')) {
+        setOverrideTab(savedTab);
+      }
+    }
+  }, [searchParams]);
+
   const handleTabNavigate = (tab: string, setActiveTab?: (t: string) => void) => {
     if (setActiveTab) setActiveTab(tab);
     if (typeof window !== 'undefined') {
@@ -52,20 +69,8 @@ export function AdminContent() {
 
   // RBAC Guard: Non-admin users redirected back to main portal
   if (user && user.role !== 'admin') {
-    if (typeof window !== 'undefined') {
-      router.replace('/');
-    }
     return null;
   }
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedTab = localStorage.getItem('asala_admin_tab');
-      if (savedTab && !searchParams.get('tab')) {
-        setOverrideTab(savedTab);
-      }
-    }
-  }, [searchParams]);
 
   const rawTab = searchParams.get('tab');
   const currentTab = overrideTab || rawTab || 'adminDashboard';

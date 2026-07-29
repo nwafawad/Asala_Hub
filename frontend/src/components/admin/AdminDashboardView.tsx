@@ -34,9 +34,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onNaviga
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [statsData, healthData] = await Promise.all([getDashboardStats(), getHealth()]);
-      setStats(statsData);
-      setHealth(healthData);
+      const [statsRes, healthRes] = await Promise.allSettled([getDashboardStats(), getHealth()]);
+      if (statsRes.status === 'fulfilled') {
+        setStats(statsRes.value);
+      }
+      if (healthRes.status === 'fulfilled') {
+        setHealth(healthRes.value);
+      }
     } catch (err) {
       console.error('Error loading admin dashboard stats:', err);
     } finally {

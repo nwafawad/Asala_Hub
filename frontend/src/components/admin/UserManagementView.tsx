@@ -416,7 +416,7 @@ export const UserManagementView: React.FC = () => {
           isOpen={!!reAuthPendingAction}
           onClose={() => setReAuthPendingAction(null)}
           onConfirm={handleReAuthConfirmed}
-          actionTitle={`${reAuthPendingAction.type.replace('_', ' ').toUpperCase()} for ${reAuthPendingAction.targetUser.full_name}`}
+          actionTitle={`${reAuthPendingAction.type.replace('_', ' ').toUpperCase()} for ${reAuthPendingAction.targetUser?.full_name || reAuthPendingAction.createPayload?.fullName || 'User'}`}
           actionDescription="This sensitive administrative action requires step-up authentication. Please re-enter your administrator password to proceed."
         />
       )}

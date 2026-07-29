@@ -77,6 +77,13 @@ export function HomeContent() {
     loadDashboardData();
   }, []);
 
+  // Admin Role Guard: redirect to /admin console
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      router.replace('/admin');
+    }
+  }, [user, router]);
+
   const handleTabNavigate = (tab: string, setActiveTab?: (t: string) => void) => {
     if (setActiveTab) setActiveTab(tab);
     if (extendSession) extendSession();
@@ -94,11 +101,8 @@ export function HomeContent() {
     return <AppShellSkeleton />;
   }
 
-  // Admin Role Guard: redirect to /admin console
+  // Admin Role Guard render check
   if (user && user.role === 'admin') {
-    if (typeof window !== 'undefined') {
-      router.replace('/admin');
-    }
     return null;
   }
 

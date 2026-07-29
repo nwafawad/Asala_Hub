@@ -42,7 +42,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (!file.name.toLowerCase().endswith('.csv')) {
+      if (!file.name.toLowerCase().endsWith('.csv')) {
         showToast('Invalid File', 'error', 'Please select a valid CSV file (.csv).');
         return;
       }
