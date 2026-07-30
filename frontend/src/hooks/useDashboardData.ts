@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db, seedInitialMockData, type CachedCourse, type CachedModule, type TransactionLogItem } from '@/lib/db';
 import { DashboardStats } from '@/types/dashboard';
-import { rehydrateStorage } from '@/lib/rehydrate';
+import { api } from '@/lib/api';
+import { mapCourseReadToCached, mapSubmissionReadToCached } from '@/lib/mappers';
+import { CourseReadDTO, SubmissionReadDTO } from '@/types/api';
 
 export function useDashboardData() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -42,36 +44,65 @@ export function useDashboardData() {
         completionRate: rate,
       });
 
-      // 2. Background sync with backend API if online (via shared rehydration helper)
+      // 2. Background sync with backend API if online
       if (typeof window !== 'undefined' && navigator.onLine) {
         try {
-          await rehydrateStorage();
+          const [resCourses, resSubs] = await Promise.all([
+            api.get('/courses/', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null),
+            api.get('/assignments/my-submissions', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null),
+          ]);
 
-          // Re-read all tables so module stats and assignment list reflect server data
-          const [updatedCourses, updatedModules, updatedSubCount] = await Promise.all([
+          await db.transaction('rw', [db.cachedCourses, db.cachedSubmissions], async () => {
+            if (resCourses?.data && Array.isArray(resCourses.data) && resCourses.data.length > 0) {
+              const freshCourses = resCourses.data.map((c: CourseReadDTO) => mapCourseReadToCached(c));
+              const existingCourses = await db.cachedCourses.bulkGet(freshCourses.map(c => c.id));
+              const mergedCourses = freshCourses.map((course, idx) => {
+                const existing = existingCourses[idx];
+                // Preserve locally-tracked offline caching state — the server has no concept of it
+                return existing
+                  ? { ...course, isCachedOffline: existing.isCachedOffline, sizeMb: existing.sizeMb }
+                  : course;
+              });
+              await db.cachedCourses.bulkPut(mergedCourses);
+            }
+
+            if (resSubs?.data && Array.isArray(resSubs.data) && resSubs.data.length > 0) {
+              const freshSubs = resSubs.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
+              const existingSubs = await db.cachedSubmissions.bulkGet(freshSubs.map(s => s.id));
+              const mergedSubs = freshSubs.map((sub, idx) => {
+                const existing = existingSubs[idx];
+                // Preserve local draft history / conflict metadata that the server doesn't return
+                return existing
+                  ? {
+                      ...sub,
+                      attachments: existing.attachments,
+                      draftHistory: existing.draftHistory,
+                      deviceConflictDrafts: existing.deviceConflictDrafts,
+                      conflictStatus: existing.conflictStatus,
+                      receiptHash: existing.receiptHash,
+                    }
+                  : sub;
+              });
+              await db.cachedSubmissions.bulkPut(mergedSubs);
+            }
+          });
+
+          // Re-fetch updated IndexedDB data for UI
+          const [updatedCourses, updatedSubCount] = await Promise.all([
             db.cachedCourses.toArray(),
-            db.cachedModules.toArray(),
             db.cachedSubmissions.count(),
           ]);
 
-          const updatedCompleted = updatedModules.filter(m => m.isCompleted).length;
-          const updatedTotal = updatedModules.length;
-
           setCourses(updatedCourses);
-          setAssignments(updatedModules.filter(m => m.type === 'assignment'));
           setStats(prev => ({
             ...prev,
             courseCount: updatedCourses.length,
-            totalModules: updatedTotal,
-            completedModules: updatedCompleted,
-            completionRate: updatedTotal > 0 ? Math.round((updatedCompleted / updatedTotal) * 100) : 0,
             submissionCount: updatedSubCount,
           }));
         } catch (syncErr) {
           // Suppress sync errors in background
         }
       }
-
     } catch (err) {
       console.error('Error loading dashboard data:', err);
     } finally {
