@@ -123,6 +123,13 @@ export const ModuleStudio: React.FC<ModuleStudioProps> = ({
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioPlaybackRef = useRef<HTMLAudioElement | null>(null);
+  // Bug fix: track latest audioUrl via ref so unmount cleanup can revoke the most recent
+  // recorded/uploaded blob: URL (was previously never revoked, leaking object URLs).
+  const audioUrlRef = useRef<string>(audioUrl);
+
+  useEffect(() => {
+    audioUrlRef.current = audioUrl;
+  }, [audioUrl]);
 
   useEffect(() => {
     return () => {
@@ -133,6 +140,9 @@ export const ModuleStudio: React.FC<ModuleStudioProps> = ({
       }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
+      }
+      if (audioUrlRef.current && audioUrlRef.current.startsWith('blob:')) {
+        revokeAudioObjectUrl(audioUrlRef.current);
       }
     };
   }, []);
