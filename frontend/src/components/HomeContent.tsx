@@ -54,11 +54,6 @@ export function HomeContent() {
     }
   }, [user, router]);
 
-  // Reset tab override state when switching accounts
-  useEffect(() => {
-    setOverrideTabState(null);
-  }, [user?.id, user?.email]);
-
   useEffect(() => {
     if (typeof window !== 'undefined' && !searchParams.get('tab')) {
       const savedTab = isEducator
@@ -96,7 +91,6 @@ export function HomeContent() {
     return (
       <LoginForm
         onSuccess={role => {
-          setOverrideTabState(null);
           showToast('Authentication Successful', 'success', 'Welcome back!');
           if (role === 'admin') {
             router.replace('/admin', { scroll: false });
