@@ -5,11 +5,9 @@ import { useSync, type SyncState } from '@/context/SyncContext';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { StatusPill, type StatusVariant } from '@/components/ui/StatusPill';
-import { RefreshCw, Database, Trash2, PlusCircle } from 'lucide-react';
+import { RefreshCw, Database, Trash2 } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
-
-import { isDebugMode } from '@/lib/debug';
 
 const syncVariantMap: Record<SyncState, { variant: StatusVariant; key: string; animate: boolean }> = {
   synced: { variant: 'success', key: 'synced', animate: false },
@@ -20,7 +18,7 @@ const syncVariantMap: Record<SyncState, { variant: StatusVariant; key: string; a
 };
 
 export const SyncIndicator: React.FC = () => {
-  const { syncState, pendingCount, pendingLogs, syncNow, addMockOfflineTransaction, clearSyncedLogs } = useSync();
+  const { syncState, pendingCount, pendingLogs, syncNow, clearSyncedLogs } = useSync();
   const { t } = useI18n();
   const { showToast } = useOverlay();
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
@@ -36,11 +34,6 @@ export const SyncIndicator: React.FC = () => {
     } else {
       showToast(t.syncStatus.offline, 'warning', 'Unable to sync while offline.');
     }
-  };
-
-  const handleAddMock = async () => {
-    await addMockOfflineTransaction('CREATE_SUBMISSION');
-    showToast('Buffered in IndexedDB', 'info', 'New submission saved to local queue.');
   };
 
   return (
@@ -95,25 +88,17 @@ export const SyncIndicator: React.FC = () => {
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
-              {isDebugMode() && (
-                <button
-                  onClick={handleAddMock}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-xs font-medium hover:bg-muted transition-colors cursor-pointer"
-                >
-                  <PlusCircle className="w-4 h-4 text-emerald-500" />
-                  {t.syncStatus.simulateOfflineSubmission}
-                </button>
-              )}
+            <div className="flex items-center justify-end gap-2">
               <button
                 onClick={async () => {
                   await clearSyncedLogs();
                   showToast('Queue cleaned', 'info');
                 }}
-                className="inline-flex items-center justify-center p-2 rounded-lg border border-border bg-background text-xs text-muted-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-xs text-muted-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
                 title={t.syncStatus.clearCompleted}
               >
                 <Trash2 className="w-4 h-4" />
+                <span>{t.syncStatus.clearCompleted}</span>
               </button>
             </div>
 

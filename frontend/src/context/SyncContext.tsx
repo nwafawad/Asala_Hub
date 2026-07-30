@@ -19,7 +19,6 @@ interface SyncContextType {
   pendingCount: number;
   pendingSubmissionsCount: number;
   syncNow: () => Promise<void>;
-  addMockOfflineTransaction: (action?: 'CREATE_SUBMISSION' | 'UPDATE_COURSE') => Promise<void>;
   clearSyncedLogs: () => Promise<void>;
   refreshLogs: () => Promise<void>;
 }
@@ -395,26 +394,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(interval);
   }, [isOnline]);
 
-  const addMockOfflineTransaction = async (action: 'CREATE_SUBMISSION' | 'UPDATE_COURSE' = 'CREATE_SUBMISSION') => {
-    const offlineUuid = generateUUID();
-    const newItem: TransactionLogItem = {
-      offlineId: offlineUuid,
-      action,
-      entityType: action === 'CREATE_SUBMISSION' ? 'Submission' : 'Course',
-      entityId: offlineUuid,
-      payload: {
-        title: action === 'CREATE_SUBMISSION' ? 'Assignment Draft Submission' : 'Updated Course Syllabus',
-        note: 'Buffered locally in IndexedDB with UUID v4',
-      },
-      timestamp: new Date().toISOString(),
-      status: 'pending',
-    };
-
-    await db.transactionLogs.add(newItem);
-    await refreshLogs();
-    notifyStorageUpdated();
-  };
-
   const clearSyncedLogs = async () => {
     await db.transactionLogs.where('status').equals('synced').delete();
     await refreshLogs();
@@ -434,7 +413,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       pendingCount,
       pendingSubmissionsCount,
       syncNow,
-      addMockOfflineTransaction,
       clearSyncedLogs,
       refreshLogs,
     }),
@@ -445,7 +423,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       pendingCount,
       pendingSubmissionsCount,
       syncNow,
-      addMockOfflineTransaction,
       clearSyncedLogs,
       refreshLogs,
     ]

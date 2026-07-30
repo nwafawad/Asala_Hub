@@ -503,7 +503,7 @@ export const ModuleStudio: React.FC<ModuleStudioProps> = ({
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-2.5">
                   {[
                     { id: 'reading', label: 'Reading', icon: FileText, color: 'emerald' },
-                    { id: 'audio', label: 'Audio Lecture', icon: Mic, color: 'purple' },
+                    { id: 'audio', label: 'Audio Lecture', icon: Mic, color: 'primary' },
                     { id: 'video', label: 'Video Lesson', icon: Video, color: 'rose' },
                     { id: 'quiz', label: 'Interactive Quiz', icon: HelpCircle, color: 'blue' },
                     { id: 'assignment', label: 'Assignment', icon: FileQuestion, color: 'amber' },

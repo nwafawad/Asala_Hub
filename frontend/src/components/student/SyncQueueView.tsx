@@ -10,7 +10,6 @@ import { type TransactionLogItem, db } from '@/lib/db';
 import { isDebugMode } from '@/lib/debug';
 import {
   RefreshCw,
-  PlusCircle,
   Trash2,
   Database,
   CheckCircle2,
@@ -33,7 +32,6 @@ export const SyncQueueView: React.FC = () => {
     isOnline,
     syncState,
     syncNow,
-    addMockOfflineTransaction,
     clearSyncedLogs,
   } = useSync();
   const { showToast } = useOverlay();
@@ -64,18 +62,6 @@ export const SyncQueueView: React.FC = () => {
       showToast('Sync Triggered', 'info', 'Processing pending queue over campus network...');
     } catch (err) {
       showToast('Sync Error', 'error', 'Failed to execute manual sync.');
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
-  const handleSimulateLog = async () => {
-    setIsActionLoading(true);
-    try {
-      await addMockOfflineTransaction('CREATE_SUBMISSION');
-      showToast('Transaction Queued', 'success', 'New offline submission log added to IndexedDB.');
-    } catch (err) {
-      showToast('Error', 'error', 'Could not create mock transaction.');
     } finally {
       setIsActionLoading(false);
     }
@@ -143,17 +129,6 @@ export const SyncQueueView: React.FC = () => {
             <RefreshCw className={`w-3.5 h-3.5 ${syncState === 'syncing' ? 'animate-spin' : ''}`} />
             <span>{t.syncStatus.syncNow || 'Trigger Sync'}</span>
           </button>
-
-          {isDebugMode() && (
-            <button
-              onClick={handleSimulateLog}
-              disabled={isActionLoading}
-              className="inline-flex items-center justify-center min-h-[44px] gap-2 px-4 py-2.5 rounded-xl bg-secondary text-secondary-foreground border border-border text-xs font-semibold hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <PlusCircle className="w-3.5 h-3.5 text-primary" />
-              <span>Simulate Offline Log</span>
-            </button>
-          )}
 
           {syncedCount > 0 && (
             <button

@@ -240,7 +240,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({
                 onClick={() => setType('audio')}
                 className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   type === 'audio'
-                    ? 'bg-purple-500/10 border-purple-500 text-purple-600 dark:text-purple-400'
+                    ? 'bg-primary/10 border-primary text-primary'
                     : 'bg-muted/30 border-border text-muted-foreground hover:bg-muted'
                 }`}
               >
@@ -338,7 +338,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({
           <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-foreground flex items-center gap-2">
-                <Volume2 className="w-4 h-4 text-purple-500" />
+                <Volume2 className="w-4 h-4 text-primary" />
                 {t.educator?.curriculum?.audioSection || 'Voice Lecture & Audio Notes'}
               </span>
               {audioUrl && (

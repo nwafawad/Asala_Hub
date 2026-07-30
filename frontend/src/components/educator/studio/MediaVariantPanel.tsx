@@ -76,9 +76,9 @@ export const MediaVariantPanel: React.FC<MediaVariantPanelProps> = ({
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground text-xs font-bold hover:bg-muted transition-colors cursor-pointer"
             >
               {isPlayingAudio ? (
-                <Pause className="w-4 h-4 text-purple-500" />
+                <Pause className="w-4 h-4 text-primary" />
               ) : (
-                <Play className="w-4 h-4 text-purple-500" />
+                <Play className="w-4 h-4 text-primary" />
               )}
               <span>{isPlayingAudio ? 'Pause Preview' : 'Play Preview'}</span>
             </button>

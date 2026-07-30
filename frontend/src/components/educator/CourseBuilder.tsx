@@ -294,17 +294,17 @@ export const CourseBuilder: React.FC = () => {
 
   const getModuleIcon = (mod: CachedModule) => {
     if (isAssignmentModule(mod)) {
-      return <ClipboardList className="w-4 h-4 text-amber-500" />;
+      return <ClipboardList className="w-4 h-4 text-primary" />;
     }
     switch (mod.type) {
       case 'audio':
-        return <Mic className="w-4 h-4 text-purple-500" />;
+        return <Mic className="w-4 h-4 text-primary" />;
       case 'video':
-        return <FileText className="w-4 h-4 text-sky-500" />;
+        return <FileText className="w-4 h-4 text-primary" />;
       case 'syllabus':
-        return <BookMarked className="w-4 h-4 text-blue-500" />;
+        return <BookMarked className="w-4 h-4 text-primary" />;
       case 'quiz':
-        return <FileQuestion className="w-4 h-4 text-emerald-500" />;
+        return <FileQuestion className="w-4 h-4 text-primary" />;
     }
   };
 

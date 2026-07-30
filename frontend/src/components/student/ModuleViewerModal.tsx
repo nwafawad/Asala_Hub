@@ -455,7 +455,7 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
                         onClick={() => setVideoTabMode('portal')}
                         className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                           videoTabMode === 'portal'
-                            ? 'bg-purple-600 text-white shadow-xs'
+                            ? 'bg-primary text-primary-foreground shadow-xs'
                             : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
@@ -466,7 +466,7 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
                         onClick={() => setVideoTabMode('transcript')}
                         className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                           videoTabMode === 'transcript'
-                            ? 'bg-purple-600 text-white shadow-xs'
+                            ? 'bg-primary text-primary-foreground shadow-xs'
                             : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
