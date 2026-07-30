@@ -33,24 +33,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const purgeAllSessionStorage = () => {
-  if (typeof window === 'undefined') return;
-  const keysToPurge = [
-    'asala_token',
-    'asala_role',
-    'asala_email',
-    'asala_name',
-    'asala_student_tab',
-    'asala_educator_tab',
-    'asala_admin_tab',
-    'asala_last_active_timestamp',
-  ];
-  keysToPurge.forEach(k => {
-    localStorage.removeItem(k);
-    sessionStorage.removeItem(k);
-  });
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isRestoring, setIsRestoring] = useState<boolean>(true);
   const [hasPinConfigured, setHasPinConfigured] = useState<boolean>(false);
@@ -102,15 +84,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (activeSession) {
         setHasPinConfigured(!!activeSession.pinCode);
 
-        // Auto-extend session duration (+7 days) for active user sessions
-        const SEVEN_DAYS_MS = 3600000 * 24 * 7;
         const nowMs = Date.now();
-        const freshExpiresAt = new Date(nowMs + SEVEN_DAYS_MS).toISOString();
-        await db.userSession.update('current_session', { expiresAt: freshExpiresAt });
-        activeSession.expiresAt = freshExpiresAt;
+        const isExpired = new Date(activeSession.expiresAt).getTime() < nowMs;
 
-        const isExpired = false;
-        const decryptedToken = await decryptText(activeSession.token);
+        if (!isExpired) {
+          // Auto-extend session duration (+7 days) for active user sessions
+          const SEVEN_DAYS_MS = 3600000 * 24 * 7;
+          const freshExpiresAt = new Date(nowMs + SEVEN_DAYS_MS).toISOString();
+          await db.userSession.update('current_session', { expiresAt: freshExpiresAt });
+          activeSession.expiresAt = freshExpiresAt;
+        }
+
+        const decryptedToken = isExpired ? '' : await decryptText(activeSession.token);
         if (!isExpired) {
           let freshUser = await db.users.where('email').equalsIgnoreCase(activeSession.user.email).first();
           if (!freshUser) freshUser = activeSession.user;
@@ -238,17 +223,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               hasAcceptedConsent: true,
             };
 
-            // ALWAYS clear prior session storage, db.userSession, and cached user data before persisting new session
-            purgeAllSessionStorage();
-            await db.userSession.clear();
-            await Promise.all([
-              db.cachedCourses.clear(),
-              db.cachedModules.clear(),
-              db.cachedSubmissions.clear(),
-              db.transactionLogs.where('status').equals('synced').delete(),
-              db.cachedCohorts.clear(),
-              db.cohortEnrollments.clear(),
-            ]);
+            // ALWAYS persist active user session to IndexedDB db.userSession
             await db.userSession.put(sessionObj);
 
             if (typeof window !== 'undefined') {
@@ -298,17 +273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             hasAcceptedConsent: true,
           };
 
-          // ALWAYS clear prior session storage, db.userSession, and cached user data before persisting new session
-          purgeAllSessionStorage();
-          await db.userSession.clear();
-          await Promise.all([
-            db.cachedCourses.clear(),
-            db.cachedModules.clear(),
-            db.cachedSubmissions.clear(),
-            db.transactionLogs.where('status').equals('synced').delete(),
-            db.cachedCohorts.clear(),
-            db.cohortEnrollments.clear(),
-          ]);
+          // ALWAYS persist active user session to IndexedDB db.userSession
           await db.userSession.put(sessionObj);
 
           if (typeof window !== 'undefined') {
@@ -336,17 +301,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const logout = useCallback(async () => {
-    purgeAllSessionStorage();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('asala_token');
+      localStorage.removeItem('asala_role');
+      localStorage.removeItem('asala_email');
+      localStorage.removeItem('asala_name');
+      sessionStorage.removeItem('asala_token');
+      sessionStorage.removeItem('asala_role');
+      sessionStorage.removeItem('asala_email');
+      sessionStorage.removeItem('asala_name');
+    }
     zeroKey(); // Zero in-memory crypto key on logout (BR-7)
     await db.userSession.clear();
-    await Promise.all([
-      db.cachedCourses.clear(),
-      db.cachedModules.clear(),
-      db.cachedSubmissions.clear(),
-      db.transactionLogs.where('status').equals('synced').delete(),
-      db.cachedCohorts.clear(),
-      db.cohortEnrollments.clear(),
-    ]);
     setUser(null);
     setToken(null);
     setIsOfflineSession(false);
