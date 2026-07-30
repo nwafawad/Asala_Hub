@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { type CachedCourse, type CachedModule } from '@/lib/db';
+import { type CachedCourse, type CachedModule, isAssignmentModule } from '@/lib/db';
 import { useI18n } from '@/context/I18nContext';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
@@ -20,6 +20,8 @@ import {
   Layers,
   WifiOff,
   Sparkles,
+  Calendar,
+  Award,
 } from 'lucide-react';
 
 interface CourseDetailProps {
@@ -50,14 +52,15 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
   const totalCount = sortedModules.length || course.moduleCount || 1;
   const cachePercentage = Math.round((cachedCount / totalCount) * 100);
 
-  const getModuleIcon = (type: CachedModule['type']) => {
-    switch (type) {
+  const getModuleIcon = (mod: CachedModule) => {
+    if (isAssignmentModule(mod)) {
+      return <ClipboardList className="w-5 h-5 text-amber-500" />;
+    }
+    switch (mod.type) {
       case 'audio':
         return <Headphones className="w-5 h-5 text-indigo-500" />;
       case 'syllabus':
         return <Scroll className="w-5 h-5 text-emerald-500" />;
-      case 'assignment':
-        return <ClipboardList className="w-5 h-5 text-amber-500" />;
       case 'reading':
       default:
         return <FileText className="w-5 h-5 text-sky-500" />;
@@ -191,36 +194,66 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
         <div className="flex flex-col gap-3">
           {sortedModules.map((mod, idx) => {
             const isCached = mod.isCachedOffline;
+            const isAssign = isAssignmentModule(mod);
+
             return (
               <div
                 key={mod.id}
                 onClick={() => onSelectModule(mod)}
                 className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer group ${
-                  isCached
+                  isAssign
+                    ? 'bg-amber-500/5 border-amber-500/30 hover:border-amber-500/50 hover:shadow-md'
+                    : isCached
                     ? 'bg-card border-border hover:border-primary/40 hover:shadow-md'
                     : 'bg-muted/20 border-border/60 opacity-70 hover:opacity-90 hover:bg-muted/40'
                 }`}
               >
-                {/* Module Icon & Title */}
+                {/* Icon & Title Details */}
                 <div className="flex items-center gap-4">
                   <div
-                    className={`p-3 rounded-xl border shadow-xs ${
-                      isCached
+                    className={`p-3 rounded-xl border shadow-xs transition-transform ${
+                      isAssign
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-500 group-hover:scale-105'
+                        : isCached
                         ? 'bg-background border-border group-hover:scale-105'
                         : 'bg-muted/40 border-border/50'
-                    } transition-transform`}
+                    }`}
                   >
-                    {getModuleIcon(mod.type)}
+                    {getModuleIcon(mod)}
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                        Module #{mod.sequenceOrder || idx + 1}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                          isAssign
+                            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {isAssign ? 'Graded Assignment' : `Module #${mod.sequenceOrder || idx + 1}`}
                       </span>
-                      <span className="text-xs text-muted-foreground capitalize">
-                        {(t.coursesPage?.moduleTypes as Record<string, string>)?.[mod.type] || mod.type}
-                      </span>
+
+                      {!isAssign && (
+                        <span className="text-xs text-muted-foreground capitalize">
+                          {(t.coursesPage?.moduleTypes as Record<string, string>)?.[mod.type] || mod.type}
+                        </span>
+                      )}
+
+                      {isAssign && mod.dueDate && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 inline-flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          Due: {new Date(mod.dueDate).toLocaleDateString()}
+                        </span>
+                      )}
+
+                      {mod.points && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 inline-flex items-center gap-1">
+                          <Award className="w-3 h-3" />
+                          {mod.points} pts
+                        </span>
+                      )}
+
                       {mod.isCompleted && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3" />
@@ -231,7 +264,9 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
 
                     <h3
                       className={`text-sm font-bold font-heading transition-colors ${
-                        isCached
+                        isAssign
+                          ? 'text-foreground group-hover:text-amber-600'
+                          : isCached
                           ? 'text-foreground group-hover:text-primary'
                           : 'text-muted-foreground group-hover:text-foreground'
                       }`}
@@ -240,7 +275,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                     </h3>
 
                     {/* Uncached Inline Label */}
-                    {!isCached && (
+                    {!isCached && !isAssign && (
                       <span className="text-xs text-amber-600 dark:text-amber-400 font-medium inline-flex items-center gap-1 mt-0.5">
                         <WifiOff className="w-3.5 h-3.5" />
                         {t.coursesPage.notYetDownloaded}
@@ -249,35 +284,50 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                   </div>
                 </div>
 
-                {/* Right Side Cache Status Badge & Action */}
+                {/* Right Side Action Button */}
                 <div className="flex items-center justify-between sm:justify-end gap-3 self-end sm:self-center border-t sm:border-t-0 pt-2 sm:pt-0 border-border/40 w-full sm:w-auto">
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {mod.sizeMb} MB
-                  </span>
+                  {isAssign ? (
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        onSelectModule(mod);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 shadow-xs transition-colors cursor-pointer"
+                    >
+                      <ClipboardList className="w-4 h-4" />
+                      <span>Open Workspace</span>
+                    </button>
+                  ) : (
+                    <>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {mod.sizeMb} MB
+                      </span>
 
-                  <button
-                    onClick={e => {
-                      e.stopPropagation();
-                      onToggleModuleCache(mod);
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
-                      isCached
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20'
-                        : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {isCached ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                        <span>{t.coursesPage.cachedOfflineLabel}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
-                        <span>{t.coursesPage.downloadModule}</span>
-                      </>
-                    )}
-                  </button>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          onToggleModuleCache(mod);
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+                          isCached
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20'
+                            : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {isCached ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            <span>{t.coursesPage.cachedOfflineLabel}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
+                            <span>{t.coursesPage.downloadModule}</span>
+                          </>
+                        )}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

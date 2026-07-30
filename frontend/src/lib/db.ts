@@ -12,6 +12,8 @@ export interface TransactionLogItem {
     | 'COMPLETE_MODULE'
     | 'CREATE_MODULE'
     | 'UPDATE_MODULE'
+    | 'CREATE_ASSIGNMENT'
+    | 'UPDATE_ASSIGNMENT'
     | 'UPDATE_ROSTER';
   entityType: string;
   entityId: string;
@@ -60,11 +62,13 @@ export interface QuizSchema {
   passingScorePercentage: number;
   timeLimitMinutes?: number;
   allowRetries: boolean;
+  isGradedAssignment?: boolean;
 }
 
 export interface AssignmentSchema {
   instructions: string;
   instructionsAr?: string;
+  submissionMethod?: 'online_text' | 'file_upload' | 'graded_quiz';
   allowedFileTypes?: string[];
   maxFileSizeMb: number;
   rubricCriteria?: Record<string, unknown>[];
@@ -93,6 +97,11 @@ export interface CachedModule {
   assignmentSchema?: AssignmentSchema;
   isCompleted?: boolean;
   userNotes?: string;
+}
+
+/** Discriminate helper function to check if a module item is a gradable assignment */
+export function isAssignmentModule(module: CachedModule): boolean {
+  return module.type === 'assignment' || (module.type === 'quiz' && Boolean(module.quizSchema?.isGradedAssignment));
 }
 
 export interface AttachmentFile {

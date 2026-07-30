@@ -38,6 +38,8 @@ import {
 
 interface ModuleStudioProps {
   courseId: string;
+  courseTitle?: string;
+  courseCode?: string;
   initialModule: CachedModule | null;
   onSave: (moduleData: Partial<CachedModule>) => Promise<void>;
   onClose: () => void;
@@ -45,6 +47,8 @@ interface ModuleStudioProps {
 
 export const ModuleStudio: React.FC<ModuleStudioProps> = ({
   courseId,
+  courseTitle,
+  courseCode,
   initialModule,
   onSave,
   onClose,
@@ -346,9 +350,17 @@ export const ModuleStudio: React.FC<ModuleStudioProps> = ({
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold font-heading">
-              {initialModule ? 'Edit Module Studio' : 'Create Module Studio'}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold font-heading">
+                {initialModule ? 'Edit Module Studio' : 'Create Module Studio'}
+              </h2>
+              {courseTitle && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-primary/10 text-primary text-[11px] font-bold border border-primary/20">
+                  <BookOpen className="w-3 h-3 text-primary" />
+                  <span>Target: {courseCode ? `[${courseCode}] ` : ''}{courseTitle}</span>
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
               Offline-first authoring with IndexedDB & sync engine
             </p>

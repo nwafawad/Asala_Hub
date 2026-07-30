@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { startViewTransition } from '@/lib/view-transition';
-import { db, seedInitialMockData, type CachedCourse, type CachedModule } from '@/lib/db';
+import { db, seedInitialMockData, type CachedCourse, type CachedModule, isAssignmentModule } from '@/lib/db';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
@@ -202,11 +202,11 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
   };
 
   const handleSelectModule = (mod: CachedModule) => {
-    if (mod.type === 'assignment') {
+    if (isAssignmentModule(mod)) {
       if (onOpenAssignment) {
-        onOpenAssignment(mod.assignmentId || 'assign-1');
+        onOpenAssignment(mod.assignmentId || `assign-${mod.id}`);
       } else {
-        showToast('Assignment Selected', 'info', `Navigating to ${mod.title}`);
+        showToast('Assignment Selected', 'info', `Opening workspace for ${mod.title}`);
       }
     } else {
       setActiveModule(mod);

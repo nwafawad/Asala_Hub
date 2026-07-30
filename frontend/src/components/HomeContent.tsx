@@ -54,6 +54,17 @@ export function HomeContent() {
     }
   }, [user, router]);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !searchParams.get('tab')) {
+      const savedTab = isEducator
+        ? localStorage.getItem('asala_educator_tab')
+        : localStorage.getItem('asala_student_tab');
+      if (savedTab) {
+        setOverrideTabState(savedTab);
+      }
+    }
+  }, [isEducator, searchParams]);
+
   const handleTabNavigate = (tab: string, setActiveTab?: (t: string) => void) => {
     if (setActiveTab) setActiveTab(tab);
     if (extendSession) extendSession();
@@ -91,17 +102,6 @@ export function HomeContent() {
       />
     );
   }
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !searchParams.get('tab')) {
-      const savedTab = isEducator
-        ? localStorage.getItem('asala_educator_tab')
-        : localStorage.getItem('asala_student_tab');
-      if (savedTab) {
-        setOverrideTabState(savedTab);
-      }
-    }
-  }, [isEducator, searchParams]);
 
   const rawTab = searchParams.get('tab');
   const defaultTab = isEducator ? 'curriculum' : 'courses';

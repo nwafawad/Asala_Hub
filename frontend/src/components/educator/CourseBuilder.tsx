@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { db, CachedCourse, CachedModule, TransactionLogItem } from '@/lib/db';
+import { db, CachedCourse, CachedModule, TransactionLogItem, isAssignmentModule } from '@/lib/db';
 import { generateUUID } from '@/lib/uuid';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { useSync } from '@/context/SyncContext';
 import { ModuleEditor } from './ModuleEditor';
 import { ModuleStudio } from './ModuleStudio';
+import { AssignmentStudio } from './AssignmentStudio';
 import {
   BookOpen,
   Plus,
@@ -22,6 +23,10 @@ import {
   HardDrive,
   Layers,
   Sparkles,
+  ClipboardList,
+  Calendar,
+  Award,
+  AlertCircle,
 } from 'lucide-react';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
@@ -76,7 +81,10 @@ export const CourseBuilder: React.FC = () => {
   };
   const [modules, setModules] = useState<CachedModule[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [activeEditorModule, setActiveEditorModule] = useState<CachedModule | null | 'new'>(null);
+  const [activeEditorState, setActiveEditorState] = useState<{
+    mode: 'module' | 'assignment';
+    module: CachedModule | null | 'new';
+  } | null>(null);
 
   useEffect(() => {
     loadCoursesAndModules();
@@ -123,12 +131,14 @@ export const CourseBuilder: React.FC = () => {
       const moduleId = moduleData.id || generateUUID();
       const timestamp = new Date().toISOString();
 
+      const isAssignment = moduleData.type === 'assignment' || Boolean(moduleData.quizSchema?.isGradedAssignment);
+
       const newModule: CachedModule = {
         id: moduleId,
         courseId: targetCourseId,
-        title: moduleData.title || 'Untitled Module',
+        title: moduleData.title || (isAssignment ? 'Untitled Assignment' : 'Untitled Module'),
         titleAr: moduleData.titleAr,
-        type: moduleData.type || 'reading',
+        type: moduleData.type || (isAssignment ? 'assignment' : 'reading'),
         sequenceOrder: moduleData.sequenceOrder || modules.length + 1,
         isCachedOffline: true,
         sizeMb: moduleData.sizeMb || 0.5,
@@ -139,16 +149,16 @@ export const CourseBuilder: React.FC = () => {
         videoOfflineText: moduleData.videoOfflineText,
         attachmentFile: moduleData.attachmentFile,
         durationMinutes: moduleData.durationMinutes || 10,
-        assignmentId: moduleData.type === 'assignment' ? `assign-${moduleId}` : undefined,
+        assignmentId: isAssignment ? `assign-${moduleId}` : undefined,
         dueDate: moduleData.dueDate,
-        points: moduleData.points || 100,
+        points: moduleData.points || (isAssignment ? 100 : undefined),
         quizSchema: moduleData.quizSchema,
         assignmentSchema: moduleData.assignmentSchema,
         userNotes: moduleData.userNotes,
         isCompleted: false,
       };
 
-      // 1. Save full binary record to Dexie cachedModules table
+      // 1. Save full record to Dexie cachedModules table
       await db.cachedModules.put(newModule);
 
       // 2. Prepare clean JSON payload for sync transaction log (omit raw ArrayBuffers)
@@ -157,11 +167,14 @@ export const CourseBuilder: React.FC = () => {
         ? { name: attachmentFile.name, size: attachmentFile.size, type: attachmentFile.type }
         : undefined;
 
-      const actionType = isNew ? 'CREATE_MODULE' : 'UPDATE_MODULE';
+      const actionType: TransactionLogItem['action'] = isAssignment
+        ? (isNew ? 'CREATE_ASSIGNMENT' : 'UPDATE_ASSIGNMENT')
+        : (isNew ? 'CREATE_MODULE' : 'UPDATE_MODULE');
+
       const logItem: TransactionLogItem = {
         offlineId: generateUUID(),
         action: actionType,
-        entityType: 'module',
+        entityType: isAssignment ? 'assignment' : 'module',
         entityId: moduleId,
         payload: {
           ...cleanPayload,
@@ -185,52 +198,74 @@ export const CourseBuilder: React.FC = () => {
       }
 
       showToast(
-        isNew ? 'Module Created & Published' : 'Module Updated & Published',
+        isAssignment
+          ? (isNew ? 'Assignment Created & Published' : 'Assignment Updated')
+          : (isNew ? 'Module Created & Published' : 'Module Updated'),
         'success',
-        t.educator?.curriculum?.savedOfflineToast || 'Module saved locally and queued for sync.'
+        'Saved locally and queued for offline sync.'
       );
 
-      setActiveEditorModule(null);
+      setActiveEditorState(null);
       await loadCoursesAndModules();
     } catch (err) {
       console.error('Error saving module:', err);
-      showToast('Save Failed', 'error', 'Failed to save module. Please try again.');
+      showToast('Save Failed', 'error', 'Failed to save curriculum item. Please try again.');
+    }
+  };
+
+  const getModuleIcon = (mod: CachedModule) => {
+    if (isAssignmentModule(mod)) {
+      return <ClipboardList className="w-4 h-4 text-amber-500" />;
+    }
+    switch (mod.type) {
+      case 'audio':
+        return <Mic className="w-4 h-4 text-purple-500" />;
+      case 'video':
+        return <FileText className="w-4 h-4 text-sky-500" />;
+      case 'syllabus':
+        return <BookMarked className="w-4 h-4 text-blue-500" />;
+      case 'quiz':
+        return <FileQuestion className="w-4 h-4 text-emerald-500" />;
     }
   };
 
   const activeCourse = courses.find(c => c.id === selectedCourseId);
 
-  const getModuleIcon = (type: CachedModule['type']) => {
-    switch (type) {
-      case 'audio':
-        return <Mic className="w-4 h-4 text-purple-500" />;
-      case 'assignment':
-        return <FileQuestion className="w-4 h-4 text-amber-500" />;
-      case 'syllabus':
-        return <BookMarked className="w-4 h-4 text-blue-500" />;
-      case 'reading':
-      default:
-        return <FileText className="w-4 h-4 text-emerald-500" />;
-    }
-  };
-
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">
       {/* Header Banner */}
       <div className="p-6 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-bold font-heading text-foreground">
               {t.educator?.curriculum?.title || 'Curriculum & Lesson Authoring'}
             </h2>
             <InfoTooltip
               title="Offline Authoring Mode"
-              content="Create and edit course modules locally. Changes auto-save to IndexedDB and sync when online."
+              content="Create and edit course modules and assignments locally. Changes auto-save to IndexedDB and sync when online."
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            {t.educator?.curriculum?.subtitle || 'Create course modules, quizzes, and voice note lectures offline.'}
+            Author learning modules (readings, lectures, voice notes) and graded assignments (essays, file submissions, quizzes).
           </p>
+
+          {/* Course Selection Awareness Badge */}
+          {activeCourse ? (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs font-bold text-foreground">Active Target Course:</span>
+              <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-primary" />
+                <span>[{activeCourse.code}] {language === 'ar' && activeCourse.titleAr ? activeCourse.titleAr : activeCourse.title}</span>
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>No Course Selected — Select an assigned course on the left to start authoring</span>
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 self-start md:self-center shrink-0">
@@ -241,12 +276,41 @@ export const CourseBuilder: React.FC = () => {
             <BookOpen className="w-4 h-4" />
             <span>+ New Course</span>
           </button>
+          
           <button
-            onClick={() => setActiveEditorModule('new')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+            disabled={!activeCourse}
+            onClick={() => {
+              if (!activeCourse) {
+                showToast('No Course Selected', 'error', 'Please select or create a course before adding modules.');
+                return;
+              }
+              setActiveEditorState({ mode: 'module', module: 'new' });
+            }}
+            title={!activeCourse ? 'Select or create a course first' : 'Add Learning Module'}
+            className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow-xs transition-all cursor-pointer ${
+              !activeCourse ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-90'
+            }`}
           >
             <Plus className="w-4 h-4" />
-            <span>{t.educator?.curriculum?.addModule || 'Create Module'}</span>
+            <span>+ Add Learning Module</span>
+          </button>
+
+          <button
+            disabled={!activeCourse}
+            onClick={() => {
+              if (!activeCourse) {
+                showToast('No Course Selected', 'error', 'Please select or create a course before adding assignments.');
+                return;
+              }
+              setActiveEditorState({ mode: 'assignment', module: 'new' });
+            }}
+            title={!activeCourse ? 'Select or create a course first' : 'Add Assignment'}
+            className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-500 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer ${
+              !activeCourse ? 'opacity-40 cursor-not-allowed' : 'hover:bg-amber-600'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Add Assignment</span>
           </button>
         </div>
       </div>
@@ -288,7 +352,7 @@ export const CourseBuilder: React.FC = () => {
                     </span>
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Layers className="w-3 h-3 text-muted-foreground" />
-                      {course.moduleCount} modules
+                      {course.moduleCount} items
                     </span>
                   </div>
                   <span className="text-xs font-bold text-foreground line-clamp-1">{titleToShow}</span>
@@ -303,56 +367,102 @@ export const CourseBuilder: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold font-heading text-foreground">
-                {activeCourse ? activeCourse.title : 'Modules & Curriculum'}
+                {activeCourse ? activeCourse.title : 'Curriculum Sequence'}
               </h3>
               <p className="text-xs text-muted-foreground">
-                Drag or re-order course sequence. Offline drafts are queued for sync.
+                Manage learning materials and graded assignment tasks in chronological sequence.
               </p>
             </div>
             <span className="text-xs text-muted-foreground font-mono">
-              {modules.length} {t.coursesPage?.modules || 'Modules'}
+              {modules.length} {t.coursesPage?.modules || 'Items'}
             </span>
           </div>
 
-          {modules.length === 0 ? (
-            <div className="p-8 rounded-xl border border-dashed border-border text-center flex flex-col items-center justify-center gap-3">
-              <FileText className="w-8 h-8 text-muted-foreground/50" />
-              <p className="text-xs text-muted-foreground">No modules added yet for this course.</p>
+          {!activeCourse ? (
+            <div className="p-8 rounded-xl border border-amber-500/30 bg-amber-500/5 text-center flex flex-col items-center justify-center gap-3">
+              <AlertCircle className="w-8 h-8 text-amber-500" />
+              <h4 className="text-sm font-bold text-foreground">No Active Course Selected</h4>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                Select an assigned course from the list on the left or create a new course to start authoring learning modules and assignments.
+              </p>
               <button
-                onClick={() => setActiveEditorModule('new')}
-                className="px-3.5 py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
+                onClick={() => setIsCreatingCourse(true)}
+                className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 transition-opacity"
               >
-                + Add First Module
+                + Create New Course
               </button>
+            </div>
+          ) : modules.length === 0 ? (
+            <div className="p-8 rounded-xl border border-dashed border-border text-center flex flex-col items-center justify-center gap-4">
+              <FileText className="w-8 h-8 text-muted-foreground/50" />
+              <p className="text-xs text-muted-foreground">No content items added yet for this course.</p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveEditorState({ mode: 'module', module: 'new' })}
+                  className="px-3.5 py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
+                >
+                  + Add Learning Module
+                </button>
+                <button
+                  onClick={() => setActiveEditorState({ mode: 'assignment', module: 'new' })}
+                  className="px-3.5 py-2 rounded-lg bg-amber-500/10 text-amber-600 text-xs font-semibold hover:bg-amber-500/20 transition-colors"
+                >
+                  + Add Assignment
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
               {modules.map((mod, idx) => {
                 const titleToShow = language === 'ar' && mod.titleAr ? mod.titleAr : mod.title;
+                const isAssign = isAssignmentModule(mod);
+
                 return (
                   <div
                     key={mod.id}
-                    className="p-4 rounded-xl bg-muted/20 border border-border flex items-center justify-between gap-4 hover:border-primary/20 transition-colors"
+                    className={`p-4 rounded-xl border flex items-center justify-between gap-4 transition-all ${
+                      isAssign
+                        ? 'bg-amber-500/5 border-amber-500/20 hover:border-amber-500/40'
+                        : 'bg-muted/20 border-border hover:border-primary/20'
+                    }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center font-mono text-xs font-bold text-muted-foreground shrink-0">
+                      <div
+                        className={`w-8 h-8 rounded-lg border flex items-center justify-center font-mono text-xs font-bold shrink-0 ${
+                          isAssign
+                            ? 'bg-amber-500/10 text-amber-600 border-amber-500/30'
+                            : 'bg-card text-muted-foreground border-border'
+                        }`}
+                      >
                         {idx + 1}
                       </div>
-                      <div className="flex flex-col min-w-0 gap-0.5">
+                      <div className="flex flex-col min-w-0 gap-1">
                         <div className="flex items-center gap-2">
-                          {getModuleIcon(mod.type)}
+                          {getModuleIcon(mod)}
                           <span className="text-xs font-bold text-foreground truncate">{titleToShow}</span>
+                          {isAssign && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+                              Graded Assignment
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                          <span className="capitalize">{mod.type}</span>
-                          {mod.durationMinutes && (
+                          <span className="capitalize">{isAssign ? 'Assignment' : mod.type}</span>
+                          {!isAssign && mod.durationMinutes && (
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3 text-muted-foreground" />
                               {mod.durationMinutes} mins
                             </span>
                           )}
+                          {isAssign && mod.dueDate && (
+                            <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
+                              <Calendar className="w-3 h-3" />
+                              Due: {new Date(mod.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
                           {mod.points && (
-                            <span className="text-amber-600 dark:text-amber-400 font-medium">
+                            <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold">
+                              <Award className="w-3 h-3" />
                               {mod.points} pts
                             </span>
                           )}
@@ -362,9 +472,14 @@ export const CourseBuilder: React.FC = () => {
 
                     <div className="flex items-center gap-2 shrink-0">
                       <button
-                        onClick={() => setActiveEditorModule(mod)}
+                        onClick={() =>
+                          setActiveEditorState({
+                            mode: isAssign ? 'assignment' : 'module',
+                            module: mod,
+                          })
+                        }
                         className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                        title="Edit Module"
+                        title={isAssign ? 'Edit Assignment' : 'Edit Module'}
                       >
                         <Edit className="w-4 h-4" />
                       </button>
@@ -385,13 +500,27 @@ export const CourseBuilder: React.FC = () => {
         />
       )}
 
-      {/* Module Studio Full-Page Overlay */}
-      {activeEditorModule !== null && (
+      {/* Learning Module Studio Overlay */}
+      {activeEditorState?.mode === 'module' && (
         <ModuleStudio
           courseId={selectedCourseId || ''}
-          initialModule={activeEditorModule === 'new' ? null : activeEditorModule}
+          courseTitle={activeCourse?.title}
+          courseCode={activeCourse?.code}
+          initialModule={activeEditorState.module === 'new' ? null : activeEditorState.module}
           onSave={handleSaveModule}
-          onClose={() => setActiveEditorModule(null)}
+          onClose={() => setActiveEditorState(null)}
+        />
+      )}
+
+      {/* Assignment Studio Overlay */}
+      {activeEditorState?.mode === 'assignment' && (
+        <AssignmentStudio
+          courseId={selectedCourseId || ''}
+          courseTitle={activeCourse?.title}
+          courseCode={activeCourse?.code}
+          initialModule={activeEditorState.module === 'new' ? null : activeEditorState.module}
+          onSave={handleSaveModule}
+          onClose={() => setActiveEditorState(null)}
         />
       )}
     </div>

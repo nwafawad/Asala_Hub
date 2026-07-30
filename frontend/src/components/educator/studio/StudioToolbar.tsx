@@ -1,12 +1,14 @@
 'use client';
 
 import React from 'react';
-import { X, Save, Eye, Edit3, Sparkles } from 'lucide-react';
+import { X, Save, Eye, Edit3, Sparkles, BookOpen } from 'lucide-react';
 import { CachedModule } from '@/lib/db';
 
 interface StudioToolbarProps {
   title: string;
   setTitle: (val: string) => void;
+  courseTitle?: string;
+  courseCode?: string;
   type: CachedModule['type'];
   setType: (val: CachedModule['type']) => void;
   activeStudioTab: 'edit' | 'preview';
@@ -21,6 +23,8 @@ interface StudioToolbarProps {
 export const StudioToolbar: React.FC<StudioToolbarProps> = ({
   title,
   setTitle,
+  courseTitle,
+  courseCode,
   type,
   setType,
   activeStudioTab,
@@ -34,10 +38,16 @@ export const StudioToolbar: React.FC<StudioToolbarProps> = ({
   return (
     <div className="p-6 border-b border-border bg-card flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
       <div className="flex flex-col gap-2 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary">
             Curriculum Authoring Studio
           </span>
+          {courseTitle && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <BookOpen className="w-3 h-3" />
+              <span>Target: {courseCode ? `[${courseCode}] ` : ''}{courseTitle}</span>
+            </span>
+          )}
           <span className="text-xs text-muted-foreground flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
             Offline Sync Auto-Saving Enabled

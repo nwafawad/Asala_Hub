@@ -412,8 +412,8 @@ def process_sync_batch(
                         session.add(new_submission)
                         existing_submissions[tx.entity_id] = new_submission
 
-                elif tx.entity_type in ("course", "module"):
-                    # RBAC check: only educators and admins can mutate courses or modules
+                elif tx.entity_type in ("course", "module", "assignment"):
+                    # RBAC check: only educators and admins can mutate courses, modules, or assignments
                     if not acting_user or acting_user.role not in (UserRole.educator, UserRole.admin):
                         results.append(
                             SyncTransactionResult(
@@ -448,7 +448,7 @@ def process_sync_batch(
                             session.add(new_course)
                         session.flush()
 
-                    elif tx.entity_type == "module":
+                    elif tx.entity_type in ("module", "assignment"):
                         module_in_db = session.get(Module, tx.entity_id)
                         title = normalized_payload.get("title", "Untitled Module")
                         title_ar = normalized_payload.get("title_ar")
