@@ -154,11 +154,11 @@ export const CohortRoster: React.FC = () => {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-bold font-heading text-foreground">
-              {t.educator?.roster?.title || 'Assigned Cohorts & Student Roster'}
+              {t.educator?.roster?.title || 'Assigned Cohorts & Student Register'}
             </h2>
             <InfoTooltip
               title="Role-Restricted Scope"
-              content="Displays student rosters and enrollment statuses scoped to your assigned educator role."
+              content="Displays student registers and enrollment statuses scoped to your assigned educator role."
             />
           </div>
           <p className="text-xs text-muted-foreground">
@@ -365,7 +365,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onSave, on
               disabled={isSaving}
               className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 disabled:opacity-50"
             >
-              {isSaving ? 'Saving...' : 'Save Roster Record'}
+              {isSaving ? 'Saving...' : 'Save Register Record'}
             </button>
           </div>
         </form>

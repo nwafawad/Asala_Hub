@@ -65,9 +65,14 @@ export interface ModuleReadDTO {
   id: string;
   course_id: string;
   title: string;
+  title_ar?: string | null;
   content_type: ContentTypeDTO;
   content: string;
   order_index: number;
+  duration_minutes?: number | null;
+  points?: number | null;
+  due_date?: string | null;
+  media_url?: string | null;
   media_variants?: Record<string, any> | null;
   created_at: string;
   updated_at: string;
@@ -77,11 +82,16 @@ export interface ModuleSyllabusReadDTO {
   id: string;
   course_id: string;
   title: string;
+  title_ar?: string | null;
   content_type: ContentTypeDTO;
   order_index: number;
+  duration_minutes?: number | null;
+  points?: number | null;
+  due_date?: string | null;
   created_at: string;
   updated_at: string;
 }
+
 
 export interface ModuleCreateDTO {
   title: string;

@@ -113,7 +113,7 @@ export const CourseBuilder: React.FC = () => {
         setModules(moduleList);
       }
 
-      // 2. Fetch server-authoritative courses from API when online
+      // 2. Fetch server-authoritative courses + modules from API when online
       if (typeof window !== 'undefined' && navigator.onLine) {
         try {
           const res = await api.get('/courses/', { headers: { 'X-Suppress-401-Event': 'true' } });
@@ -133,6 +133,42 @@ export const CourseBuilder: React.FC = () => {
             const freshCourseList = await db.cachedCourses.toArray();
             setCourses(freshCourseList);
 
+            // Fetch modules for every course in parallel and cache them
+            const moduleResponses = await Promise.all(
+              res.data.map((c: any) =>
+                api
+                  .get(`/courses/${c.id}/modules`, { headers: { 'X-Suppress-401-Event': 'true' } })
+                  .then(r => ({ courseId: c.id, data: r.data }))
+                  .catch(() => null)
+              )
+            );
+
+            const allServerModules: CachedModule[] = [];
+            for (const mr of moduleResponses) {
+              if (mr?.data && Array.isArray(mr.data)) {
+                for (const m of mr.data) {
+                  allServerModules.push({
+                    id: m.id,
+                    courseId: mr.courseId,
+                    title: m.title,
+                    titleAr: m.title_ar,
+                    type: m.content_type,
+                    sequenceOrder: m.order_index || 1,
+                    isCachedOffline: true,
+                    sizeMb: 0.2,
+                    content: m.content || '',
+                    durationMinutes: m.duration_minutes,
+                    points: m.points,
+                    dueDate: m.due_date,
+                  });
+                }
+              }
+            }
+
+            if (allServerModules.length > 0) {
+              await db.cachedModules.bulkPut(allServerModules);
+            }
+
             const activeId = selectedCourseId || (freshCourseList.length > 0 ? freshCourseList[0].id : null);
             if (activeId) {
               setSelectedCourseId(activeId);
@@ -144,6 +180,7 @@ export const CourseBuilder: React.FC = () => {
           // Fall back gracefully to local IndexedDB records on offline/error
         }
       }
+
     } catch (err) {
       console.error('Error loading course authoring data:', err);
     } finally {

@@ -138,7 +138,7 @@ export const dictionary = {
       nav: {
         curriculumBuilder: 'Curriculum Builder',
         gradeBook: 'Grade Book & Grader',
-        cohortRoster: 'Cohort Roster',
+        cohortRoster: 'Student Register',
         performanceAnalytics: 'Performance Analytics',
       },
       curriculum: {
@@ -184,7 +184,7 @@ export const dictionary = {
         gradeSavedToast: 'Grade saved locally. Logged for server sync.',
       },
       roster: {
-        title: 'Assigned Cohorts & Student Roster',
+        title: 'Assigned Cohorts & Student Register',
         subtitle: 'Manage enrollment statuses and administrative flags offline.',
         cohortLabel: 'Select Cohort',
         studentCount: 'Enrolled Students',
@@ -343,7 +343,7 @@ export const dictionary = {
       nav: {
         curriculumBuilder: 'منشئ المناهج والدروس',
         gradeBook: 'سجل الدرجات والتقييم',
-        cohortRoster: 'سجل الدفعات والطلاب',
+        cohortRoster: 'سجل الطلاب',
         performanceAnalytics: 'تحليلات الأداء الأكاديمي',
       },
       curriculum: {
@@ -389,7 +389,7 @@ export const dictionary = {
         gradeSavedToast: 'تم حفظ الدرجة محلياً وتوثيق المزامنة.',
       },
       roster: {
-        title: 'الشُعب المسندة وسجل الطلاب',
+        title: 'الدفعات المسجلة وسجل الطلاب',
         subtitle: 'إدارة حالات التسجيل والسجلات الإدارية بدون اتصال بالإنترنت.',
         cohortLabel: 'اختر الشعبة',
         studentCount: 'الطلاب المسجلون',

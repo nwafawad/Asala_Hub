@@ -118,13 +118,13 @@ export const PerformanceDashboard: React.FC = () => {
               {t.educator?.analytics?.title || 'Cohort Performance Dashboard'}
             </h2>
             <InfoTooltip
-              title="Low-Power Render Engine"
-              content="Flat CSS and SVG graphics rendering engine optimized for low-power offline hardware."
+              title="Offline Performance Engine"
+              content="Analytics rendering completion rates and score distributions across assigned cohorts."
             />
           </div>
           <p className="text-xs text-muted-foreground">
             {t.educator?.analytics?.subtitle ||
-              'Low-power offline analytics rendering completion rates and score distributions.'}
+              'Offline analytics rendering completion rates and score distributions.'}
           </p>
         </div>
       </div>
@@ -140,7 +140,7 @@ export const PerformanceDashboard: React.FC = () => {
         <StatCard
           title={t.educator?.analytics?.avgCompletion || 'Avg Course Completion'}
           value={`${stats.avgCompletion}%`}
-          subtitle="IndexedDB Module Progress"
+          subtitle="Enrolled Module Progress"
           icon={TrendingUp}
         />
         <StatCard
@@ -157,7 +157,7 @@ export const PerformanceDashboard: React.FC = () => {
         />
       </div>
 
-      {/* Low-Power Flat CSS/SVG Chart Section */}
+      {/* Analytics Chart Section */}
       <div className="p-6 rounded-2xl bg-card border border-border flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
@@ -166,12 +166,9 @@ export const PerformanceDashboard: React.FC = () => {
               {t.educator?.analytics?.gradeDistribution || 'Grade Distribution Breakdown'}
             </h3>
             <p className="text-xs text-muted-foreground">
-              Flat, lightweight CSS bars optimized for low-power campus hardware.
+              Visual grade breakdown and cohort score distributions.
             </p>
           </div>
-          <span className="text-xs font-mono font-bold text-muted-foreground px-2.5 py-1 rounded-lg bg-muted">
-            GPU Acceleration Off
-          </span>
         </div>
 
         <div className="flex flex-col gap-4">

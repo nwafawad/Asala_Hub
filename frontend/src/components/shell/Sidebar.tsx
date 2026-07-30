@@ -52,7 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
         },
         {
           id: 'roster',
-          label: t.educator?.nav?.cohortRoster || 'Cohort Roster',
+          label: t.educator?.nav?.cohortRoster || 'Student Register',
           icon: Users,
         },
         {

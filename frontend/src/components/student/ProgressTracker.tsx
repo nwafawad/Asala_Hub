@@ -146,10 +146,10 @@ export const ProgressTracker: React.FC = () => {
   const timelineSteps = useMemo(() => {
     if (!selectedSub) {
       return [
-        { title: t.progressTracker.step1, desc: 'Draft saved in IndexedDB cachedSubmissions', icon: Clock, done: false, active: false },
-        { title: t.progressTracker.step2, desc: 'Captured in Dexie transactionLogs queue', icon: Database, done: false, active: false },
-        { title: t.progressTracker.step3, desc: 'Packaged into compressed flat JSON delta', icon: Layers, done: false, active: false },
-        { title: t.progressTracker.step4, desc: 'Transmitted over TLS 1.2+ / LAN HTTP', icon: ShieldCheck, done: false, active: false },
+        { title: t.progressTracker.step1, desc: 'Draft saved locally in device storage', icon: Clock, done: false, active: false },
+        { title: t.progressTracker.step2, desc: 'Queued for intranet synchronization', icon: Database, done: false, active: false },
+        { title: t.progressTracker.step3, desc: 'Encrypted and packaged for sync', icon: Layers, done: false, active: false },
+        { title: t.progressTracker.step4, desc: 'Transmitted over secured campus network', icon: ShieldCheck, done: false, active: false },
         { title: t.progressTracker.step5, desc: t.progressTracker.serverValidation, icon: GitCommit, done: false, active: false },
       ];
     }
@@ -168,14 +168,14 @@ export const ProgressTracker: React.FC = () => {
       },
       {
         title: t.progressTracker.step2,
-        desc: 'Captured in Dexie transactionLogs queue',
+        desc: 'Queued for intranet synchronization',
         icon: Database,
         done: true,
         active: false,
       },
       {
         title: t.progressTracker.step3,
-        desc: 'Packaged into compressed flat JSON delta',
+        desc: 'Encrypted and packaged for sync',
         icon: Layers,
         done: true,
         active: isPending,
