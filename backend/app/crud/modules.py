@@ -35,12 +35,23 @@ def create_module(
         ).first()
         order_index = (max_order or 0) + 1
 
+    quiz_dict = module_in.quiz_schema.model_dump() if module_in.quiz_schema else None
+    assign_dict = module_in.assignment_schema.model_dump() if module_in.assignment_schema else None
+
     module = Module(
         course_id=course_id,
         title=module_in.title,
+        title_ar=module_in.title_ar,
         content_type=module_in.content_type,
         content=module_in.content,
-        order_index=order_index
+        order_index=order_index,
+        duration_minutes=module_in.duration_minutes,
+        points=module_in.points,
+        due_date=module_in.due_date,
+        media_url=module_in.media_url,
+        video_offline_text=module_in.video_offline_text,
+        quiz_schema=quiz_dict,
+        assignment_schema=assign_dict,
     )
     session.add(module)
     if commit:

@@ -407,18 +407,68 @@ def process_sync_batch(
                     elif tx.entity_type == "module":
                         module_in_db = session.get(Module, tx.entity_id)
                         title = normalized_payload.get("title", "Untitled Module")
-                        raw_type = str(normalized_payload.get("content_type", "text")).lower()
-                        c_type = ContentType.video if raw_type == "video" else ContentType.text
+                        title_ar = normalized_payload.get("title_ar")
+                        raw_type = str(normalized_payload.get("content_type", normalized_payload.get("type", "reading"))).lower()
+
+                        if raw_type in ("text", "reading"):
+                            c_type = ContentType.reading
+                        elif raw_type == "audio":
+                            c_type = ContentType.audio
+                        elif raw_type == "video":
+                            c_type = ContentType.video
+                        elif raw_type == "quiz":
+                            c_type = ContentType.quiz
+                        elif raw_type == "assignment":
+                            c_type = ContentType.assignment
+                        elif raw_type == "pdf":
+                            c_type = ContentType.pdf
+                        else:
+                            c_type = ContentType.reading
+
                         content = normalized_payload.get("content", "")
-                        order_idx = int(normalized_payload.get("order_index", 0))
-                        raw_course_id = normalized_payload.get("course_id", tx.entity_id)
+                        order_idx = int(normalized_payload.get("order_index", normalized_payload.get("sequenceOrder", 0)))
+                        raw_course_id = normalized_payload.get("course_id", normalized_payload.get("courseId", tx.entity_id))
                         course_id_uuid = uuid.UUID(str(raw_course_id))
+
+                        duration_minutes = normalized_payload.get("duration_minutes", normalized_payload.get("durationMinutes"))
+                        points = normalized_payload.get("points")
+                        media_url = normalized_payload.get("media_url", normalized_payload.get("videoUrl", normalized_payload.get("video_url", normalized_payload.get("audioUrl"))))
+                        video_offline_text = normalized_payload.get("video_offline_text", normalized_payload.get("videoOfflineText"))
+                        quiz_schema = normalized_payload.get("quiz_schema", normalized_payload.get("quizSchema"))
+                        assignment_schema = normalized_payload.get("assignment_schema", normalized_payload.get("assignmentSchema"))
+                        raw_due_date = normalized_payload.get("due_date", normalized_payload.get("dueDate"))
+
+                        due_date_obj = None
+                        if raw_due_date:
+                            try:
+                                if isinstance(raw_due_date, datetime):
+                                    due_date_obj = raw_due_date
+                                else:
+                                    due_date_obj = datetime.fromisoformat(str(raw_due_date).replace("Z", "+00:00"))
+                            except Exception:
+                                due_date_obj = None
 
                         if module_in_db:
                             module_in_db.title = title
+                            if title_ar:
+                                module_in_db.title_ar = title_ar
                             module_in_db.content_type = c_type
                             module_in_db.content = content
                             module_in_db.order_index = order_idx
+                            if duration_minutes is not None:
+                                module_in_db.duration_minutes = int(duration_minutes)
+                            if points is not None:
+                                module_in_db.points = int(points)
+                            if due_date_obj:
+                                module_in_db.due_date = due_date_obj
+                            if media_url:
+                                module_in_db.media_url = str(media_url)
+                            if video_offline_text:
+                                module_in_db.video_offline_text = str(video_offline_text)
+                            if quiz_schema:
+                                module_in_db.quiz_schema = quiz_schema
+                            if assignment_schema:
+                                module_in_db.assignment_schema = assignment_schema
                             module_in_db.updated_at = now
                             session.add(module_in_db)
                         else:
@@ -426,9 +476,17 @@ def process_sync_batch(
                                 id=tx.entity_id,
                                 course_id=course_id_uuid,
                                 title=title,
+                                title_ar=title_ar,
                                 content_type=c_type,
                                 content=content,
                                 order_index=order_idx,
+                                duration_minutes=int(duration_minutes) if duration_minutes is not None else None,
+                                points=int(points) if points is not None else None,
+                                due_date=due_date_obj,
+                                media_url=str(media_url) if media_url else None,
+                                video_offline_text=str(video_offline_text) if video_offline_text else None,
+                                quiz_schema=quiz_schema,
+                                assignment_schema=assignment_schema,
                                 created_at=now,
                                 updated_at=now,
                             )

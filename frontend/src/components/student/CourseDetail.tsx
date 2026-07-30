@@ -219,7 +219,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                         Module #{mod.sequenceOrder || idx + 1}
                       </span>
                       <span className="text-xs text-muted-foreground capitalize">
-                        {t.coursesPage?.moduleTypes?.[mod.type] || mod.type}
+                        {(t.coursesPage?.moduleTypes as Record<string, string>)?.[mod.type] || mod.type}
                       </span>
                       {mod.isCompleted && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">

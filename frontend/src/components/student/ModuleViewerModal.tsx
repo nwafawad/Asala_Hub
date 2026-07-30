@@ -152,7 +152,7 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
   };
 
   const moduleTypeLabel =
-    t.coursesPage?.moduleTypes?.[module.type] || module.type.toUpperCase();
+    (t.coursesPage?.moduleTypes as Record<string, string>)?.[module.type] || module.type.toUpperCase();
 
   const handleDownload = async () => {
     if (!onDownloadModule) return;
@@ -406,6 +406,107 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
                 </div>
               )}
 
+              {/* 1. Video Lesson Render */}
+              {module.type === 'video' && (
+                <div className="flex flex-col gap-4">
+                  {module.videoUrl ? (
+                    <div className="aspect-video w-full rounded-2xl bg-black overflow-hidden flex items-center justify-center border border-border shadow-md">
+                      <iframe
+                        src={module.videoUrl.replace('watch?v=', 'embed/')}
+                        className="w-full h-full border-0"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-video w-full rounded-2xl bg-muted/40 border border-border flex items-center justify-center text-xs text-muted-foreground">
+                      No online video URL provided
+                    </div>
+                  )}
+
+                  {module.videoOfflineText && (
+                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex flex-col gap-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400">
+                        <WifiOff className="w-4 h-4" />
+                        <span>Offline Video Transcript & Summary</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">
+                        {module.videoOfflineText}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 2. Interactive Quiz Runner */}
+              {module.type === 'quiz' && module.quizSchema && (
+                <QuizRunnerWidget module={module} />
+              )}
+
+              {/* 3. Assignment Guidelines */}
+              {module.type === 'assignment' && (
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-amber-500/10 to-background border border-amber-500/20 flex flex-col gap-4">
+                  <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
+                    <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">
+                      Assignment Guidelines
+                    </span>
+                    {module.points && (
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-600 font-mono">
+                        {module.points} Points
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">
+                    {language === 'ar' && module.assignmentSchema?.instructionsAr
+                      ? module.assignmentSchema.instructionsAr
+                      : module.assignmentSchema?.instructions || module.content}
+                  </div>
+                  {module.assignmentSchema?.allowedFileTypes && (
+                    <div className="text-[11px] font-mono text-muted-foreground border-t border-amber-500/20 pt-2">
+                      Allowed file extensions: {module.assignmentSchema.allowedFileTypes.join(', ')}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 4. PDF Document Widget */}
+              {module.type === 'pdf' && (
+                <div className="p-6 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 rounded-xl bg-cyan-500/20 text-cyan-600">
+                        <Download className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold font-heading">
+                          {module.attachmentFile?.name || 'PDF Document Resource'}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {module.attachmentFile
+                            ? `${(module.attachmentFile.size / (1024 * 1024)).toFixed(2)} MB`
+                            : 'Downloadable PDF file'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {module.attachmentFile?.arrayBuffer && (
+                      <button
+                        onClick={() => {
+                          const blob = new Blob([module.attachmentFile!.arrayBuffer!], { type: 'application/pdf' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = module.attachmentFile!.name;
+                          a.click();
+                        }}
+                        className="px-4 py-2 rounded-xl bg-cyan-600 text-white text-xs font-bold hover:bg-cyan-700 transition-colors cursor-pointer"
+                      >
+                        Download PDF
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Text / Markdown Content Body */}
               <div className={`prose dark:prose-invert max-w-none text-foreground bg-card p-6 rounded-xl border border-border ${fontSizeClasses[fontSize]}`}>
                 <p className="whitespace-pre-line">
@@ -454,6 +555,172 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
           </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+interface QuizRunnerWidgetProps {
+  module: CachedModule;
+}
+
+const QuizRunnerWidget: React.FC<QuizRunnerWidgetProps> = ({ module }) => {
+  const { language } = useI18n();
+  const quizSchema = module.quizSchema;
+  const questions = quizSchema?.questions || [];
+
+  const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState<boolean>(false);
+  const [scorePercentage, setScorePercentage] = useState<number>(0);
+
+  if (!quizSchema || questions.length === 0) return null;
+
+  const handleSelectOption = (questionId: string, optionId: string) => {
+    if (submitted) return;
+    setUserAnswers(prev => ({ ...prev, [questionId]: optionId }));
+  };
+
+  const handleCalculateScore = async () => {
+    let earnedPoints = 0;
+    let totalPoints = 0;
+
+    questions.forEach(q => {
+      totalPoints += q.points || 10;
+      const selectedOptId = userAnswers[q.id];
+      const correctOpt = (q.options || []).find(opt => opt.isCorrect);
+      if (selectedOptId && correctOpt && selectedOptId === correctOpt.id) {
+        earnedPoints += q.points || 10;
+      }
+    });
+
+    const pct = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+    setScorePercentage(pct);
+    setSubmitted(true);
+
+    // Save transaction log to Dexie IndexedDB
+    await db.transactionLogs.add({
+      offlineId: generateUUID(),
+      action: 'SUBMIT_ASSIGNMENT',
+      entityType: 'quiz_attempt',
+      entityId: module.id,
+      payload: {
+        moduleId: module.id,
+        courseId: module.courseId,
+        scorePercentage: pct,
+        earnedPoints,
+        totalPoints,
+        answers: userAnswers,
+        submittedAt: new Date().toISOString(),
+      },
+      timestamp: new Date().toISOString(),
+      status: 'pending',
+    });
+  };
+
+  const isPassed = scorePercentage >= (quizSchema.passingScorePercentage || 70);
+
+  return (
+    <div className="p-6 rounded-2xl bg-card border border-blue-500/20 flex flex-col gap-5 shadow-sm">
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+            Interactive Quiz Runner
+          </span>
+          <span className="text-xs text-muted-foreground font-mono">
+            ({questions.length} Questions)
+          </span>
+        </div>
+        {quizSchema.passingScorePercentage && (
+          <span className="text-xs text-muted-foreground font-mono">
+            Passing: {quizSchema.passingScorePercentage}%
+          </span>
+        )}
+      </div>
+
+      {/* Questions List */}
+      <div className="flex flex-col gap-6">
+        {questions.map((q, idx) => {
+          const promptText = language === 'ar' && q.promptAr ? q.promptAr : q.prompt;
+          const selectedOptionId = userAnswers[q.id];
+
+          return (
+            <div key={q.id} className="p-4 rounded-xl border border-border bg-muted/20 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-bold text-foreground">
+                  Q{idx + 1}. {promptText}
+                </h5>
+                <span className="text-[11px] font-mono text-muted-foreground">{q.points || 10} pts</span>
+              </div>
+
+              {/* Options */}
+              <div className="flex flex-col gap-2 pl-2">
+                {(q.options || []).map(opt => {
+                  const optText = language === 'ar' && opt.textAr ? opt.textAr : opt.text;
+                  const isSelected = selectedOptionId === opt.id;
+                  const isCorrectAnswer = opt.isCorrect;
+
+                  let borderClass = 'border-border bg-card';
+                  if (submitted) {
+                    if (isCorrectAnswer) borderClass = 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold';
+                    else if (isSelected && !isCorrectAnswer) borderClass = 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300';
+                  } else if (isSelected) {
+                    borderClass = 'border-primary bg-primary/10 text-primary font-semibold';
+                  }
+
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleSelectOption(q.id, opt.id)}
+                      disabled={submitted}
+                      className={`p-3 rounded-xl border text-xs text-start transition-all cursor-pointer flex items-center justify-between ${borderClass}`}
+                    >
+                      <span>{optText}</span>
+                      {submitted && isCorrectAnswer && (
+                        <span className="text-[10px] uppercase font-bold text-emerald-600">Correct ✓</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Submission Footer */}
+      {!submitted ? (
+        <button
+          type="button"
+          onClick={handleCalculateScore}
+          disabled={Object.keys(userAnswers).length === 0}
+          className="self-end px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50"
+        >
+          Submit Quiz Answers
+        </button>
+      ) : (
+        <div className={`p-4 rounded-xl border flex items-center justify-between ${
+          isPassed ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' : 'bg-rose-500/10 border-rose-500/30 text-rose-600'
+        }`}>
+          <div>
+            <h4 className="text-sm font-bold">
+              {isPassed ? 'Quiz Passed! 🎉' : 'Quiz Failed'}
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              Your Score: <span className="font-bold">{scorePercentage}%</span> (Passing score: {quizSchema.passingScorePercentage}%)
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSubmitted(false);
+              setUserAnswers({});
+            }}
+            className="px-3 py-1.5 rounded-lg border border-current text-xs font-semibold hover:opacity-80 transition-opacity cursor-pointer"
+          >
+            Retry Quiz
+          </button>
+        </div>
+      )}
     </div>
   );
 };

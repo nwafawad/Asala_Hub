@@ -6,6 +6,7 @@ import { generateUUID } from '@/lib/uuid';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { ModuleEditor } from './ModuleEditor';
+import { ModuleStudio } from './ModuleStudio';
 import {
   BookOpen,
   Plus,
@@ -358,9 +359,9 @@ export const CourseBuilder: React.FC = () => {
         />
       )}
 
-      {/* Module Editor Modal */}
+      {/* Module Studio Full-Page Overlay */}
       {activeEditorModule !== null && (
-        <ModuleEditor
+        <ModuleStudio
           courseId={selectedCourseId || ''}
           initialModule={activeEditorModule === 'new' ? null : activeEditorModule}
           onSave={handleSaveModule}

@@ -6,6 +6,7 @@ export interface TransactionLogItem {
   offlineId: string; // UUID v4 collision-safe offline record ID (FR-14)
   action:
     | 'CREATE_SUBMISSION'
+    | 'SUBMIT_ASSIGNMENT'
     | 'UPDATE_COURSE'
     | 'GRADE_ASSIGNMENT'
     | 'COMPLETE_MODULE'
@@ -36,21 +37,60 @@ export interface CachedCourse {
   updatedAt: string;
 }
 
+export interface QuizOption {
+  id: string;
+  text: string;
+  textAr?: string;
+  isCorrect: boolean;
+}
+
+export interface QuizQuestion {
+  id: string;
+  type: 'multiple_choice' | 'true_false' | 'short_answer';
+  prompt: string;
+  promptAr?: string;
+  options?: QuizOption[];
+  correctAnswer?: string;
+  points: number;
+  explanation?: string;
+}
+
+export interface QuizSchema {
+  questions: QuizQuestion[];
+  passingScorePercentage: number;
+  timeLimitMinutes?: number;
+  allowRetries: boolean;
+}
+
+export interface AssignmentSchema {
+  instructions: string;
+  instructionsAr?: string;
+  allowedFileTypes?: string[];
+  maxFileSizeMb: number;
+  rubricCriteria?: Record<string, unknown>[];
+}
+
 export interface CachedModule {
   id: string;
   courseId: string;
   title: string;
   titleAr?: string;
-  type: 'reading' | 'audio' | 'syllabus' | 'assignment';
+  type: 'reading' | 'audio' | 'video' | 'quiz' | 'assignment' | 'pdf' | 'syllabus';
   sequenceOrder: number;
   isCachedOffline: boolean;
   sizeMb: number;
   content?: string;
   audioUrl?: string;
+  audioArrayBuffer?: ArrayBuffer;
+  videoUrl?: string;
+  videoOfflineText?: string;
+  attachmentFile?: AttachmentFile;
   durationMinutes?: number;
   assignmentId?: string;
   dueDate?: string;
   points?: number;
+  quizSchema?: QuizSchema;
+  assignmentSchema?: AssignmentSchema;
   isCompleted?: boolean;
   userNotes?: string;
 }
