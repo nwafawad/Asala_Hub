@@ -34,7 +34,7 @@ services:
       - backend_uploads_prod:/app/uploads
       - backups_prod:/backups
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
       interval: 5s
       timeout: 5s
       retries: 5

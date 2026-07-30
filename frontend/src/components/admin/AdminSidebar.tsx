@@ -1,14 +1,12 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard,
   Users,
   ShieldCheck,
-  ArrowLeftRight,
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 
@@ -89,14 +87,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = React.memo(({ activeTab
             </span>
           </div>
         </div>
-
-        <Link
-          href="/"
-          className="inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-background border border-border text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeftRight className="w-3.5 h-3.5" />
-          <span>Back to Learning Portal</span>
-        </Link>
       </div>
     </aside>
   );
