@@ -225,8 +225,8 @@ def process_sync_batch(
         # Fast In-Memory LRU Idempotency check (Stage 3 optimization)
         cached_seq = idempotency_cache.get(tx.transaction_id)
         existing_log = existing_tx_logs.get(tx.transaction_id)
-        if cached_seq is not None or existing_log:
-            res_seq = cached_seq if cached_seq is not None else existing_log.server_sequence
+        if cached_seq is not None or existing_log is not None:
+            res_seq = cached_seq if cached_seq is not None else (existing_log.server_sequence if existing_log is not None else None)
             results.append(
                 SyncTransactionResult(
                     transaction_id=tx.transaction_id,
