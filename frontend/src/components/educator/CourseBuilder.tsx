@@ -5,6 +5,7 @@ import { db, CachedCourse, CachedModule, TransactionLogItem } from '@/lib/db';
 import { generateUUID } from '@/lib/uuid';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
+import { useSync } from '@/context/SyncContext';
 import { ModuleEditor } from './ModuleEditor';
 import { ModuleStudio } from './ModuleStudio';
 import {
@@ -28,13 +29,14 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 export const CourseBuilder: React.FC = () => {
   const { t, language } = useI18n();
   const { showToast } = useOverlay();
+  const { isOnline, syncNow } = useSync();
   const [courses, setCourses] = useState<CachedCourse[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [isCreatingCourse, setIsCreatingCourse] = useState<boolean>(false);
 
   const handleSaveCourse = async (courseTitle: string, courseCode: string, titleAr?: string) => {
     try {
-      const courseId = `course-${courseCode.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+      const courseId = generateUUID();
       const timestamp = new Date().toISOString();
 
       const newCourse: CachedCourse = {
@@ -110,16 +112,20 @@ export const CourseBuilder: React.FC = () => {
   };
 
   const handleSaveModule = async (moduleData: Partial<CachedModule>) => {
-    if (!selectedCourseId) return;
+    const targetCourseId = selectedCourseId || (courses.length > 0 ? courses[0].id : null);
+    if (!targetCourseId) {
+      showToast('No Course Selected', 'error', 'Please create or select a course before saving modules.');
+      return;
+    }
 
     try {
       const isNew = !moduleData.id;
-      const moduleId = moduleData.id || `mod-${Date.now()}`;
+      const moduleId = moduleData.id || generateUUID();
       const timestamp = new Date().toISOString();
 
       const newModule: CachedModule = {
         id: moduleId,
-        courseId: selectedCourseId,
+        courseId: targetCourseId,
         title: moduleData.title || 'Untitled Module',
         titleAr: moduleData.titleAr,
         type: moduleData.type || 'reading',
@@ -128,47 +134,67 @@ export const CourseBuilder: React.FC = () => {
         sizeMb: moduleData.sizeMb || 0.5,
         content: moduleData.content || '',
         audioUrl: moduleData.audioUrl || '',
+        audioArrayBuffer: moduleData.audioArrayBuffer,
+        videoUrl: moduleData.videoUrl,
+        videoOfflineText: moduleData.videoOfflineText,
+        attachmentFile: moduleData.attachmentFile,
         durationMinutes: moduleData.durationMinutes || 10,
         assignmentId: moduleData.type === 'assignment' ? `assign-${moduleId}` : undefined,
         dueDate: moduleData.dueDate,
         points: moduleData.points || 100,
+        quizSchema: moduleData.quizSchema,
+        assignmentSchema: moduleData.assignmentSchema,
+        userNotes: moduleData.userNotes,
         isCompleted: false,
       };
 
-      // Save to Dexie cachedModules
+      // 1. Save full binary record to Dexie cachedModules table
       await db.cachedModules.put(newModule);
 
-      // Log Transaction Log (FR-9, FR-14)
+      // 2. Prepare clean JSON payload for sync transaction log (omit raw ArrayBuffers)
+      const { audioArrayBuffer, attachmentFile, ...cleanPayload } = newModule;
+      const cleanAttachment = attachmentFile
+        ? { name: attachmentFile.name, size: attachmentFile.size, type: attachmentFile.type }
+        : undefined;
+
       const actionType = isNew ? 'CREATE_MODULE' : 'UPDATE_MODULE';
       const logItem: TransactionLogItem = {
         offlineId: generateUUID(),
         action: actionType,
         entityType: 'module',
         entityId: moduleId,
-        payload: newModule as unknown as Record<string, unknown>,
+        payload: {
+          ...cleanPayload,
+          attachmentFile: cleanAttachment,
+        } as Record<string, unknown>,
         timestamp,
         status: 'pending',
       };
       await db.transactionLogs.add(logItem);
 
-      // Update local course module count
-      const course = await db.cachedCourses.get(selectedCourseId);
+      // 3. Trigger sync engine if connected online
+      if (isOnline) {
+        syncNow().catch(err => console.error('Sync publish error:', err));
+      }
+
+      // 4. Update local course module count
+      const course = await db.cachedCourses.get(targetCourseId);
       if (course) {
-        course.moduleCount = await db.cachedModules.where('courseId').equals(selectedCourseId).count();
+        course.moduleCount = await db.cachedModules.where('courseId').equals(targetCourseId).count();
         await db.cachedCourses.put(course);
       }
 
       showToast(
-        isNew ? 'Module Created' : 'Module Updated',
+        isNew ? 'Module Created & Published' : 'Module Updated & Published',
         'success',
-        t.educator?.curriculum?.savedOfflineToast || 'Module saved locally to IndexedDB.'
+        t.educator?.curriculum?.savedOfflineToast || 'Module saved locally and queued for sync.'
       );
 
       setActiveEditorModule(null);
       await loadCoursesAndModules();
     } catch (err) {
       console.error('Error saving module:', err);
-      showToast('Save Failed', 'error', 'Failed to save module to offline DB.');
+      showToast('Save Failed', 'error', 'Failed to save module. Please try again.');
     }
   };
 

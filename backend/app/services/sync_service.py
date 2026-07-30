@@ -96,6 +96,10 @@ def merge_submission_content(server_text: str, client_text: str) -> tuple[bool, 
 
 
 import uuid
+from typing import List, Dict, Optional, Any
+from datetime import datetime
+from sqlalchemy import text
+from sqlmodel import Session
 from app.models.base import get_naive_utc_now
 from app.models.user import User, UserRole
 from pydantic import ValidationError
@@ -108,6 +112,7 @@ from app.schemas.sync import (
     SyncTransactionResult,
     SubmissionContentPayload,
     GradePayload,
+    _coerce_uuid,
     CURRENT_SCHEMA_VERSION,
     MIN_SUPPORTED_SCHEMA_VERSION,
 )
@@ -121,23 +126,54 @@ def _to_naive_utc(dt: Optional[datetime], fallback: datetime) -> datetime:
     return dt.replace(tzinfo=None)
 
 
+from collections import OrderedDict
+
+class IdempotencyLRUCache:
+    """
+    High-performance in-memory LRU cache storing recently processed transaction UUIDs.
+    Eliminates disk I/O queries for duplicate transaction retry processing (O(1) lookup).
+    """
+    def __init__(self, maxsize: int = 10000):
+        self.cache: OrderedDict[uuid.UUID, int] = OrderedDict()
+        self.maxsize = maxsize
+
+    def get(self, tx_id: uuid.UUID) -> Optional[int]:
+        if tx_id in self.cache:
+            self.cache.move_to_end(tx_id)
+            return self.cache[tx_id]
+        return None
+
+    def put(self, tx_id: uuid.UUID, server_seq: int):
+        self.cache[tx_id] = server_seq
+        self.cache.move_to_end(tx_id)
+        if len(self.cache) > self.maxsize:
+            self.cache.popitem(last=False)
+
+idempotency_cache = IdempotencyLRUCache()
+
+
 class ServerSequenceGenerator:
     """
-    Stateful sequence generator for batch processing.
-    Uses Postgres nextval('tx_log_server_seq') in production and a cached max() sequence counter
-    for non-Postgres (e.g. SQLite) to eliminate N+1 sequence queries inside loops.
+    Stateful bulk sequence generator for batch processing.
+    Allocates a block of N sequence numbers in a single SQL query on PostgreSQL (O(1) complexity),
+    and uses a cached max sequence counter for non-Postgres (e.g. SQLite).
     """
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, count: int = 1):
         self.session = session
         bind = session.get_bind()
         self.is_postgres = bool(bind and bind.dialect.name == "postgresql")
-        if not self.is_postgres:
+        if self.is_postgres and count > 0:
+            # Allocate sequence block of size count in 1 atomic DB query
+            end_seq = session.scalar(
+                text("SELECT setval('tx_log_server_seq', nextval('tx_log_server_seq') + :inc)"),
+                {"inc": count - 1}
+            )
+            self._current_seq = (end_seq or 100) - count
+        else:
             max_seq = crud_sync.get_latest_server_sequence(session)
             self._current_seq = max_seq
 
     def next(self) -> int:
-        if self.is_postgres:
-            return self.session.scalar(text("SELECT nextval('tx_log_server_seq')"))
         self._current_seq += 1
         return self._current_seq
 
@@ -177,16 +213,22 @@ def process_sync_batch(
     if not batch.transactions:
         return SyncBatchResponse(results=[], synced_count=0, error_count=0)
 
-    seq_gen = ServerSequenceGenerator(session)
+    # Sort transactions by entity_type and entity_id to guarantee deadlock-free lock acquisition order
+    sorted_transactions = sorted(
+        batch.transactions,
+        key=lambda tx: (str(tx.entity_type), str(tx.entity_id))
+    )
+
+    seq_gen = ServerSequenceGenerator(session, count=len(sorted_transactions))
     acting_user = session.get(User, user_id)
 
     # Bulk pre-fetch existing transaction logs to eliminate N+1 queries
-    all_tx_ids = [tx.transaction_id for tx in batch.transactions]
+    all_tx_ids = [tx.transaction_id for tx in sorted_transactions]
     existing_tx_logs = crud_sync.get_transaction_logs_by_ids(session, all_tx_ids)
 
     # Bulk pre-fetch existing submissions for submission entity_ids
     submission_entity_ids = [
-        tx.entity_id for tx in batch.transactions if tx.entity_type == "submission"
+        tx.entity_id for tx in sorted_transactions if tx.entity_type == "submission"
     ]
     existing_submissions: Dict[uuid.UUID, Submission] = {}
     if submission_entity_ids:
@@ -194,7 +236,7 @@ def process_sync_batch(
 
     now = get_naive_utc_now()
 
-    for tx in batch.transactions:
+    for tx in sorted_transactions:
         # Schema version compatibility check (FR-20)
         if tx.schema_version < MIN_SUPPORTED_SCHEMA_VERSION or tx.schema_version > CURRENT_SCHEMA_VERSION:
             results.append(
@@ -209,15 +251,17 @@ def process_sync_batch(
             error_count += 1
             continue
 
-        # Idempotency check: verify if transaction log was already processed
+        # Fast In-Memory LRU Idempotency check (Stage 3 optimization)
+        cached_seq = idempotency_cache.get(tx.transaction_id)
         existing_log = existing_tx_logs.get(tx.transaction_id)
-        if existing_log:
+        if cached_seq is not None or existing_log:
+            res_seq = cached_seq if cached_seq is not None else existing_log.server_sequence
             results.append(
                 SyncTransactionResult(
                     transaction_id=tx.transaction_id,
                     status="accepted",
-                    server_sequence=existing_log.server_sequence,
-                    synced_at=existing_log.synced_at or existing_log.created_at,
+                    server_sequence=res_seq,
+                    synced_at=now,
                     error=None
                 )
             )
@@ -428,7 +472,7 @@ def process_sync_batch(
                         content = normalized_payload.get("content", "")
                         order_idx = int(normalized_payload.get("order_index", normalized_payload.get("sequenceOrder", 0)))
                         raw_course_id = normalized_payload.get("course_id", normalized_payload.get("courseId", tx.entity_id))
-                        course_id_uuid = uuid.UUID(str(raw_course_id))
+                        course_id_uuid = _coerce_uuid(raw_course_id)
 
                         duration_minutes = normalized_payload.get("duration_minutes", normalized_payload.get("durationMinutes"))
                         points = normalized_payload.get("points")
@@ -498,6 +542,7 @@ def process_sync_batch(
                     id=tx.transaction_id,
                     user_id=user_id,
                     entity_type=tx.entity_type,
+                    action=tx.action,
                     entity_id=tx.entity_id,
                     payload=normalized_payload,
                     schema_version=tx.schema_version,
@@ -512,6 +557,7 @@ def process_sync_batch(
                 session.flush()
 
                 existing_tx_logs[tx.transaction_id] = log_entry
+                idempotency_cache.put(tx.transaction_id, server_seq)
 
             results.append(
                 SyncTransactionResult(
@@ -556,3 +602,14 @@ def process_sync_batch(
         synced_count=synced_count,
         error_count=error_count
     )
+
+
+def post_sync_telemetry(user_id: uuid.UUID, synced_count: int) -> None:
+    """
+    Non-blocking async background task executed after returning POST /sync response.
+    Handles post-sync metrics logging and side-effects without blocking HTTP execution.
+    """
+    if synced_count > 0:
+        import logging
+        logger = logging.getLogger("asala_hub.sync")
+        logger.info(f"Post-sync telemetry: user {user_id} successfully synced {synced_count} offline transactions.")

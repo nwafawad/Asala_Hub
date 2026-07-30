@@ -79,3 +79,16 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Background Sync event listener for offline log flushing (NFR-PWA)
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'asala-bg-sync') {
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window' }).then((clientList) => {
+        for (const client of clientList) {
+          client.postMessage({ type: 'ASALA_TRIGGER_BACKGROUND_SYNC' });
+        }
+      })
+    );
+  }
+});

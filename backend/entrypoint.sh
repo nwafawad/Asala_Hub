@@ -8,8 +8,8 @@ DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@db:5432/asalahub}"
 
 echo "[entrypoint] Waiting for database connection..."
 python -c "
-import time, sys, psycopg2
-db_url = '${DB_URL}'
+import time, sys, os, psycopg2
+db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@db:5432/asalahub')
 retries = 30
 while retries > 0:
     try:

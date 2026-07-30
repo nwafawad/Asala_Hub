@@ -21,6 +21,7 @@ class TransactionLog(TimestampModel, table=True):
 
     user_id: uuid.UUID = Field(foreign_key="user.id", ondelete="CASCADE", nullable=False, index=True)
     entity_type: str
+    action: str = Field(default="UPDATE", nullable=False)
     entity_id: uuid.UUID
     payload: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
     schema_version: int = Field(default=1, nullable=False)

@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { db, type TransactionLogItem } from '@/lib/db';
 import { generateUUID } from '@/lib/uuid';
 import { api } from '@/lib/api';
+import { compressGzipStream } from '@/lib/compress';
 import { CURRENT_SCHEMA_VERSION } from '@/types/api';
 import { useSystemMessage } from '@/hooks/useSystemMessage';
 import { SystemModal } from '@/components/ui/SystemModal';
@@ -80,12 +81,19 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Register Service Worker for PWA Offline Precaching
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'ASALA_TRIGGER_BACKGROUND_SYNC') {
+        syncNowRef.current();
+      }
+    };
+
+    // Register Service Worker for PWA Offline Precaching & Background Sync
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/sw.js')
         .then(reg => console.log('Asala PWA ServiceWorker registered:', reg.scope))
         .catch(err => console.warn('ServiceWorker registration notice:', err));
+      navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
     }
 
     refreshLogs();
@@ -93,8 +101,29 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+      }
     };
   }, [refreshLogs, showSystemMessage]);
+
+  // Automatic Garbage Collection of old synced IndexedDB transaction logs (>7 days)
+  const purgeOldSyncedLogs = useCallback(async (daysToKeep = 7) => {
+    try {
+      const cutoffDate = new Date(Date.now() - daysToKeep * 86400 * 1000).toISOString();
+      const oldLogs = await db.transactionLogs
+        .where('status')
+        .equals('synced')
+        .filter(log => log.timestamp < cutoffDate)
+        .primaryKeys();
+
+      if (oldLogs.length > 0) {
+        await db.transactionLogs.bulkDelete(oldLogs);
+      }
+    } catch (err) {
+      console.warn('IndexedDB auto-GC notice:', err);
+    }
+  }, []);
 
   // Handle batch success response from FastAPI /sync/ endpoint
   const handleBatchSuccess = useCallback(
@@ -148,10 +177,11 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
+      await purgeOldSyncedLogs();
       await refreshLogs();
       setSyncState('synced');
     },
-    [refreshLogs, showSystemMessage]
+    [refreshLogs, showSystemMessage, purgeOldSyncedLogs]
   );
 
   // Apply exponential backoff schedule on sync failure (FR-16: 2s -> 4s -> 8s -> 16s -> 32s -> 60s)
@@ -205,6 +235,22 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    // Docker-safe pre-flight reachability check
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const healthCheck = await fetch(`${baseUrl}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!healthCheck.ok) {
+        setSyncState('offline');
+        return;
+      }
+    } catch {
+      setSyncState('offline');
+      return;
+    }
+
     isSyncingRef.current = true;
     setSyncState('syncing');
     showSystemMessage('SYNC_IN_PROGRESS');
@@ -250,7 +296,21 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       try {
-        const res = await api.post('/sync', payload);
+        const payloadJson = JSON.stringify(payload);
+        const gzippedBytes = await compressGzipStream(payloadJson);
+
+        let res;
+        if (gzippedBytes) {
+          res = await api.post('/sync', gzippedBytes, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Encoding': 'gzip',
+            },
+          });
+        } else {
+          res = await api.post('/sync', payload);
+        }
+
         const serverResults = res.data && Array.isArray(res.data.results) ? res.data.results : [];
         const startSeq = (lastSynced?.serverSeqNum || 100) + 1;
         await handleBatchSuccess(pendingBatch, serverResults, startSeq);

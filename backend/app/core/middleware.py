@@ -73,11 +73,12 @@ def setup_cors(app: FastAPI) -> None:
     """
     Configure CORS middleware on the FastAPI application instance.
     """
-    origins: List[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ]
-    origins.extend(settings.allowed_hosts_list)
+    origins: List[str] = list(settings.allowed_hosts_list)
+    if not origins:
+        origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ]
     origins = list(set(origins))  # Remove duplicate origins
 
     app.add_middleware(

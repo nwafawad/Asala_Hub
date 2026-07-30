@@ -12,6 +12,7 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.exceptions import ResourceNotFoundError, PermissionDeniedError
+from app.models.base import get_naive_utc_now
 from app.models import User, Course, Assignment, Submission, UserRole
 from app.core.dependencies import (
     get_current_user,
@@ -141,3 +142,44 @@ def grade_submission(
         raise PermissionDeniedError("You do not have permission to grade submissions in this course")
 
     return crud_assignments.update_submission_grade(session, submission, grade_in)
+
+
+from fastapi.responses import StreamingResponse
+import json
+import asyncio
+
+@router.get("/assignments/my-submissions-stream")
+async def stream_my_submissions_grades(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """
+    Server-Sent Events (SSE) stream for real-time grade push updates.
+    Pushes instantaneous grade change events to connected client browsers.
+    """
+    async def event_generator():
+        last_check = get_naive_utc_now()
+        while True:
+            try:
+                # Query submissions updated since last check
+                subs = session.query(Submission).filter(
+                    Submission.student_id == current_user.id,
+                    Submission.grade != None,
+                    Submission.updated_at >= last_check
+                ).all()
+
+                if subs:
+                    data = [
+                        {"id": str(s.id), "grade": s.grade, "updated_at": s.updated_at.isoformat()}
+                        for s in subs
+                    ]
+                    yield f"event: grade_update\ndata: {json.dumps(data)}\n\n"
+                    last_check = get_naive_utc_now()
+
+                yield f"event: heartbeat\ndata: {json.dumps({'status': 'alive'})}\n\n"
+            except Exception:
+                pass
+
+            await asyncio.sleep(15)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

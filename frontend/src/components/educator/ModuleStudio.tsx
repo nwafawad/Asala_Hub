@@ -265,8 +265,10 @@ export const ModuleStudio: React.FC<ModuleStudioProps> = ({
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
     if (!title.trim()) {
       showToast('Validation Error', 'error', 'Module title is required.');
       return;
