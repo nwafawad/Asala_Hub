@@ -5,6 +5,7 @@ import { db, type CachedModule, type CachedCourse, type CachedSubmission } from 
 import { api } from '@/lib/api';
 import { rehydrateStorage } from '@/lib/rehydrate';
 import { useI18n } from '@/context/I18nContext';
+import { useStorageUpdateListener } from '@/hooks/useStorageUpdateListener';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   FileText,
@@ -47,6 +48,12 @@ export const AssignmentListView: React.FC<AssignmentListViewProps> = ({ onSelect
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const ChevronIcon = language === 'ar' ? ChevronLeft : ChevronRight;
+
+  const [triggerRefresh, setTriggerRefresh] = useState(0);
+
+  useStorageUpdateListener(React.useCallback(() => {
+    setTriggerRefresh(prev => prev + 1);
+  }, []));
 
   useEffect(() => {
     let isMounted = true;
@@ -124,7 +131,7 @@ export const AssignmentListView: React.FC<AssignmentListViewProps> = ({ onSelect
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [triggerRefresh]);
 
   const filteredAssignments = useMemo(() => {
     return assignments.filter(item => {
@@ -244,7 +251,7 @@ export const AssignmentListView: React.FC<AssignmentListViewProps> = ({ onSelect
                         Graded ({item.score}/100)
                       </span>
                     ) : item.status === 'submitted' ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/15 text-primary flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         Submitted (Queued Sync)
                       </span>

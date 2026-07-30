@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { db, type TransactionLogItem } from '@/lib/db';
+import { notifyStorageUpdated } from '@/lib/events';
 import { generateUUID } from '@/lib/uuid';
 import { api } from '@/lib/api';
 import { compressGzipStream } from '@/lib/compress';
@@ -411,11 +412,13 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     await db.transactionLogs.add(newItem);
     await refreshLogs();
+    notifyStorageUpdated();
   };
 
   const clearSyncedLogs = async () => {
     await db.transactionLogs.where('status').equals('synced').delete();
     await refreshLogs();
+    notifyStorageUpdated();
   };
 
   const pendingCount = useMemo(

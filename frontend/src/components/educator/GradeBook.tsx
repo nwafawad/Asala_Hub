@@ -10,6 +10,7 @@ import { SubmissionReadDTO } from '@/types/api';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { useAuth } from '@/context/AuthContext';
+import { useStorageUpdateListener } from '@/hooks/useStorageUpdateListener';
 import { SubmissionGrader } from './SubmissionGrader';
 import {
   FileCheck,
@@ -43,6 +44,12 @@ export const GradeBook: React.FC = () => {
     const subList = await db.cachedSubmissions.toArray();
     setSubmissions(subList);
   };
+
+  const [triggerRefresh, setTriggerRefresh] = useState(0);
+
+  useStorageUpdateListener(React.useCallback(() => {
+    setTriggerRefresh(prev => prev + 1);
+  }, []));
 
   useEffect(() => {
     let isMounted = true;
@@ -92,7 +99,7 @@ export const GradeBook: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [triggerRefresh]);
 
   const handleSaveGrade = async (
     submissionId: string,

@@ -54,16 +54,16 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
 
   const getModuleIcon = (mod: CachedModule) => {
     if (isAssignmentModule(mod)) {
-      return <ClipboardList className="w-5 h-5 text-amber-500" />;
+      return <ClipboardList className="w-5 h-5 text-primary" />;
     }
     switch (mod.type) {
       case 'audio':
-        return <Headphones className="w-5 h-5 text-indigo-500" />;
+        return <Headphones className="w-5 h-5 text-primary" />;
       case 'syllabus':
-        return <Scroll className="w-5 h-5 text-emerald-500" />;
+        return <Scroll className="w-5 h-5 text-primary" />;
       case 'reading':
       default:
-        return <FileText className="w-5 h-5 text-sky-500" />;
+        return <FileText className="w-5 h-5 text-primary" />;
     }
   };
 

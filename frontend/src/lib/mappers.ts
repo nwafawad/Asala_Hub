@@ -56,7 +56,7 @@ export function mapModuleReadToCached(dto: ModuleReadDTO): CachedModule {
     courseId: dto.course_id,
     title: dto.title,
     titleAr: dto.title_ar || undefined,
-    type: dto.content_type,
+    type: (dto.content_type as CachedModule['type']) || 'reading',
     sequenceOrder: dto.order_index,
     isCachedOffline: true,
     sizeMb: 0.2,
@@ -65,6 +65,7 @@ export function mapModuleReadToCached(dto: ModuleReadDTO): CachedModule {
     points: dto.points ?? undefined,
     dueDate: dto.due_date || undefined,
     audioUrl: dto.content_type === 'audio' ? dto.media_url || undefined : undefined,
+    videoUrl: dto.content_type === 'video' ? dto.media_url || undefined : undefined,
   };
 }
 

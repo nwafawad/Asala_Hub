@@ -4,6 +4,7 @@ import { DashboardStats } from '@/types/dashboard';
 import { api } from '@/lib/api';
 import { mapCourseReadToCached, mapSubmissionReadToCached } from '@/lib/mappers';
 import { CourseReadDTO, SubmissionReadDTO } from '@/types/api';
+import { useStorageUpdateListener } from './useStorageUpdateListener';
 
 export function useDashboardData() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -113,6 +114,8 @@ export function useDashboardData() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useStorageUpdateListener(loadData);
 
   return {
     isLoading,

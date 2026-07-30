@@ -6,6 +6,7 @@ import { generateUUID } from '@/lib/uuid';
 import { api } from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
+import { useStorageUpdateListener } from '@/hooks/useStorageUpdateListener';
 import {
   Users,
   UserCheck,
@@ -36,6 +37,10 @@ export const CohortRoster: React.FC = () => {
   useEffect(() => {
     loadCohortsAndEnrollments();
   }, []);
+
+  useStorageUpdateListener(React.useCallback(() => {
+    loadCohortsAndEnrollments();
+  }, []));
 
   const loadCohortsAndEnrollments = async () => {
     try {

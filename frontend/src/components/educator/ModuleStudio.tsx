@@ -804,16 +804,16 @@ export const ModuleStudio: React.FC<ModuleStudioProps> = ({
             )}
 
             {type === 'audio' && (
-              <div className="p-6 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex flex-col gap-4">
+              <div className="p-6 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-2">
+                  <span className="text-xs font-bold text-primary flex items-center gap-2">
                     <Mic className="w-4 h-4" />
                     <span>Audio Lecture</span>
                   </span>
                   {audioUrl && (
                     <button
                       onClick={toggleAudioPlayback}
-                      className="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold flex items-center gap-2 cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center gap-2 cursor-pointer"
                     >
                       {isPlayingAudio ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                       <span>{isPlayingAudio ? 'Pause Audio' : 'Play Audio'}</span>
@@ -850,8 +850,8 @@ export const ModuleStudio: React.FC<ModuleStudioProps> = ({
 
             {type === 'quiz' && (
               <div className="flex flex-col gap-4">
-                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between">
-                  <span className="text-xs font-bold text-blue-600">
+                <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-between">
+                  <span className="text-xs font-bold text-primary">
                     Interactive Quiz ({quizQuestions.length} Questions)
                   </span>
                   <span className="text-xs font-semibold text-muted-foreground">

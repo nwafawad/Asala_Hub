@@ -354,7 +354,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({
                 <button
                   type="button"
                   onClick={startRecording}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
                 >
                   <Mic className="w-3.5 h-3.5" />
                   <span>{t.educator?.curriculum?.recordVoiceNote || 'Record Voice Note'}</span>

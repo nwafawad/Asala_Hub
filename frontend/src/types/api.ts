@@ -59,7 +59,7 @@ export interface CourseUpdateDTO {
 }
 
 // Module DTOs
-export type ContentTypeDTO = 'reading' | 'audio' | 'syllabus' | 'assignment';
+export type ContentTypeDTO = 'reading' | 'audio' | 'video' | 'quiz' | 'assignment' | 'pdf' | 'syllabus';
 
 export interface ModuleReadDTO {
   id: string;

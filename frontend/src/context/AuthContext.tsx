@@ -6,6 +6,7 @@ import { db, seedInitialMockData, type IndexedDBUser, type UserSession } from '@
 import { deriveKeyFromPassword, setInMemoryKey, getInMemoryKey, zeroKey, encryptText, decryptText } from '@/lib/crypto';
 import { useOverlay } from './OverlayContext';
 import { rehydrateStorage } from '@/lib/rehydrate';
+import { notifyStorageUpdated } from '@/lib/events';
 
 import { isEducatorUser } from '@/lib/utils';
 import { useIdleTimer } from '@/hooks/useIdleTimer';
@@ -32,6 +33,23 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+function purgeAllSessionStorage(): void {
+  if (typeof window === 'undefined') return;
+  const asalaKeys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('asala_')) asalaKeys.push(key);
+  }
+  asalaKeys.forEach(k => localStorage.removeItem(k));
+
+  const sessionKeys: string[] = [];
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (key?.startsWith('asala_')) sessionKeys.push(key);
+  }
+  sessionKeys.forEach(k => sessionStorage.removeItem(k));
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isRestoring, setIsRestoring] = useState<boolean>(true);
@@ -223,7 +241,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               hasAcceptedConsent: true,
             };
 
-            // ALWAYS persist active user session to IndexedDB db.userSession
+            // ALWAYS clear prior session storage, db.userSession, and cached user data before persisting new session
+            purgeAllSessionStorage();
+            await db.userSession.clear();
+            await Promise.all([
+              db.cachedCourses.clear(),
+              db.cachedModules.clear(),
+              db.cachedSubmissions.clear(),
+              db.transactionLogs.where('status').equals('synced').delete(),
+              db.cachedCohorts.clear(),
+              db.cohortEnrollments.clear(),
+            ]);
             await db.userSession.put(sessionObj);
 
             if (typeof window !== 'undefined') {
@@ -239,6 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(profile);
             setToken(accessToken);
             setIsOfflineSession(false);
+            notifyStorageUpdated();
             return { success: true };
           } catch (apiErr: any) {
             // Intercept 403 ACCOUNT_SUSPENDED error from backend
@@ -273,7 +302,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             hasAcceptedConsent: true,
           };
 
-          // ALWAYS persist active user session to IndexedDB db.userSession
+          // ALWAYS clear prior session storage, db.userSession, and cached user data before persisting new session
+          purgeAllSessionStorage();
+          await db.userSession.clear();
+          await Promise.all([
+            db.cachedCourses.clear(),
+            db.cachedModules.clear(),
+            db.cachedSubmissions.clear(),
+            db.transactionLogs.where('status').equals('synced').delete(),
+            db.cachedCohorts.clear(),
+            db.cohortEnrollments.clear(),
+          ]);
           await db.userSession.put(sessionObj);
 
           if (typeof window !== 'undefined') {
@@ -288,6 +327,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setToken(offlineToken);
           setIsOfflineSession(true);
           showToast('Signed in Offline', 'warning', `Signed in as ${matchUser.role} (${matchUser.fullName}).`);
+          notifyStorageUpdated();
           return { success: true };
         }
 
@@ -301,23 +341,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const logout = useCallback(async () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('asala_token');
-      localStorage.removeItem('asala_role');
-      localStorage.removeItem('asala_email');
-      localStorage.removeItem('asala_name');
-      sessionStorage.removeItem('asala_token');
-      sessionStorage.removeItem('asala_role');
-      sessionStorage.removeItem('asala_email');
-      sessionStorage.removeItem('asala_name');
-    }
+    purgeAllSessionStorage();
     zeroKey(); // Zero in-memory crypto key on logout (BR-7)
     await db.userSession.clear();
+    await Promise.all([
+      db.cachedCourses.clear(),
+      db.cachedModules.clear(),
+      db.cachedSubmissions.clear(),
+      db.transactionLogs.where('status').equals('synced').delete(),
+      db.cachedCohorts.clear(),
+      db.cohortEnrollments.clear(),
+    ]);
     setUser(null);
     setToken(null);
     setIsOfflineSession(false);
     setIsReAuthModalOpen(false);
     setHasPinConfigured(false);
+    notifyStorageUpdated();
   }, []);
 
   const renewSession = useCallback(

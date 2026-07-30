@@ -33,12 +33,12 @@ export const MediaVariantPanel: React.FC<MediaVariantPanelProps> = ({
   return (
     <div className="p-6 rounded-2xl bg-card border border-border flex flex-col gap-5">
       <h3 className="text-sm font-bold font-heading flex items-center gap-2">
-        <Mic className="w-4 h-4 text-purple-500" />
+        <Mic className="w-4 h-4 text-primary" />
         <span>Audio Lecture & Voice Recorder</span>
       </h3>
 
       {/* Voice Recorder Block */}
-      <div className="p-5 rounded-xl border border-purple-500/20 bg-purple-500/5 flex flex-col items-center gap-4">
+      <div className="p-5 rounded-xl border border-primary/20 bg-primary/5 flex flex-col items-center gap-4">
         <div className="text-center">
           <span className="text-2xl font-mono font-bold text-foreground">
             {formatSecs(recordingSeconds)}
@@ -53,7 +53,7 @@ export const MediaVariantPanel: React.FC<MediaVariantPanelProps> = ({
             <button
               type="button"
               onClick={startRecording}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors cursor-pointer"
             >
               <Mic className="w-4 h-4" />
               <span>Start Recording</span>

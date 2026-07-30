@@ -7,6 +7,7 @@ import { rehydrateStorage } from '@/lib/rehydrate';
 import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
 import { useOverlay } from '@/context/OverlayContext';
+import { useStorageUpdateListener } from '@/hooks/useStorageUpdateListener';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { StatCard } from '@/components/ui/StatCard';
@@ -34,6 +35,12 @@ export const ProgressTracker: React.FC = () => {
   const [txLogs, setTxLogs] = useState<any[]>([]);
   const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
+
+  const [triggerRefresh, setTriggerRefresh] = useState(0);
+
+  useStorageUpdateListener(React.useCallback(() => {
+    setTriggerRefresh(prev => prev + 1);
+  }, []));
 
   useEffect(() => {
     let isMounted = true;
@@ -87,7 +94,7 @@ export const ProgressTracker: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [triggerRefresh]);
 
   const selectedSub = useMemo(() => {
     return submissions.find(s => s.id === selectedSubId) || submissions[0] || null;

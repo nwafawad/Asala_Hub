@@ -78,13 +78,13 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
     <div className="p-6 rounded-2xl bg-card border border-border flex flex-col gap-6">
       <div className="flex items-center justify-between border-b border-border pb-4">
         <h3 className="text-sm font-bold font-heading flex items-center gap-2">
-          <HelpCircle className="w-4 h-4 text-blue-500" />
+          <HelpCircle className="w-4 h-4 text-primary" />
           <span>Interactive Quiz Builder ({quizQuestions.length} Questions)</span>
         </h3>
         <button
           type="button"
           onClick={addQuizQuestion}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Add Question</span>
@@ -101,17 +101,18 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
             max={100}
             value={passingScore}
             onChange={e => setPassingScore(Number(e.target.value))}
-            className="px-3 py-2 rounded-xl border border-input bg-background text-xs font-semibold"
+            className="px-3.5 py-2 rounded-xl border border-input bg-background text-xs font-mono font-semibold"
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-foreground">Quiz Time Limit (Minutes)</label>
+          <label className="text-xs font-semibold text-foreground">Time Limit (Minutes)</label>
           <input
             type="number"
             min={1}
+            max={180}
             value={quizTimeLimit}
             onChange={e => setQuizTimeLimit(Number(e.target.value))}
-            className="px-3 py-2 rounded-xl border border-input bg-background text-xs font-semibold"
+            className="px-3.5 py-2 rounded-xl border border-input bg-background text-xs font-mono font-semibold"
           />
         </div>
       </div>
@@ -121,7 +122,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
         {quizQuestions.map((q, qIndex) => (
           <div key={q.id} className="p-5 rounded-xl border border-border bg-background flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-blue-500 uppercase tracking-wider">
+              <span className="text-xs font-bold text-primary uppercase tracking-wider">
                 Question #{qIndex + 1}
               </span>
               <button
@@ -170,7 +171,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
                     name={`correct-${q.id}`}
                     checked={opt.isCorrect}
                     onChange={() => setCorrectOption(q.id, opt.id)}
-                    className="w-4 h-4 text-blue-600 cursor-pointer"
+                    className="w-4 h-4 text-primary cursor-pointer"
                   />
                   <input
                     type="text"
@@ -195,7 +196,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
               <button
                 type="button"
                 onClick={() => addQuizOption(q.id)}
-                className="self-start text-[11px] font-bold text-blue-500 hover:underline cursor-pointer pt-1"
+                className="self-start text-[11px] font-bold text-primary hover:underline cursor-pointer pt-1"
               >
                 Add Choice Option
               </button>

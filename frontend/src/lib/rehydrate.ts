@@ -3,6 +3,8 @@ import { db } from './db';
 import { mapCourseReadToCached, mapModuleReadToCached, mapSubmissionReadToCached } from './mappers';
 import { CourseReadDTO, ModuleReadDTO, SubmissionReadDTO } from '@/types/api';
 
+import { notifyStorageUpdated } from './events';
+
 let lastRehydrateTime = 0;
 const REHYDRATE_THROTTLE_MS = 10_000; // 10s throttle window to eliminate duplicate network bursts
 
@@ -99,6 +101,7 @@ export async function rehydrateStorage(force = false): Promise<void> {
         await db.cachedSubmissions.bulkPut(mergedSubs);
       }
     });
+    notifyStorageUpdated();
   } catch (err) {
     console.warn('Automatic storage re-hydration notice:', err);
   }

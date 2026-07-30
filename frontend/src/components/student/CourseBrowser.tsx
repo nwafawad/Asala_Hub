@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { useStorage } from '@/context/StorageContext';
+import { useStorageUpdateListener } from '@/hooks/useStorageUpdateListener';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { SkeletonCard } from '@/components/ui/Skeletons';
@@ -100,27 +101,26 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
               });
 
               modulesForCourse.forEach((m: any) => {
-                const modType =
-                  m.content_type === 'assignment'
-                    ? 'assignment'
-                    : m.content_type === 'audio'
-                    ? 'audio'
-                    : m.content_type === 'syllabus'
-                    ? 'syllabus'
-                    : 'reading';
+                const modType: CachedModule['type'] = (m.content_type as CachedModule['type']) || 'reading';
 
                 apiModules.push({
                   id: m.id,
                   courseId: c.id,
                   title: m.title,
+                  titleAr: m.title_ar || undefined,
                   type: modType,
                   sequenceOrder: m.order_index || 1,
                   isCachedOffline: true,
                   sizeMb: 1.5,
                   content: m.content || '',
-                  assignmentId: modType === 'assignment' ? `assign-${m.id}` : undefined,
-                  dueDate: m.due_date,
-                  points: m.points,
+                  assignmentId: modType === 'assignment' ? (m.assignment_id || `assign-${m.id}`) : undefined,
+                  dueDate: m.due_date || undefined,
+                  points: m.points ?? undefined,
+                  audioUrl: m.audio_url || (modType === 'audio' ? m.media_url : undefined),
+                  videoUrl: m.video_url || (modType === 'video' ? m.media_url : undefined),
+                  videoOfflineText: m.video_offline_text || undefined,
+                  quizSchema: m.quiz_schema || undefined,
+                  assignmentSchema: m.assignment_schema || undefined,
                 });
               });
             }
@@ -162,6 +162,8 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
     loadCourses();
   }, [loadCourses]);
 
+  useStorageUpdateListener(loadCourses);
+
 
 
   const toggleCourseCache = async (course: CachedCourse) => {
@@ -202,16 +204,8 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
   };
 
   const handleSelectModule = (mod: CachedModule) => {
-    if (isAssignmentModule(mod)) {
-      if (onOpenAssignment) {
-        onOpenAssignment(mod.assignmentId || `assign-${mod.id}`);
-      } else {
-        showToast('Assignment Selected', 'info', `Opening workspace for ${mod.title}`);
-      }
-    } else {
-      setActiveModule(mod);
-      setIsViewerOpen(true);
-    }
+    setActiveModule(mod);
+    setIsViewerOpen(true);
   };
 
   const filteredCourses = React.useMemo(() => {
@@ -615,12 +609,23 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
       {/* Module Viewer Modal when opened from Grid or Detail */}
       <ModuleViewerModal
         module={activeModule}
+        modulesList={selectedCourseId ? (modulesMap[selectedCourseId] || []) : []}
         isOpen={isViewerOpen}
         onClose={() => {
           setIsViewerOpen(false);
           setActiveModule(null);
         }}
+        onSelectModule={handleSelectModule}
         onDownloadModule={toggleModuleCache}
+        onOpenAssignment={assignmentId => {
+          setIsViewerOpen(false);
+          setActiveModule(null);
+          if (onOpenAssignment) {
+            onOpenAssignment(assignmentId);
+          } else {
+            showToast('Assignment Selected', 'info', `Opening workspace for assignment ${assignmentId}`);
+          }
+        }}
       />
     </div>
   );
