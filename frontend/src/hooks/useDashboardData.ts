@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db, seedInitialMockData, type CachedCourse, type CachedModule, type TransactionLogItem } from '@/lib/db';
 import { DashboardStats } from '@/types/dashboard';
-import { api } from '@/lib/api';
-import { mapCourseReadToCached, mapSubmissionReadToCached } from '@/lib/mappers';
-import { CourseReadDTO, SubmissionReadDTO } from '@/types/api';
+import { rehydrateStorage } from '@/lib/rehydrate';
 
 export function useDashboardData() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -44,42 +42,36 @@ export function useDashboardData() {
         completionRate: rate,
       });
 
-      // 2. Background sync with backend API if online
+      // 2. Background sync with backend API if online (via shared rehydration helper)
       if (typeof window !== 'undefined' && navigator.onLine) {
         try {
-          const [resCourses, resSubs] = await Promise.all([
-            api.get('/courses/', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null),
-            api.get('/assignments/my-submissions', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null),
-          ]);
+          await rehydrateStorage();
 
-          await db.transaction('rw', [db.cachedCourses, db.cachedSubmissions], async () => {
-            if (resCourses?.data && Array.isArray(resCourses.data) && resCourses.data.length > 0) {
-              const cachedCourses = resCourses.data.map((c: CourseReadDTO) => mapCourseReadToCached(c));
-              await db.cachedCourses.bulkPut(cachedCourses);
-            }
-
-            if (resSubs?.data && Array.isArray(resSubs.data) && resSubs.data.length > 0) {
-              const cachedSubs = resSubs.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
-              await db.cachedSubmissions.bulkPut(cachedSubs);
-            }
-          });
-
-          // Re-fetch updated IndexedDB data for UI
-          const [updatedCourses, updatedSubCount] = await Promise.all([
+          // Re-read all tables so module stats and assignment list reflect server data
+          const [updatedCourses, updatedModules, updatedSubCount] = await Promise.all([
             db.cachedCourses.toArray(),
+            db.cachedModules.toArray(),
             db.cachedSubmissions.count(),
           ]);
 
+          const updatedCompleted = updatedModules.filter(m => m.isCompleted).length;
+          const updatedTotal = updatedModules.length;
+
           setCourses(updatedCourses);
+          setAssignments(updatedModules.filter(m => m.type === 'assignment'));
           setStats(prev => ({
             ...prev,
             courseCount: updatedCourses.length,
+            totalModules: updatedTotal,
+            completedModules: updatedCompleted,
+            completionRate: updatedTotal > 0 ? Math.round((updatedCompleted / updatedTotal) * 100) : 0,
             submissionCount: updatedSubCount,
           }));
         } catch (syncErr) {
           // Suppress sync errors in background
         }
       }
+
     } catch (err) {
       console.error('Error loading dashboard data:', err);
     } finally {

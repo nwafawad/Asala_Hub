@@ -107,8 +107,12 @@ export const AssignmentListView: React.FC<AssignmentListViewProps> = ({ onSelect
         if (typeof window !== 'undefined' && navigator.onLine) {
           await rehydrateStorage();
           if (isMounted) {
-            const updatedSubs = await db.cachedSubmissions.toArray();
-            const updatedItems = buildAssignmentItems(modules, courses, updatedSubs);
+            const [updatedModules, updatedCourses, updatedSubs] = await Promise.all([
+              db.cachedModules.toArray(),
+              db.cachedCourses.toArray(),
+              db.cachedSubmissions.toArray(),
+            ]);
+            const updatedItems = buildAssignmentItems(updatedModules, updatedCourses, updatedSubs);
             setAssignments(updatedItems);
           }
         }

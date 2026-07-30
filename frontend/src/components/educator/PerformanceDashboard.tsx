@@ -90,8 +90,11 @@ export const PerformanceDashboard: React.FC = () => {
         if (typeof window !== 'undefined' && navigator.onLine) {
           await rehydrateStorage();
           if (isMounted) {
-            const updatedSubs = await db.cachedSubmissions.toArray();
-            calculateAndSetStats(enrollments, updatedSubs, modules);
+            const [updatedSubs, updatedModules] = await Promise.all([
+              db.cachedSubmissions.toArray(),
+              db.cachedModules.toArray(),
+            ]);
+            calculateAndSetStats(enrollments, updatedSubs, updatedModules);
           }
         }
       } catch (err) {

@@ -76,8 +76,23 @@ export const ProgressTracker: React.FC = () => {
       if (typeof window !== 'undefined' && navigator.onLine) {
         await rehydrateStorage();
         if (isMounted) {
-          const updatedSubs = await db.cachedSubmissions.toArray();
+          const [updatedSubs, updatedModules, updatedCourses] = await Promise.all([
+            db.cachedSubmissions.toArray(),
+            db.cachedModules.toArray(),
+            db.cachedCourses.toArray(),
+          ]);
           setSubmissions(updatedSubs);
+          const updatedCourseStats = updatedCourses.map(c => {
+            const mods = updatedModules.filter(m => m.courseId === c.id);
+            return {
+              id: c.id,
+              code: c.code,
+              title: c.title,
+              completed: mods.filter(m => m.isCompleted).length,
+              total: mods.length || 1,
+            };
+          });
+          setCourses(updatedCourseStats);
         }
       }
     }

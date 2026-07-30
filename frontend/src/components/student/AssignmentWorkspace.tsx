@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { db, seedInitialMockData, type AttachmentFile, type DraftSnapshot } from '@/lib/db';
+import { rehydrateStorage } from '@/lib/rehydrate';
 import { compressPayload, decompressPayload } from '@/lib/compress';
 import { generateUUID } from '@/lib/uuid';
 import { encryptText, decryptText } from '@/lib/crypto';
@@ -96,6 +97,11 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
     isFirstRender.current = true;
     async function loadDraft() {
       await seedInitialMockData();
+
+      // Sync modules from server before lookup so assignmentInfo fields are fresh
+      if (typeof window !== 'undefined' && navigator.onLine) {
+        await rehydrateStorage();
+      }
 
       // Attempt to load associated module/assignment info
       const modules = await db.cachedModules.toArray();

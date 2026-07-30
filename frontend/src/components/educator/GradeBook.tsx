@@ -76,8 +76,18 @@ export const GradeBook: React.FC = () => {
         if (typeof window !== 'undefined' && navigator.onLine) {
           await rehydrateStorage();
           if (isMounted) {
-            const updatedSubList = await db.cachedSubmissions.toArray();
+            const [updatedSubList, updatedModules] = await Promise.all([
+              db.cachedSubmissions.toArray(),
+              db.cachedModules.toArray(),
+            ]);
             setSubmissions(updatedSubList);
+            const total = updatedModules.length;
+            if (total > 0) {
+              setModuleMetrics({
+                avgCompletion: Math.round((updatedModules.filter(m => m.isCompleted).length / total) * 100),
+                cacheReadiness: Math.round((updatedModules.filter(m => m.isCachedOffline).length / total) * 100),
+              });
+            }
           }
         }
       } catch (err) {
