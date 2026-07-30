@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, CachedCohort, CohortEnrollment, TransactionLogItem } from '@/lib/db';
 import { generateUUID } from '@/lib/uuid';
+import { api } from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import {
@@ -39,6 +40,7 @@ export const CohortRoster: React.FC = () => {
   const loadCohortsAndEnrollments = async () => {
     try {
       setIsLoading(true);
+      // 1. Instant Load from IndexedDB cache
       const cohortList = await db.cachedCohorts.toArray();
       setCohorts(cohortList);
 
@@ -47,6 +49,22 @@ export const CohortRoster: React.FC = () => {
         setSelectedCohortId(activeId);
         const enrollmentList = await db.cohortEnrollments.where('cohortId').equals(activeId).toArray();
         setEnrollments(enrollmentList);
+      }
+      setIsLoading(false);
+
+      // 2. Background sync with server API if online
+      if (typeof window !== 'undefined' && navigator.onLine) {
+        try {
+          const res = await api.get('/courses/', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null);
+          if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+            const updatedCohorts = await db.cachedCohorts.toArray();
+            if (updatedCohorts.length > 0) {
+              setCohorts(updatedCohorts);
+            }
+          }
+        } catch (syncErr) {
+          // Suppress sync errors in background
+        }
       }
     } catch (err) {
       console.error('Error loading cohort roster:', err);

@@ -2,6 +2,9 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { db, seedInitialMockData, type CachedSubmission } from '@/lib/db';
+import { api } from '@/lib/api';
+import { mapSubmissionReadToCached } from '@/lib/mappers';
+import { SubmissionReadDTO } from '@/types/api';
 import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
 import { useOverlay } from '@/context/OverlayContext';
@@ -36,6 +39,7 @@ export const ProgressTracker: React.FC = () => {
   useEffect(() => {
     async function loadData() {
       await seedInitialMockData();
+      // 1. Instant Load from IndexedDB cache
       const [allSubmissions, allCourses, allModules, logs] = await Promise.all([
         db.cachedSubmissions.toArray(),
         db.cachedCourses.toArray(),
@@ -63,10 +67,26 @@ export const ProgressTracker: React.FC = () => {
       });
 
       setCourses(courseStats);
-      setTxLogs(logs);
+      setTxLogs(logs.slice(-5).reverse());
+
+      // 2. Background sync with server API if online
+      if (typeof window !== 'undefined' && navigator.onLine) {
+        try {
+          const res = await api.get('/assignments/my-submissions', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null);
+          if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+            const cachedSubs = res.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
+            await db.cachedSubmissions.bulkPut(cachedSubs);
+
+            const updatedSubs = await db.cachedSubmissions.toArray();
+            setSubmissions(updatedSubs);
+          }
+        } catch (syncErr) {
+          // Suppress sync errors in background
+        }
+      }
     }
     loadData();
-  }, [pendingCount, pendingSubmissionsCount]);
+  }, []);
 
   const selectedSub = useMemo(() => {
     return submissions.find(s => s.id === selectedSubId) || submissions[0] || null;

@@ -11,21 +11,16 @@ export async function rehydrateStorage(): Promise<void> {
   if (typeof window === 'undefined' || !navigator.onLine) return;
 
   try {
-    const courseCount = await db.cachedCourses.count();
-    const subCount = await db.cachedSubmissions.count();
-
-    const res = await api.get('/courses/').catch(() => null);
-    if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-      const cachedCourses = res.data.map((c: CourseReadDTO) => mapCourseReadToCached(c));
+    const resCourses = await api.get('/courses/', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null);
+    if (resCourses?.data && Array.isArray(resCourses.data) && resCourses.data.length > 0) {
+      const cachedCourses = resCourses.data.map((c: CourseReadDTO) => mapCourseReadToCached(c));
       await db.cachedCourses.bulkPut(cachedCourses);
     }
 
-    if (subCount === 0) {
-      const res = await api.get('/assignments/my-submissions').catch(() => null);
-      if (res?.data && Array.isArray(res.data)) {
-        const cachedSubs = res.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
-        await db.cachedSubmissions.bulkPut(cachedSubs);
-      }
+    const resSubs = await api.get('/assignments/my-submissions', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null);
+    if (resSubs?.data && Array.isArray(resSubs.data) && resSubs.data.length > 0) {
+      const cachedSubs = resSubs.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
+      await db.cachedSubmissions.bulkPut(cachedSubs);
     }
   } catch (err) {
     console.warn('Automatic storage re-hydration notice:', err);

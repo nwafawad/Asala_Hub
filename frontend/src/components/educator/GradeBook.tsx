@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { db, CachedSubmission, TransactionLogItem } from '@/lib/db';
 import { generateUUID } from '@/lib/uuid';
+import { api } from '@/lib/api';
+import { mapSubmissionReadToCached } from '@/lib/mappers';
+import { SubmissionReadDTO } from '@/types/api';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { useAuth } from '@/context/AuthContext';
@@ -42,6 +45,7 @@ export const GradeBook: React.FC = () => {
   const loadSubmissions = async () => {
     try {
       setIsLoading(true);
+      // 1. Instant Load from IndexedDB cache
       const [subList, moduleList] = await Promise.all([
         db.cachedSubmissions.toArray(),
         db.cachedModules.toArray(),
@@ -58,6 +62,26 @@ export const GradeBook: React.FC = () => {
         });
       } else {
         setModuleMetrics({ avgCompletion: 0, cacheReadiness: 0 });
+      }
+      setIsLoading(false);
+
+      // 2. Background sync with server API if online
+      if (typeof window !== 'undefined' && navigator.onLine) {
+        try {
+          const res = await api.get('/assignments/my-submissions', {
+            headers: { 'X-Suppress-401-Event': 'true' },
+          }).catch(() => null);
+
+          if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+            const cachedSubs = res.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
+            await db.cachedSubmissions.bulkPut(cachedSubs);
+
+            const updatedSubList = await db.cachedSubmissions.toArray();
+            setSubmissions(updatedSubList);
+          }
+        } catch (syncErr) {
+          // Suppress sync errors in background
+        }
       }
     } catch (err) {
       console.error('Error loading submissions for GradeBook:', err);
