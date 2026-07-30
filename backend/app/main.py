@@ -7,15 +7,25 @@ registers global domain exception handlers, and mounts API routers.
 
 from __future__ import annotations
 
+import os
+import json
 import logging
+import asyncio
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Depends, Response, status
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.gzip import GZipMiddleware
 from sqlmodel import Session, select
 
-import asyncio
-from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.core.exceptions import DomainException, domain_exception_handler
-from app.core.middleware import security_and_logging_middleware, setup_cors
+from app.core.middleware import (
+    security_and_logging_middleware,
+    gzip_request_decompression_middleware,
+    setup_cors,
+)
 from app.core.database import get_session
 from app.routers import auth, courses, modules, assignments, sync, admin
 from app.services.campus_sync_service import run_campus_sync_loop
@@ -43,14 +53,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
-from fastapi.middleware.gzip import GZipMiddleware
-from app.core.middleware import (
-    security_and_logging_middleware,
-    gzip_request_decompression_middleware,
-    setup_cors,
-)
-
 # Register custom domain exception handlers
 app.add_exception_handler(DomainException, domain_exception_handler)
 
@@ -63,11 +65,6 @@ app.middleware("http")(security_and_logging_middleware)
 
 # Configure CORS origins
 setup_cors(app)
-
-
-
-import json
-from datetime import datetime, timezone
 
 
 def _check_backup_health() -> dict:
@@ -145,9 +142,6 @@ def healthz_check(response: Response, session: Session = Depends(get_session)):
     }
 
 
-
-import os
-from fastapi.staticfiles import StaticFiles
 
 # Include feature routers
 app.include_router(auth.router)

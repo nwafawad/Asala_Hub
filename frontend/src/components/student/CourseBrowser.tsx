@@ -119,8 +119,8 @@ export const CourseBrowser: React.FC<CourseBrowserProps> = ({ onOpenAssignment }
                   sizeMb: 1.5,
                   content: m.content || '',
                   assignmentId: modType === 'assignment' ? `assign-${m.id}` : undefined,
-                  dueDate: m.due_date || '2026-08-30',
-                  points: m.points || 100,
+                  dueDate: m.due_date,
+                  points: m.points,
                 });
               });
             }

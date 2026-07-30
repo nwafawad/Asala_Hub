@@ -1,6 +1,6 @@
 import uuid
 from typing import List, TYPE_CHECKING
-from sqlmodel import Field, Relationship
+from sqlmodel import Field, Relationship, Index
 
 from app.models.base import TimestampModel, SoftDeleteMixin
 
@@ -8,9 +8,6 @@ if TYPE_CHECKING:
     from app.models.user import User
     from app.models.module import Module
     from app.models.assignment import Assignment
-
-
-from sqlmodel import Field, Relationship, Index
 
 
 class Course(TimestampModel, SoftDeleteMixin, table=True):

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union, Optional
+import hashlib
+import secrets
 from fastapi import Response
 from jose import jwt
 import bcrypt
@@ -70,8 +72,6 @@ def decode_access_token(token: str) -> dict[str, Any]:
     """
     return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
 
-import hashlib
-import secrets
 
 def hash_refresh_token(token: str) -> str:
     """

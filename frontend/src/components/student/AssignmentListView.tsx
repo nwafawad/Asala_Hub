@@ -69,27 +69,7 @@ export const AssignmentListView: React.FC<AssignmentListViewProps> = ({ onSelect
         m => m.type === 'assignment' || Boolean(m.assignmentId) || m.title.toLowerCase().includes('assignment')
       );
 
-      const items: AssignmentItem[] = (assignmentModules.length > 0
-        ? assignmentModules
-        : [
-            {
-              id: 'mod-assign-1',
-              courseId: 'course-1',
-              title: 'Offline Sync Architecture Reflection & Report',
-              assignmentId: 'assign-1',
-              points: 100,
-              dueDate: '2026-08-15',
-            },
-            {
-              id: 'mod-assign-2',
-              courseId: 'course-2',
-              title: 'Data Integrity & Conflict Resolution Case Study',
-              assignmentId: 'assign-2',
-              points: 100,
-              dueDate: '2026-08-30',
-            },
-          ]
-      ).map((m: any) => {
+      const items: AssignmentItem[] = assignmentModules.map((m: any) => {
         const parentCourse = coursesMap.get(m.courseId);
         const sub = submissionsMap.get(m.assignmentId || m.id);
 
@@ -103,10 +83,10 @@ export const AssignmentListView: React.FC<AssignmentListViewProps> = ({ onSelect
           id: m.id,
           assignmentId: m.assignmentId || m.id,
           title: m.title,
-          courseCode: parentCourse?.code || 'COURSE-101',
+          courseCode: parentCourse?.code || 'COURSE',
           courseTitle: parentCourse?.title || 'General Curriculum',
-          points: m.points || 100,
-          dueDate: m.dueDate || '2026-08-30',
+          points: m.points,
+          dueDate: m.dueDate,
           status,
           score: sub?.score,
           submittedAt: sub?.submittedAt,
@@ -259,12 +239,14 @@ export const AssignmentListView: React.FC<AssignmentListViewProps> = ({ onSelect
                   <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap pt-1">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-primary" />
-                      Due: {item.dueDate}
+                      {item.dueDate ? `Due: ${item.dueDate}` : 'No due date set'}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <Award className="w-3.5 h-3.5 text-primary" />
-                      {item.points} Points
-                    </span>
+                    {item.points != null && (
+                      <span className="flex items-center gap-1">
+                        <Award className="w-3.5 h-3.5 text-primary" />
+                        {item.points} Points
+                      </span>
+                    )}
                     {item.hasAttachments && (
                       <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                         <Paperclip className="w-3.5 h-3.5" />

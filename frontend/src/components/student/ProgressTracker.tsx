@@ -101,7 +101,7 @@ export const ProgressTracker: React.FC = () => {
               <p><strong>Student:</strong> ${sub.studentName}</p>
               <p><strong>Submitted At:</strong> ${new Date(sub.submittedAt).toLocaleString()}</p>
               <p><strong>Status:</strong> ${sub.syncStatus.toUpperCase()}</p>
-              <p><strong>Receipt Hash:</strong> <span class="hash">${sub.receiptHash || 'hash-8a92bc110f'}</span></p>
+              <p><strong>Receipt Hash:</strong> <span class="hash">${sub.receiptHash || `hash-${sub.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10)}`}</span></p>
             </div>
           </body>
         </html>
@@ -173,7 +173,7 @@ export const ProgressTracker: React.FC = () => {
       {
         title: t.progressTracker.step5,
         desc: isSynced
-          ? `Server validated & sequence #${selectedSub.serverSeqNum || '101'} acknowledged`
+          ? `Server validated & ${selectedSub.serverSeqNum != null ? `sequence #${selectedSub.serverSeqNum}` : 'server sequence'} acknowledged`
           : isFailed
           ? 'Rejection / Conflict encountered'
           : 'Awaiting server sequence ACK',

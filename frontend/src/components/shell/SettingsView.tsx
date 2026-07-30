@@ -1,25 +1,72 @@
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
-import { useSync } from '@/context/SyncContext';
 import { db } from '@/lib/db';
-import { KeyRound, Lock, ShieldCheck, Check, Sparkles, User, HardDrive, Plus, RefreshCw, Download, Trash2, ShieldAlert, FileCheck } from 'lucide-react';
+import {
+  KeyRound,
+  Lock,
+  ShieldCheck,
+  Check,
+  Sparkles,
+  User,
+  HardDrive,
+  Download,
+  Trash2,
+  ShieldAlert,
+  FileCheck,
+  RefreshCw,
+} from 'lucide-react';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
-import { isDebugMode } from '@/lib/debug';
-import { SecuritySettingsPanel } from '@/components/shell/settings/SecuritySettingsPanel';
-import { StorageMetricsPanel } from '@/components/shell/settings/StorageMetricsPanel';
 
 export const SettingsView: React.FC = () => {
   const { user, setQuickPin, hasPinConfigured, logout } = useAuth();
   const { t } = useI18n();
   const { showToast } = useOverlay();
-  const { pendingCount, addMockOfflineTransaction, syncNow } = useSync();
 
+  // Active Tab: 'profile' | 'storage'
+  const [activeTab, setActiveTab] = useState<'profile' | 'storage'>('profile');
+
+  // PIN Form State
   const [pin, setPin] = useState<string>('');
   const [confirmPin, setConfirmPin] = useState<string>('');
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState<boolean>(false);
+
+  // Storage Metrics State
+  const [storageMetrics, setStorageMetrics] = useState({
+    usedMb: 12.4,
+    quotaMb: 500,
+    usagePercent: 2.5,
+    pendingItems: 0,
+  });
+
+  const loadStorageInfo = async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.estimate) {
+        const estimate = await navigator.storage.estimate();
+        const used = Math.round(((estimate.usage || 0) / (1024 * 1024)) * 10) / 10;
+        const quota = Math.round(((estimate.quota || 524288000) / (1024 * 1024)) * 10) / 10;
+        const pct = Math.round((used / Math.max(quota, 1)) * 100);
+        const pendingCount = await db.transactionLogs.where('status').equals('pending').count();
+
+        setStorageMetrics({
+          usedMb: used,
+          quotaMb: quota,
+          usagePercent: pct,
+          pendingItems: pendingCount,
+        });
+      }
+    } catch (err) {
+      console.error('Error loading storage estimate:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadStorageInfo();
+  }, []);
 
   const handleExportData = async () => {
     try {
@@ -43,13 +90,13 @@ export const SettingsView: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `asala_student_data_export_${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `asala_data_export_${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      showToast('Data Exported', 'success', 'Downloaded complete JSON copy of your local data.');
+      showToast('Data Exported', 'success', 'Downloaded complete copy of your local data.');
     } catch (err) {
       console.error('Export failed:', err);
       showToast('Export Failed', 'error', 'Could not export local data.');
@@ -62,17 +109,17 @@ export const SettingsView: React.FC = () => {
       localStorage.clear();
       sessionStorage.clear();
       await db.delete();
-      showToast('Local Data Purged', 'info', 'All IndexedDB records cleared.');
+      showToast('Local Data Purged', 'info', 'All local records cleared.');
     } catch (err) {
       console.error('Delete data failed:', err);
-      showToast('Purge Failed', 'error', 'Could not clear local database.');
+      showToast('Purge Failed', 'error', 'Could not clear local storage.');
     }
   };
 
   const handleSavePin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pin || pin.length < 4) {
-      showToast('Invalid PIN', 'warning', 'Please enter a 4-digit PIN code.');
+      showToast('Invalid Passcode', 'warning', 'Please enter a 4-digit PIN code.');
       return;
     }
 
@@ -88,7 +135,7 @@ export const SettingsView: React.FC = () => {
       setConfirmPin('');
       setTimeout(() => setIsSaved(false), 3000);
     } catch (err) {
-      showToast('Failed to Save PIN', 'error', 'Could not update your security settings.');
+      showToast('Failed to Save Passcode', 'error', 'Could not update your security settings.');
     }
   };
 
@@ -97,397 +144,327 @@ export const SettingsView: React.FC = () => {
       await setQuickPin(null);
       setPin('');
       setConfirmPin('');
+      showToast('Passcode Removed', 'info', 'Quick passcode unlock disabled.');
     } catch (err) {
-      showToast('Failed to Remove PIN', 'error', 'Could not remove quick PIN.');
+      showToast('Failed to Remove Passcode', 'error', 'Could not remove quick passcode.');
     }
   };
 
   return (
     <div className="flex flex-col gap-8 max-w-4xl mx-auto animate-in fade-in duration-200">
-      {/* Settings Header */}
-      <div className="flex flex-col gap-1">
-        <h2 className="text-2xl font-bold font-heading text-foreground">
-          {t.nav.settings} & Security Preferences
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          Manage your offline quick re-authentication PIN, local storage limits, and account preferences.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Quick PIN Setup & Management Card */}
-        <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col justify-between gap-6">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="p-3 rounded-xl bg-primary/10 text-primary">
-                <KeyRound className="w-6 h-6" />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-foreground">
-                  {hasPinConfigured ? 'PIN Active (••••)' : 'No PIN Set'}
-                </span>
-                <InfoTooltip
-                  title="Quick PIN Security"
-                  content="Your 4-digit PIN is stored encrypted locally in IndexedDB for fast offline session renewal."
-                  position="bottom"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <h3 className="text-base font-bold font-heading text-foreground">
-                4-Digit Quick PIN Management
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Configure or update a 4-digit passcode for instant offline session renewal when disconnected.
-              </p>
-            </div>
-
-            <form onSubmit={handleSavePin} className="flex flex-col gap-3 mt-1">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-foreground">
-                  New 4-Digit PIN Code
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="password"
-                    maxLength={4}
-                    pattern="[0-9]*"
-                    inputMode="numeric"
-                    value={pin}
-                    onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
-                    placeholder="••••"
-                    className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-background text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-foreground">
-                  Confirm 4-Digit PIN Code
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="password"
-                    maxLength={4}
-                    pattern="[0-9]*"
-                    inputMode="numeric"
-                    value={confirmPin}
-                    onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
-                    placeholder="••••"
-                    className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-background text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-                {confirmPin.length > 0 && confirmPin !== pin && (
-                  <span className="text-[10px] text-rose-500 font-semibold mt-0.5">
-                    PIN codes do not match
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center gap-2 mt-1">
-                <button
-                  type="submit"
-                  disabled={!pin || pin.length < 4 || pin !== confirmPin}
-                  className="flex-1 h-10 w-full rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                >
-                  {isSaved ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>PIN Saved!</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>{hasPinConfigured ? 'Update 4-Digit PIN' : 'Save 4-Digit PIN'}</span>
-                    </>
-                  )}
-                </button>
-
-                {hasPinConfigured && (
-                  <button
-                    type="button"
-                    onClick={handleRemovePin}
-                    className="h-10 px-4 rounded-xl border border-border bg-muted/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition-colors cursor-pointer"
-                  >
-                    Remove PIN
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-
-          <div className="p-3 rounded-xl bg-muted/40 border border-border/50 text-[11px] text-muted-foreground flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-            <span>PIN is encrypted and stored locally in IndexedDB for offline authentication.</span>
-          </div>
+      {/* Header Banner */}
+      <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-2xl font-bold font-heading text-foreground">
+            Account & Security Settings
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Manage your personal profile, quick offline unlock passcode, and device data preferences.
+          </p>
         </div>
 
-        {/* Account Info & Local Session Card */}
-        <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col justify-between gap-6">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <User className="w-6 h-6" />
-              </div>
-              <div className="flex items-center gap-1.5">
+        <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider shrink-0 self-start md:self-center">
+          <User className="w-4 h-4" />
+          <span>{user?.role || 'User'}</span>
+        </div>
+      </div>
+
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted border border-border self-start">
+        <button
+          onClick={() => setActiveTab('profile')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'profile'
+              ? 'bg-card text-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <User className="w-4 h-4 text-primary" />
+          <span>Profile & Passcode Security</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('storage')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'storage'
+              ? 'bg-card text-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <HardDrive className="w-4 h-4 text-emerald-500" />
+          <span>Device Storage & Privacy</span>
+        </button>
+      </div>
+
+      {activeTab === 'profile' ? (
+        /* Tab 1: Profile & Passcode Security */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* User Profile Card */}
+          <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col justify-between gap-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary">
+                  <User className="w-6 h-6" />
+                </div>
                 <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 uppercase">
-                  {user?.role || 'STUDENT'}
+                  Active Profile
                 </span>
-                <InfoTooltip
-                  title="Account Role & Permissions"
-                  content="Your profile role determines offline workspace capabilities and data access."
-                  position="bottom"
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <h3 className="text-base font-bold font-heading text-foreground">
+                  Account Details
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Your registered institutional account information.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3.5 pt-2">
+                <div className="flex items-center justify-between text-xs border-b border-border pb-2.5">
+                  <span className="text-muted-foreground">Full Name:</span>
+                  <span className="font-semibold text-foreground">{user?.fullName || 'User'}</span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs border-b border-border pb-2.5">
+                  <span className="text-muted-foreground">Email Address:</span>
+                  <span className="font-mono text-foreground">{user?.email || '—'}</span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs border-b border-border pb-2.5">
+                  <span className="text-muted-foreground">System Role:</span>
+                  <span className="font-semibold text-primary capitalize">{user?.role || 'Student'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-muted/40 border border-border/50 text-[11px] text-muted-foreground flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>Session encrypted and authenticated for your active role.</span>
+            </div>
+          </div>
+
+          {/* Quick PIN Passcode Management Card */}
+          <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col justify-between gap-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary">
+                  <KeyRound className="w-6 h-6" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-foreground">
+                    {hasPinConfigured ? 'PIN Active (••••)' : 'No PIN Set'}
+                  </span>
+                  <InfoTooltip
+                    title="Quick PIN Passcode"
+                    content="Set a 4-digit passcode for instant offline re-authentication without typing your password."
+                    position="bottom"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <h3 className="text-base font-bold font-heading text-foreground">
+                  4-Digit Quick Passcode
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Fast passcode for instant unlock when offline or reconnecting.
+                </p>
+              </div>
+
+              <form onSubmit={handleSavePin} className="flex flex-col gap-3 mt-1">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-foreground">
+                    New 4-Digit Passcode
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="password"
+                      maxLength={4}
+                      pattern="[0-9]*"
+                      inputMode="numeric"
+                      value={pin}
+                      onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
+                      placeholder="••••"
+                      className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-background text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-foreground">
+                    Confirm Passcode
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="password"
+                      maxLength={4}
+                      pattern="[0-9]*"
+                      inputMode="numeric"
+                      value={confirmPin}
+                      onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                      placeholder="••••"
+                      className="w-full h-10 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-xl border border-border bg-background text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
+                  {confirmPin.length > 0 && confirmPin !== pin && (
+                    <span className="text-[10px] text-rose-500 font-semibold mt-0.5">
+                      Passcode numbers do not match
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-2 mt-1">
+                  <button
+                    type="submit"
+                    disabled={!pin || pin.length < 4 || pin !== confirmPin}
+                    className="flex-1 h-10 w-full rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  >
+                    {isSaved ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Passcode Saved!</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>{hasPinConfigured ? 'Update Passcode' : 'Save Passcode'}</span>
+                      </>
+                    )}
+                  </button>
+
+                  {hasPinConfigured && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePin}
+                      className="h-10 px-4 rounded-xl border border-border bg-muted/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            <div className="p-3 rounded-xl bg-muted/40 border border-border/50 text-[11px] text-muted-foreground flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+              <span>Passcode is securely saved locally for instant unlock.</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Tab 2: Storage & Privacy */
+        <div className="flex flex-col gap-6">
+          {/* Storage Quota Card */}
+          <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col gap-5">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <HardDrive className="w-5 h-5 text-primary" />
+                <h3 className="text-base font-bold font-heading text-foreground">
+                  Device Storage & Saved Content
+                </h3>
+              </div>
+              <button
+                onClick={loadStorageInfo}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-background hover:bg-muted text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-primary" />
+                <span>Refresh Usage</span>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2 p-4 rounded-xl bg-background border border-border">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-foreground flex items-center gap-1.5">
+                  <HardDrive className="w-4 h-4 text-primary" />
+                  Local Storage Space Used
+                </span>
+                <span className="font-bold text-foreground">
+                  {storageMetrics.usedMb} MB / {storageMetrics.quotaMb} MB ({storageMetrics.usagePercent}%)
+                </span>
+              </div>
+              <div className="w-full h-2.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    storageMetrics.usagePercent > 80
+                      ? 'bg-rose-500'
+                      : storageMetrics.usagePercent > 50
+                      ? 'bg-amber-500'
+                      : 'bg-primary'
+                  }`}
+                  style={{ width: `${Math.max(storageMetrics.usagePercent, 2)}%` }}
                 />
               </div>
             </div>
+          </div>
 
-            <div className="flex flex-col gap-1">
-              <h3 className="text-base font-bold font-heading text-foreground">
-                Account & Local Vault
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Active local profile details stored securely in browser cache.
-              </p>
+          {/* Data Export & Clear Storage Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Export Data Card */}
+            <div className="p-5 rounded-2xl border border-border bg-card shadow-xs flex flex-col justify-between gap-4">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-emerald-500" />
+                  <span className="text-xs font-bold text-foreground">Export Personal Data</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Download a complete backup copy of your saved study notes, offline drafts, and local activity records.
+                </p>
+              </div>
+              <button
+                onClick={handleExportData}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs self-start"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export My Data</span>
+              </button>
             </div>
 
-            <div className="flex flex-col gap-3.5 pt-2">
-              <div className="flex items-center justify-between text-xs border-b border-border pb-2.5">
-                <span className="text-muted-foreground">Full Name:</span>
-                <span className="font-semibold text-foreground">{user?.fullName || 'Asala Student'}</span>
+            {/* Clear Device Storage Card */}
+            <div className="p-5 rounded-2xl border border-destructive/30 bg-destructive/5 shadow-xs flex flex-col justify-between gap-4">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                  <span className="text-xs font-bold text-foreground">Clear Device Storage</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Reset cached courses, offline submissions, and local credentials stored on this device.
+                </p>
               </div>
-
-              <div className="flex items-center justify-between text-xs border-b border-border pb-2.5">
-                <span className="text-muted-foreground">Email Address:</span>
-                <span className="font-mono text-foreground">{user?.email || '—'}</span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs border-b border-border pb-2.5">
-                <span className="text-muted-foreground">Offline Storage:</span>
-                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">IndexedDB Active</span>
-              </div>
+              <button
+                onClick={() => setIsConfirmDeleteOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs self-start"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Clear Local Data</span>
+              </button>
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-muted/40 border border-border/50 text-[11px] text-muted-foreground flex items-center gap-2">
-            <HardDrive className="w-4 h-4 text-primary shrink-0" />
-            <span>Session auto-renews smoothly upon entering your 4-digit PIN.</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Relocated System Telemetry & Developer Tools Card Section */}
-      <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col gap-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-          <div className="flex flex-col gap-1">
-            <h3 className="text-base font-bold font-heading text-foreground flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-primary" />
-              System Telemetry & Developer Tools
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Technical inspection parameters, offline transaction log simulation, and intranet sync triggers.
+          {/* Privacy Notice */}
+          <div className="p-5 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-primary" />
+              <span className="text-xs font-bold text-foreground">Privacy & Data Governance Notice</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Your offline learning progress and drafts are stored locally on your device and synchronized securely with the campus network whenever connected. Local cache retention follows institutional privacy policies.
             </p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={async () => {
-                await addMockOfflineTransaction('CREATE_SUBMISSION');
-                showToast('Log added to IndexedDB', 'info', 'Saved transaction log offline.');
-              }}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Simulate Offline Log</span>
-            </button>
-
-            <button
-              onClick={async () => {
-                showToast('Syncing deltas...', 'info');
-                await syncNow();
-              }}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border bg-background text-foreground text-xs font-semibold hover:bg-muted transition-colors cursor-pointer"
-            >
-              <RefreshCw className="w-4 h-4 text-primary" />
-              <span>Trigger Sync</span>
-            </button>
-          </div>
         </div>
-
-        {/* Telemetry Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-1">
-            <span className="text-[11px] font-medium text-muted-foreground">Offline Transaction Queue</span>
-            <span className="text-lg font-mono font-bold text-foreground">{pendingCount} Payloads</span>
-            <span className="text-[10px] text-muted-foreground">Buffered in Dexie IndexedDB</span>
-          </div>
-
-          <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-1">
-            <span className="text-[11px] font-medium text-muted-foreground">Intranet Protocol</span>
-            <span className="text-lg font-mono font-bold text-emerald-600 dark:text-emerald-400">TLS 1.2+ / HTTP</span>
-            {/* FR 3.1-FR 3.3 Automated Cache Synchronization Engine */}
-            <span className="text-[10px] text-muted-foreground">Sync Protocol Active</span>
-          </div>
-
-          <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-1">
-            <span className="text-[11px] font-medium text-muted-foreground">Payload Packaging</span>
-            <span className="text-lg font-mono font-bold text-primary">Flat JSON Delta</span>
-            <span className="text-[10px] text-muted-foreground">LZ-String Compressed</span>
-          </div>
-        </div>
-
-        {isDebugMode() && (
-          <div className="flex flex-col gap-2 pt-2 border-t border-border">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-foreground">Integrated Offline Engine Modules</span>
-              <InfoTooltip
-                title="Offline Engine Architecture"
-                content="Overview of active client-side engines: 1.5s debounced autosave, binary blob storage, and cryptographic AES-GCM re-authentication."
-                position="bottom"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2 text-xs">
-              <span className="px-2.5 py-1 rounded-lg bg-muted border border-border text-foreground font-medium">Auth Gate & Role Auto-Route</span>
-              <span className="px-2.5 py-1 rounded-lg bg-muted border border-border text-foreground font-medium">2s IndexedDB Auto-Save</span>
-              <span className="px-2.5 py-1 rounded-lg bg-muted border border-border text-foreground font-medium">Offline Blob Attachments</span>
-              <span className="px-2.5 py-1 rounded-lg bg-muted border border-border text-foreground font-medium">In-Place Re-Auth Modal</span>
-              <span className="px-2.5 py-1 rounded-lg bg-muted border border-border text-foreground font-medium">Printable Submission Receipts</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Data & Privacy Governance Section (CR-1, CR-2, CR-3) */}
-      <div className="p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-6">
-        <div className="flex items-center justify-between border-b border-border pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <ShieldAlert className="w-5 h-5" />
-            </div>
-            <div className="flex flex-col">
-              <h3 className="text-base font-bold font-heading text-foreground">
-                Data Rights & Privacy Governance
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Manage consent, self-service data export, and local device data retention.
-              </p>
-            </div>
-          </div>
-          <InfoTooltip
-            title="Institutional Consent Verified"
-            content="Institutional consent records and offline data retention policies are verified and active for your account."
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Consent Record Card */}
-          <div className="p-4 rounded-xl border border-border bg-background flex flex-col justify-between gap-3">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-foreground">📋 Consent & Offline Data Record</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Accepted: <span className="font-semibold text-foreground">{user ? new Date().toLocaleDateString() : 'Active'}</span>
-                <br />
-                Policy Version: <span className="font-mono text-foreground font-semibold">Asala Hub Data Policy v1.0</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <Check className="w-3 h-3" />
-                Consent Active
-              </span>
-              <InfoTooltip
-                title="Institutional Privacy Consent"
-                content="Institutional consent records and offline data retention policies are verified and active for your account."
-                position="bottom"
-              />
-            </div>
-          </div>
-
-          {/* Guardian Consent Status Card (CR-2) */}
-          <div className="p-4 rounded-xl border border-border bg-background flex flex-col justify-between gap-3">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-amber-500" />
-                <span className="text-xs font-bold text-foreground">🔒 Guardian / Institutional Approval</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Status: <span className="font-semibold text-emerald-600 dark:text-emerald-400">Verified / Institutional Consent Active</span>
-                <br />
-                Minor Protection Protocol: Enabled
-              </p>
-            </div>
-            <button
-              onClick={() => showToast('Guardian Consent Verified', 'success', 'Institutional guardian approval record is up to date.')}
-              className="text-[11px] font-semibold text-primary hover:underline self-start cursor-pointer"
-            >
-              View Institutional Record
-            </button>
-          </div>
-
-          {/* Export My Data Card */}
-          <div className="p-4 rounded-xl border border-border bg-background flex flex-col justify-between gap-3">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <FileCheck className="w-4 h-4 text-emerald-500" />
-                <span className="text-xs font-bold text-foreground">Self-Service Data Export</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Download a complete JSON copy of all your local IndexedDB records, decrypted submission drafts, notes, and session history.
-              </p>
-            </div>
-            <button
-              onClick={handleExportData}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs self-start"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export My Data (JSON)</span>
-            </button>
-          </div>
-
-          {/* Delete My Local Data Card */}
-          <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex flex-col justify-between gap-3">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <Trash2 className="w-4 h-4 text-destructive" />
-                <span className="text-xs font-bold text-foreground">Purge Local Device Storage</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Clear all cached courses, offline submissions, and local credentials stored on this device.
-              </p>
-            </div>
-            <button
-              onClick={() => setIsConfirmDeleteOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs self-start"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Delete My Local Data</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 30-Day Data Retention Policy Banner (CR-3) */}
-        <div className="p-4 rounded-xl border border-border bg-muted/20 text-xs text-muted-foreground leading-relaxed flex flex-col gap-1">
-          <span className="font-semibold text-foreground">Data Retention & Minor Protection Notice</span>
-          <span>
-            Asala Hub campus nodes store offline data on shared or budget student devices for up to 30 days following the last successful intranet synchronization. Institutional enrollment agreements cover minor consent per CR-1.
-          </span>
-        </div>
-      </div>
+      )}
 
       {/* Confirmation Modal for Delete Local Data */}
       {isConfirmDeleteOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="max-w-md w-full p-6 rounded-2xl bg-card border border-border shadow-2xl flex flex-col gap-4">
             <h3 className="text-lg font-bold font-heading text-foreground">
-              Confirm Purging Local Data?
+              Confirm Clearing Local Storage?
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              This will permanently delete all offline course modules, un-synced drafts, and personal notes stored in this browser's IndexedDB storage.
+              This will remove saved offline modules and personal notes stored on this browser device.
             </p>
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
@@ -503,7 +480,7 @@ export const SettingsView: React.FC = () => {
                 }}
                 className="px-4 py-2 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
               >
-                Confirm Delete & Sign Out
+                Confirm Clear & Sign Out
               </button>
             </div>
           </div>

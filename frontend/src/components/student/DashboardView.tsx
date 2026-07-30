@@ -167,7 +167,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-amber-500" />
-                      Due: {item.dueDate || '2026-08-30'} · {item.points || 100} Points
+                      {item.dueDate ? `Due: ${item.dueDate}` : 'No due date set'}
+                      {item.points != null ? ` · ${item.points} Points` : ''}
                     </span>
                   </div>
 

@@ -6,6 +6,7 @@ and CORS origin management.
 """
 
 import time
+import gzip
 import logging
 from typing import List
 from fastapi import FastAPI, Request, Response
@@ -14,8 +15,6 @@ from app.core.config import settings
 
 logger = logging.getLogger("asala_hub")
 
-
-import gzip
 
 async def gzip_request_decompression_middleware(request: Request, call_next):
     """

@@ -5,6 +5,7 @@ import { db, CachedSubmission, TransactionLogItem } from '@/lib/db';
 import { generateUUID } from '@/lib/uuid';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
+import { useAuth } from '@/context/AuthContext';
 import { SubmissionGrader } from './SubmissionGrader';
 import {
   FileCheck,
@@ -24,8 +25,10 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
 export const GradeBook: React.FC = () => {
   const { t } = useI18n();
+  const { user } = useAuth();
   const { showToast } = useOverlay();
   const [submissions, setSubmissions] = useState<CachedSubmission[]>([]);
+  const [moduleMetrics, setModuleMetrics] = useState({ avgCompletion: 0, cacheReadiness: 0 });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'assignments' | 'modules'>('assignments');
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,8 +42,23 @@ export const GradeBook: React.FC = () => {
   const loadSubmissions = async () => {
     try {
       setIsLoading(true);
-      const subList = await db.cachedSubmissions.toArray();
+      const [subList, moduleList] = await Promise.all([
+        db.cachedSubmissions.toArray(),
+        db.cachedModules.toArray(),
+      ]);
       setSubmissions(subList);
+
+      const totalModules = moduleList.length;
+      if (totalModules > 0) {
+        const completedCount = moduleList.filter(m => m.isCompleted).length;
+        const cachedCount = moduleList.filter(m => m.isCachedOffline).length;
+        setModuleMetrics({
+          avgCompletion: Math.round((completedCount / totalModules) * 100),
+          cacheReadiness: Math.round((cachedCount / totalModules) * 100),
+        });
+      } else {
+        setModuleMetrics({ avgCompletion: 0, cacheReadiness: 0 });
+      }
     } catch (err) {
       console.error('Error loading submissions for GradeBook:', err);
     } finally {
@@ -67,7 +85,7 @@ export const GradeBook: React.FC = () => {
         feedback,
         gradeStatus,
         gradedAt: timestamp,
-        educatorId: 'user-educator-1',
+        educatorId: user?.id || 'user-educator-1',
         syncStatus: 'pending', // Re-queued for sync to send grade delta to central server
       };
 
@@ -243,9 +261,9 @@ export const GradeBook: React.FC = () => {
             <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-2">
               <span className="text-xs font-semibold text-muted-foreground">Average Module Completion Rate</span>
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-foreground">84%</span>
+                <span className="text-2xl font-bold text-foreground">{moduleMetrics.avgCompletion}%</span>
                 <div className="w-24 bg-muted rounded-full h-2 overflow-hidden">
-                  <div className="bg-emerald-500 h-full w-[84%]" />
+                  <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${moduleMetrics.avgCompletion}%` }} />
                 </div>
               </div>
             </div>
@@ -253,9 +271,9 @@ export const GradeBook: React.FC = () => {
             <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-2">
               <span className="text-xs font-semibold text-muted-foreground">Offline Audio & Media Cache Readiness</span>
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-foreground">92%</span>
+                <span className="text-2xl font-bold text-foreground">{moduleMetrics.cacheReadiness}%</span>
                 <div className="w-24 bg-muted rounded-full h-2 overflow-hidden">
-                  <div className="bg-primary h-full w-[92%]" />
+                  <div className="bg-primary h-full transition-all duration-300" style={{ width: `${moduleMetrics.cacheReadiness}%` }} />
                 </div>
               </div>
             </div>

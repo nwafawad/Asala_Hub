@@ -5,13 +5,15 @@ Exposes endpoints for user registration, user login authentication,
 and retrieving the currently logged-in user profile details.
 """
 
-from fastapi import APIRouter, Depends, Response, status
+from typing import Optional
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
 
 from app.core.database import get_session
 from app.models import User
-from app.schemas.auth import UserRegister, TokenResponse, UserRead
+from app.models.base import get_naive_utc_now
+from app.schemas.auth import UserRegister, TokenResponse, TokenRefreshRequest, UserRead, RoleSwitchRequest
 from app.core.dependencies import get_current_user
 from app.services import auth_service
 
@@ -45,12 +47,6 @@ def login(
         password=form_data.password,
         response=response,
     )
-
-
-from typing import Optional
-from fastapi import APIRouter, Depends, Request, Response, status
-
-from app.schemas.auth import UserRegister, TokenResponse, TokenRefreshRequest, UserRead
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -105,9 +101,6 @@ def read_current_user(current_user: User = Depends(get_current_user)) -> User:
     """
     return current_user
 
-
-from app.schemas.auth import RoleSwitchRequest
-from app.models.base import get_naive_utc_now
 
 @router.post("/switch-role", response_model=TokenResponse)
 def switch_role(

@@ -6,8 +6,11 @@ Enforces Educator role and course ownership authorization rules.
 """
 
 import uuid
+import json
+import asyncio
 from typing import List, Optional
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import StreamingResponse
 from sqlmodel import Session
 
 from app.core.database import get_session
@@ -143,10 +146,6 @@ def grade_submission(
 
     return crud_assignments.update_submission_grade(session, submission, grade_in)
 
-
-from fastapi.responses import StreamingResponse
-import json
-import asyncio
 
 @router.get("/assignments/my-submissions-stream")
 async def stream_my_submissions_grades(

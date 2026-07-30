@@ -11,7 +11,7 @@ import uuid
 from typing import List, Union, Optional
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError
+from jose import JWTError, ExpiredSignatureError
 from sqlmodel import Session
 
 from app.core.database import get_session
@@ -43,9 +43,6 @@ def get_token_from_request(
     if not token:
         raise AuthenticationError("Could not validate credentials")
     return token
-
-
-from jose import ExpiredSignatureError, JWTError
 
 
 def get_current_user_claims(

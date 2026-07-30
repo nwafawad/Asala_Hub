@@ -108,7 +108,7 @@ def authenticate_user(
 
 def refresh_tokens(
     session: Session,
-    raw_refresh_token: str,
+    raw_refresh_token: Optional[str],
     response: Response
 ) -> TokenResponse:
     """

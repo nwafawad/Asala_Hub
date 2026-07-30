@@ -65,7 +65,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
     title: 'Assignment Submission Workspace',
     courseCode: 'ASSIGNMENT',
     points: 100,
-    dueDate: '2026-08-30',
+    dueDate: '',
   });
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [draftHistory, setDraftHistory] = useState<DraftSnapshot[]>([]);
@@ -109,7 +109,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
           title: matchModule.title,
           courseCode: parentCourse?.code || 'COURSE',
           points: matchModule.points || 100,
-          dueDate: matchModule.dueDate || '2026-08-30',
+          dueDate: matchModule.dueDate || '',
         });
       }
 
@@ -496,7 +496,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
               <Clock className="w-3.5 h-3.5 text-sky-500" />
               {t.assignmentPage.dueDate}
             </span>
-            <span className="font-bold text-foreground">{assignmentInfo.dueDate}</span>
+            <span className="font-bold text-foreground">
+              {assignmentInfo.dueDate ? assignmentInfo.dueDate : 'No due date set'}
+            </span>
           </div>
         </div>
       </div>

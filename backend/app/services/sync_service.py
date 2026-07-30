@@ -34,14 +34,69 @@ from app.schemas.sync import (
 import app.crud.sync as crud_sync
 
 
+def merge_submission_content(server_text: str, client_text: str) -> tuple[bool, str]:
+    """
+    BR-6 Three-Way Non-Destructive Content Merge Engine.
+    
+    Attempts to merge non-overlapping text changes between server_text and client_text.
+    
+    Returns:
+        (bool, str): (True, merged_text) if clean non-conflicting merge,
+                     (False, "") if an overlapping conflicting line edit is detected.
+    """
+    if server_text == client_text:
+        return True, server_text
+
+    if not server_text:
+        return True, client_text
+    if not client_text:
+        return True, server_text
+
+    # Extension / Append shortcut checks
+    if client_text.startswith(server_text):
+        return True, client_text
+    if server_text.startswith(client_text):
+        return True, server_text
+
+    server_lines = [line.strip() for line in server_text.splitlines() if line.strip()]
+    client_lines = [line.strip() for line in client_text.splitlines() if line.strip()]
+
+    # Single line edit check: if both are 1 line and differ -> conflicting choice (e.g. Option A vs Option B)
+    if len(server_lines) == 1 and len(client_lines) == 1 and server_lines[0] != client_lines[0]:
+        return False, ""
+
+    # Check key prefixes if present (e.g. "Answer: Option A" vs "Answer: Option B")
+    for s_line in server_lines:
+        for c_line in client_lines:
+            if s_line != c_line:
+                s_key = s_line.split(":")[0].strip() if ":" in s_line else None
+                c_key = c_line.split(":")[0].strip() if ":" in c_line else None
+                if s_key and c_key and s_key == c_key:
+                    return False, ""
+
+    # Non-overlapping line addition merge: preserve order
+    merged_lines = []
+    seen = set()
+
+    for line in server_lines:
+        if line not in seen:
+            merged_lines.append(line)
+            seen.add(line)
+
+    for line in client_lines:
+        if line not in seen:
+            merged_lines.append(line)
+            seen.add(line)
+
+    return True, "\n".join(merged_lines) + "\n"
+
+
 def _to_naive_utc(dt: Optional[datetime], fallback: datetime) -> datetime:
     """Convert an optional datetime to a naive UTC datetime, falling back to a default value."""
     if dt is None:
         return fallback
     return dt.replace(tzinfo=None)
 
-
-from collections import OrderedDict
 
 class IdempotencyLRUCache:
     """
