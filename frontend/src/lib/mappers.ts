@@ -78,7 +78,7 @@ export function mapSubmissionReadToCached(
     studentName,
     content: dto.content,
     submittedAt: dto.submitted_at,
-    syncStatus: dto.sync_status === 'conflict' ? 'failed' : (dto.sync_status as any),
+    syncStatus: dto.sync_status === 'conflict' ? 'failed' : (dto.sync_status as 'synced' | 'pending' | 'failed'),
     score: dto.grade ?? undefined,
     gradeStatus: dto.grade !== null && dto.grade !== undefined ? 'graded' : 'pending',
     serverSeqNum: dto.version,

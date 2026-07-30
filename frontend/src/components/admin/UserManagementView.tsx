@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAdminApi } from '@/hooks/useAdminApi';
-import { useOverlay } from '@/context/OverlayContext';
+import React, { useState } from 'react';
+import { useUserManagement } from '@/hooks/useUserManagement';
 import { AdminUserRead, UserRoleType } from '@/types/admin';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SkeletonCard } from '@/components/ui/Skeletons';
@@ -31,23 +30,25 @@ import {
 } from 'lucide-react';
 
 export const UserManagementView: React.FC = () => {
-  const { getUsers, reactivateUser, forceLogout } = useAdminApi();
-  const { showToast } = useOverlay();
-
-  // Directory filter state
-  const [activeRoleTab, setActiveRoleTab] = useState<UserRoleType>('student');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const {
+    activeRoleTab,
+    setActiveRoleTab,
+    searchQuery,
+    setSearchQuery,
+    statusFilter,
+    setStatusFilter,
+    users,
+    isLoading,
+    fetchUsers,
+    handleReactivate,
+    handleForceLogout,
+  } = useUserManagement();
 
   const handleRoleTabChange = (role: UserRoleType) => {
     startViewTransition(() => {
       setActiveRoleTab(role);
     });
   };
-
-  // Data & loading state
-  const [users, setUsers] = useState<AdminUserRead[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Modal & Drawer control state
   const [selectedUser, setSelectedUser] = useState<AdminUserRead | null>(null);
@@ -56,26 +57,6 @@ export const UserManagementView: React.FC = () => {
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState<boolean>(false);
-
-  const fetchUsers = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await getUsers({
-        role: activeRoleTab,
-        status: statusFilter === 'all' ? undefined : statusFilter,
-        search: searchQuery.trim() || undefined,
-      });
-      setUsers(data);
-    } catch (err) {
-      console.error('Error fetching user directory:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [getUsers, activeRoleTab, statusFilter, searchQuery]);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
 
   const handleResetPassword = (targetUser: AdminUserRead) => {
     setSelectedUser(targetUser);
@@ -87,25 +68,6 @@ export const UserManagementView: React.FC = () => {
     setIsSuspendModalOpen(true);
   };
 
-  const handleReactivate = async (targetUser: AdminUserRead) => {
-    try {
-      await reactivateUser(targetUser.id);
-      showToast('Account Reactivated', 'success', `Reactivated ${targetUser.full_name}.`);
-      fetchUsers();
-    } catch (err: any) {
-      showToast('Reactivation Failed', 'error', err?.response?.data?.detail || 'Unable to reactivate account.');
-    }
-  };
-
-  const handleForceLogout = async (userItem: AdminUserRead) => {
-    try {
-      await forceLogout(userItem.id);
-      showToast('Sessions Revoked', 'info', `Revoked all active JWT sessions for ${userItem.full_name}.`);
-      fetchUsers();
-    } catch (err: any) {
-      showToast('Action Failed', 'error', 'Unable to force logout user.');
-    }
-  };
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto animate-in fade-in duration-200">

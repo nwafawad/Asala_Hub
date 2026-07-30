@@ -123,14 +123,6 @@ export function decompressPayload(input: string): string {
   }
 }
 
-export function getCompressionRatio(original: string, compressed: string): number {
-  if (!original || !compressed) return 0;
-  const originalBytes = new Blob([original]).size;
-  const compressedBytes = new Blob([compressed]).size;
-  if (originalBytes === 0) return 0;
-  return +(((originalBytes - compressedBytes) / originalBytes) * 100).toFixed(1);
-}
-
 /**
  * Safe preview formatter — ensures compressed/encrypted payloads are rendered cleanly in UI lists.
  */

@@ -1,4 +1,4 @@
-import { IndexedDBUser, CachedCourse, CachedModule, TransactionLog } from '@/lib/db';
+import { IndexedDBUser, CachedCourse, CachedModule, TransactionLogItem } from '@/lib/db';
 
 export interface DashboardStats {
   courseCount: number;
