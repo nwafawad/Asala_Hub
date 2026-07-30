@@ -76,21 +76,6 @@ asala-hub-3week-sprint-plan.md
 .cursor/
 .windsurf/
 
-# Graphify & AI Agent Tooling
-.foglamp/
-graphify-out/
-**/graphify-out/
-.agents/
-**/.agents/
-.gemini/
-.claude/
-.anthropic/
-CLAUDE.md
-**/CLAUDE.md
-AGENTS.md
-**/AGENTS.md
-*.claude.md
-
 # Media Uploads & Transcoded Assets
 uploads/
 **/uploads/
