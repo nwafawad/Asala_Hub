@@ -57,6 +57,13 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioPlaybackRef = useRef<HTMLAudioElement | null>(null);
+  // Bug fix: keep a ref of the latest audioUrl so the mount-only cleanup effect below
+  // doesn't revoke a stale (empty/initial) URL instead of the most recently created blob URL.
+  const audioUrlRef = useRef<string>(audioUrl);
+
+  useEffect(() => {
+    audioUrlRef.current = audioUrl;
+  }, [audioUrl]);
 
   useEffect(() => {
     return () => {
@@ -68,8 +75,8 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
-      if (audioUrl && audioUrl.startsWith('blob:')) {
-        revokeAudioObjectUrl(audioUrl);
+      if (audioUrlRef.current && audioUrlRef.current.startsWith('blob:')) {
+        revokeAudioObjectUrl(audioUrlRef.current);
       }
     };
   }, []);
