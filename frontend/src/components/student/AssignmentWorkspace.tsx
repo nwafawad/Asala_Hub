@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { db, seedInitialMockData, type AttachmentFile, type DraftSnapshot } from '@/lib/db';
-import { rehydrateStorage } from '@/lib/rehydrate';
 import { compressPayload, decompressPayload } from '@/lib/compress';
 import { generateUUID } from '@/lib/uuid';
 import { encryptText, decryptText } from '@/lib/crypto';
@@ -97,11 +96,6 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
     isFirstRender.current = true;
     async function loadDraft() {
       await seedInitialMockData();
-
-      // Sync modules from server before lookup so assignmentInfo fields are fresh
-      if (typeof window !== 'undefined' && navigator.onLine) {
-        await rehydrateStorage();
-      }
 
       // Attempt to load associated module/assignment info
       const modules = await db.cachedModules.toArray();
@@ -242,7 +236,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
         await db.cachedSubmissions.put({
           id: targetSubId,
           assignmentId: assignmentId,
-          assignmentTitle: assignmentId === 'assign-1' ? 'Foundations of Aqeedah Homework' : 'Offline Transaction Log Architecture',
+          assignmentTitle: assignmentInfo.title,
           studentName: user?.fullName || 'Asala Student',
           content: encryptedContent,
           attachments,
@@ -326,7 +320,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
     setIsSubmitted(true);
     try {
       const nowIso = new Date().toISOString();
-      const submissionId = `sub-${Date.now()}`;
+      const submissionId = `sub-${assignmentId}`;
       const offlineUuid = generateUUID();
 
       // 1. Package submission into IndexedDB Transaction Log Queue
@@ -347,7 +341,10 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onBack
       });
 
       // 2. Put submission record in IndexedDB cachedSubmissions
+      // (merge onto the existing autosaved draft record so draftHistory/deviceConflictDrafts survive submission)
+      const existingRecord = await db.cachedSubmissions.get(submissionId);
       await db.cachedSubmissions.put({
+        ...existingRecord,
         id: submissionId,
         assignmentId,
         assignmentTitle: assignmentInfo.title,

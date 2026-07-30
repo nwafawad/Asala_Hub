@@ -82,6 +82,17 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
     let revokeUrl: string | null = null;
 
     async function loadAudio() {
+      // Prefer the durable raw audio bytes stored in IndexedDB: a recorded lecture's
+      // audioUrl is a `blob:` URL that only lives for the tab/session that created it,
+      // so relying on it after a reload/new session would leave playback broken even
+      // though the audio was actually persisted via audioArrayBuffer.
+      if (module?.audioArrayBuffer) {
+        const blob = new Blob([module.audioArrayBuffer], { type: 'audio/webm' });
+        const objUrl = URL.createObjectURL(blob);
+        revokeUrl = objUrl;
+        if (audioRef.current) audioRef.current.src = objUrl;
+        return;
+      }
       // Offline-first: try blob URL from CacheStorage
       const blobUrl = await getCachedAudioObjectUrl(module!.audioUrl!);
       if (blobUrl) {
