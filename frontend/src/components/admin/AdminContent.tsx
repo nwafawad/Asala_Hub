@@ -9,6 +9,7 @@ import { LoginForm } from '@/components/auth/LoginForm';
 import { AppShellSkeleton } from '@/components/ui/Skeletons';
 import { useAuth } from '@/context/AuthContext';
 import { useOverlay } from '@/context/OverlayContext';
+import { startViewTransition } from '@/lib/view-transition';
 
 export function AdminContent() {
   const { isAuthenticated, user, isRestoring } = useAuth();
@@ -36,12 +37,14 @@ export function AdminContent() {
   }, [searchParams]);
 
   const handleTabNavigate = (tab: string, setActiveTab?: (t: string) => void) => {
-    if (setActiveTab) setActiveTab(tab);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('asala_admin_tab', tab);
-    }
-    setOverrideTab(tab);
-    router.replace(`/admin?tab=${tab}`, { scroll: false });
+    startViewTransition(() => {
+      if (setActiveTab) setActiveTab(tab);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('asala_admin_tab', tab);
+      }
+      setOverrideTab(tab);
+      router.replace(`/admin?tab=${tab}`, { scroll: false });
+    });
   };
 
   // Zero-FOUC & Hydration Guard

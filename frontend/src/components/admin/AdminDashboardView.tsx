@@ -5,6 +5,7 @@ import { useAdminApi } from '@/hooks/useAdminApi';
 import { AdminDashboardStats } from '@/types/admin';
 import { StatCard } from '@/components/ui/StatCard';
 import { SkeletonCard } from '@/components/ui/Skeletons';
+import { startViewTransition } from '@/lib/view-transition';
 import {
   Users,
   UserCheck,
@@ -41,10 +42,19 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = () => {
     loadData();
   }, []);
 
+  const handleRefresh = () => {
+    startViewTransition(() => {
+      loadData();
+    });
+  };
+
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-500/15 via-purple-500/5 to-transparent border border-purple-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div
+        style={{ viewTransitionName: 'admin-header-banner' }}
+        className="p-6 rounded-2xl bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border border-primary/20 flex flex-col md:flex-row md:items-center justify-between gap-4"
+      >
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-bold font-heading text-foreground">
             System Operational Overview
@@ -55,10 +65,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = () => {
         </div>
 
         <button
-          onClick={loadData}
+          onClick={handleRefresh}
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-card border border-border text-xs font-semibold hover:bg-muted text-foreground transition-colors cursor-pointer shrink-0 self-start md:self-center shadow-xs"
         >
-          <RefreshCw className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+          <RefreshCw className={`w-3.5 h-3.5 text-primary ${isLoading ? 'animate-spin' : ''}`} />
           <span>Refresh Metrics</span>
         </button>
       </div>
@@ -110,10 +120,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = () => {
       </div>
 
       {/* Audit Activity Feed */}
-      <div className="p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-4">
+      <div
+        style={{ viewTransitionName: 'admin-audit-log' }}
+        className="p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-4"
+      >
         <div className="flex items-center justify-between border-b border-border pb-3">
           <h3 className="text-base font-semibold font-heading text-foreground flex items-center gap-2">
-            <ScrollText className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <ScrollText className="w-4 h-4 text-primary" />
             Recent Administrative Activity Log
           </h3>
         </div>
@@ -130,7 +143,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = () => {
                 className="p-3 rounded-xl border border-border bg-background flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
                     <Activity className="w-3.5 h-3.5" />
                   </div>
                   <div className="flex flex-col">

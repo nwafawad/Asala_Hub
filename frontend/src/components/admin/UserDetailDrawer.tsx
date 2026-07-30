@@ -61,7 +61,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
         <Dialog.Content className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-card border-l border-border shadow-2xl p-6 flex flex-col gap-6 overflow-y-auto animate-in slide-in-from-right duration-300">
           <div className="flex items-center justify-between border-b border-border pb-4">
             <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              <User className="w-5 h-5 text-primary" />
               <Dialog.Title className="text-base font-bold font-heading text-foreground">
                 Account Details & Operations
               </Dialog.Title>
@@ -76,13 +76,13 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
 
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center py-12 text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : detail ? (
             <div className="flex flex-col gap-6">
               {/* Profile Card Header */}
               <div className="p-4 rounded-2xl bg-muted/40 border border-border flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center text-lg font-bold uppercase shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary flex items-center justify-center text-lg font-bold uppercase shrink-0">
                   {detail.full_name.charAt(0)}
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
@@ -94,7 +94,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{detail.email}</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-500/15 text-purple-700 dark:text-purple-300">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-primary/15 text-primary">
                       {detail.role}
                     </span>
                     {detail.must_change_password && (
@@ -151,7 +151,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
               {/* Course List Section */}
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-purple-600" />
+                  <BookOpen className="w-3.5 h-3.5 text-primary" />
                   {detail.role === 'educator' ? 'Assigned Courses' : 'Enrolled Courses'} ({detail.courses.length})
                 </span>
                 <div className="flex flex-col gap-1.5">
@@ -175,7 +175,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
               {/* Submission History Section */}
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  <FileCheck className="w-3.5 h-3.5 text-purple-600" />
+                  <FileCheck className="w-3.5 h-3.5 text-primary" />
                   Recent Submissions ({detail.recent_submissions.length})
                 </span>
                 <div className="flex flex-col gap-1.5">
@@ -205,7 +205,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
               {/* Active Sessions Metadata */}
               <div className="p-3 rounded-xl bg-muted/30 border border-border text-xs flex items-center justify-between font-mono">
                 <span className="text-muted-foreground flex items-center gap-1.5">
-                  <Shield className="w-4 h-4 text-purple-600" />
+                  <Shield className="w-4 h-4 text-primary" />
                   Active JWT Refresh Sessions
                 </span>
                 <span className="font-bold text-foreground">{detail.active_session_count} Active</span>

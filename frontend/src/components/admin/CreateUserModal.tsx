@@ -124,7 +124,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground">Role:</span>
-                  <span className="font-semibold text-purple-600 capitalize">{creationResult.role}</span>
+                  <span className="font-semibold text-primary capitalize">{creationResult.role}</span>
                 </div>
 
                 <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
@@ -149,7 +149,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
               <div className="flex justify-end mt-4">
                 <button
                   onClick={handleClose}
-                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-accent-hover text-primary-foreground text-xs font-semibold transition-colors cursor-pointer"
                 >
                   Done
                 </button>
@@ -159,7 +159,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             /* Creation Form View */
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
                   <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
@@ -183,7 +183,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                     value={fullName}
                     onChange={e => setFullName(e.target.value)}
                     placeholder="e.g. Layla Al-Mansoor"
-                    className="w-full h-10 px-3.5 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+                    className="w-full h-10 px-3.5 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
 
@@ -197,7 +197,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="layla@asala.edu"
-                    className="w-full h-10 px-3.5 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all font-mono"
+                    className="w-full h-10 px-3.5 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
                   />
                 </div>
 
@@ -211,7 +211,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                       onClick={() => setRole('student')}
                       className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                         role === 'student'
-                          ? 'border-purple-600 bg-purple-500/10 text-purple-600 dark:text-purple-400'
+                          ? 'border-primary bg-primary/10 text-primary'
                           : 'border-border bg-background text-muted-foreground hover:bg-muted'
                       }`}
                     >
@@ -222,7 +222,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                       onClick={() => setRole('educator')}
                       className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                         role === 'educator'
-                          ? 'border-purple-600 bg-purple-500/10 text-purple-600 dark:text-purple-400'
+                          ? 'border-primary bg-primary/10 text-primary'
                           : 'border-border bg-background text-muted-foreground hover:bg-muted'
                       }`}
                     >
@@ -242,7 +242,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                         name="mode"
                         checked={mode === 'generate'}
                         onChange={() => setMode('generate')}
-                        className="accent-purple-600"
+                        className="accent-primary"
                       />
                       <span>Auto-generate temporary password</span>
                     </label>
@@ -252,7 +252,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                         name="mode"
                         checked={mode === 'custom'}
                         onChange={() => setMode('custom')}
-                        className="accent-purple-600"
+                        className="accent-primary"
                       />
                       <span>Set custom password</span>
                     </label>
@@ -264,13 +264,13 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                       value={customPassword}
                       onChange={e => setCustomPassword(e.target.value)}
                       placeholder="Min 6 characters"
-                      className="w-full h-10 px-3.5 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all font-mono mt-1"
+                      className="w-full h-10 px-3.5 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono mt-1"
                     />
                   )}
                 </div>
 
-                <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center gap-2 text-[11px] text-purple-700 dark:text-purple-300">
-                  <ShieldCheck className="w-4 h-4 shrink-0 text-purple-600" />
+                <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 flex items-center gap-2 text-[11px] text-primary">
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-primary" />
                   <span>
                     User will be required to update their password on first login (`must_change_password`).
                   </span>
@@ -287,7 +287,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary hover:bg-accent-hover disabled:opacity-50 text-primary-foreground text-xs font-semibold transition-colors shadow-xs cursor-pointer"
                   >
                     {isSubmitting ? (
                       <>

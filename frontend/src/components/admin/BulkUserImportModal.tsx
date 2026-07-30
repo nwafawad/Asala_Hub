@@ -120,7 +120,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[85vh] bg-card border border-border rounded-2xl p-6 shadow-2xl z-50 overflow-y-auto animate-in fade-in-0 zoom-in-95">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
                 <FileSpreadsheet className="w-5 h-5" />
               </div>
               <div>
@@ -146,7 +146,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({
               {/* Sample Download Bar */}
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border flex items-center justify-between gap-3 text-xs">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <FileSpreadsheet className="w-4 h-4 text-purple-600 shrink-0" />
+                  <FileSpreadsheet className="w-4 h-4 text-primary shrink-0" />
                   <span>Required CSV Headers: <code className="font-mono text-foreground font-semibold">full_name, email, role</code></span>
                 </div>
 
@@ -155,7 +155,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({
                   onClick={handleDownloadSampleCSV}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background border border-border hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer shrink-0"
                 >
-                  <Download className="w-3.5 h-3.5 text-purple-600" />
+                  <Download className="w-3.5 h-3.5 text-primary" />
                   <span>Sample Template</span>
                 </button>
               </div>
@@ -165,7 +165,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({
                 onDragOver={e => e.preventDefault()}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-border hover:border-purple-500/50 rounded-2xl p-8 text-center bg-muted/20 hover:bg-purple-500/5 transition-all cursor-pointer flex flex-col items-center justify-center gap-3"
+                className="border-2 border-dashed border-border hover:border-primary/50 rounded-2xl p-8 text-center bg-muted/20 hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center gap-3"
               >
                 <input
                   type="file"
@@ -175,7 +175,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({
                   className="hidden"
                 />
 
-                <div className="w-12 h-12 rounded-full bg-purple-500/10 text-purple-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                   <UploadCloud className="w-6 h-6" />
                 </div>
 
@@ -206,7 +206,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({
                   type="button"
                   disabled={!selectedFile || isUploading}
                   onClick={handleUpload}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-primary hover:bg-accent-hover disabled:opacity-50 text-primary-foreground text-xs font-semibold transition-colors shadow-xs cursor-pointer"
                 >
                   {isUploading ? (
                     <>
@@ -262,7 +262,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 text-purple-600" />
+                          <Copy className="w-3.5 h-3.5 text-primary" />
                           <span>Copy Credentials (CSV)</span>
                         </>
                       )}
@@ -277,7 +277,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({
                           <span className="text-[11px] text-muted-foreground font-mono truncate">{u.email}</span>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                          <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 text-[10px] font-semibold capitalize">
+                          <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold capitalize">
                             {u.role}
                           </span>
                           <span className="font-mono font-bold text-xs bg-muted px-2 py-1 rounded border border-border">
@@ -323,7 +323,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({
                 <button
                   type="button"
                   onClick={handleResetModal}
-                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-accent-hover text-primary-foreground text-xs font-semibold transition-colors cursor-pointer shadow-xs"
                 >
                   Done
                 </button>

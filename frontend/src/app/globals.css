@@ -143,12 +143,37 @@
   to { opacity: 1; transform: scale(1); }
 }
 
+/* Admin Specific View Transitions */
+::view-transition-old(admin-user-table),
+::view-transition-new(admin-user-table),
+::view-transition-old(admin-header-banner),
+::view-transition-new(admin-header-banner),
+::view-transition-old(admin-role-tabs),
+::view-transition-new(admin-role-tabs),
+::view-transition-old(admin-audit-log),
+::view-transition-new(admin-audit-log),
+::view-transition-old(admin-active-tab),
+::view-transition-new(admin-active-tab) {
+  animation-duration: 200ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Reduced motion accessibility override */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root),
   ::view-transition-new(root),
   ::view-transition-old(view-fade),
-  ::view-transition-new(view-fade) {
+  ::view-transition-new(view-fade),
+  ::view-transition-old(admin-user-table),
+  ::view-transition-new(admin-user-table),
+  ::view-transition-old(admin-header-banner),
+  ::view-transition-new(admin-header-banner),
+  ::view-transition-old(admin-role-tabs),
+  ::view-transition-new(admin-role-tabs),
+  ::view-transition-old(admin-audit-log),
+  ::view-transition-new(admin-audit-log),
+  ::view-transition-old(admin-active-tab),
+  ::view-transition-new(admin-active-tab) {
     animation: none !important;
   }
 }

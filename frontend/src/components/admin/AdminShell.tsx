@@ -53,10 +53,10 @@ export const AdminShell: React.FC<AdminShellProps> = ({ currentTab, children, on
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex antialiased selection:bg-purple-500/20 selection:text-purple-600 transition-colors">
+    <div className="min-h-screen bg-background text-foreground flex antialiased selection:bg-primary/20 selection:text-primary transition-colors">
       <a
         href="#admin-main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-purple-600 focus:text-white focus:rounded-xl focus:shadow-lg focus:outline-none"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-xl focus:shadow-lg focus:outline-none"
       >
         Skip to main content
       </a>

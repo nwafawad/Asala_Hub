@@ -140,7 +140,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
                     onClick={() => setMode('generate')}
                     className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                       mode === 'generate'
-                        ? 'border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300'
+                        ? 'border-primary bg-primary/10 text-primary'
                         : 'border-border bg-background text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -151,7 +151,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
                     onClick={() => setMode('custom')}
                     className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                       mode === 'custom'
-                        ? 'border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300'
+                        ? 'border-primary bg-primary/10 text-primary'
                         : 'border-border bg-background text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -172,7 +172,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
                     value={customPassword}
                     onChange={e => setCustomPassword(e.target.value)}
                     placeholder="Enter custom password (min 6 chars)"
-                    className="w-full h-10 px-3 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all font-mono"
+                    className="w-full h-10 px-3 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
                   />
                 </div>
               )}
@@ -188,7 +188,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-accent-hover text-primary-foreground text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reset Password'}
                 </button>

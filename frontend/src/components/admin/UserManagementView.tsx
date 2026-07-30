@@ -11,6 +11,7 @@ import { SuspendConfirmModal } from './SuspendConfirmModal';
 import { UserDetailDrawer } from './UserDetailDrawer';
 import { CreateUserModal } from './CreateUserModal';
 import { BulkUserImportModal } from './BulkUserImportModal';
+import { startViewTransition } from '@/lib/view-transition';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   Users,
@@ -37,6 +38,12 @@ export const UserManagementView: React.FC = () => {
   const [activeRoleTab, setActiveRoleTab] = useState<UserRoleType>('student');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const handleRoleTabChange = (role: UserRoleType) => {
+    startViewTransition(() => {
+      setActiveRoleTab(role);
+    });
+  };
 
   // Data & loading state
   const [users, setUsers] = useState<AdminUserRead[]>([]);
@@ -103,10 +110,13 @@ export const UserManagementView: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div
+        style={{ viewTransitionName: 'admin-header-banner' }}
+        className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+      >
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-bold font-heading text-foreground flex items-center gap-2">
-            <Users className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <Users className="w-6 h-6 text-primary" />
             User & Account Management
           </h2>
           <p className="text-xs text-muted-foreground">
@@ -117,7 +127,7 @@ export const UserManagementView: React.FC = () => {
         <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary hover:bg-accent-hover text-primary-foreground text-xs font-semibold transition-colors cursor-pointer shadow-xs"
           >
             <UserPlus className="w-4 h-4" />
             <span>Add Account</span>
@@ -127,27 +137,34 @@ export const UserManagementView: React.FC = () => {
             onClick={() => setIsBulkModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-card border border-border text-xs font-semibold hover:bg-muted text-foreground transition-colors cursor-pointer shadow-xs"
           >
-            <FileSpreadsheet className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <FileSpreadsheet className="w-4 h-4 text-primary" />
             <span>Bulk Import CSV</span>
           </button>
 
           <button
-            onClick={fetchUsers}
+            onClick={() => {
+              startViewTransition(() => {
+                fetchUsers();
+              });
+            }}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-card border border-border text-xs font-semibold hover:bg-muted text-foreground transition-colors cursor-pointer shadow-xs"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-purple-600 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-primary ${isLoading ? 'animate-spin' : ''}`} />
             <span>Refresh Directory</span>
           </button>
         </div>
       </div>
 
       {/* Role Toggle Tabs */}
-      <div className="flex items-center gap-2 border-b border-border pb-3">
+      <div
+        style={{ viewTransitionName: 'admin-role-tabs' }}
+        className="flex items-center gap-2 border-b border-border pb-3"
+      >
         <button
-          onClick={() => setActiveRoleTab('student')}
+          onClick={() => handleRoleTabChange('student')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeRoleTab === 'student'
-              ? 'bg-purple-600 text-white shadow-sm'
+              ? 'bg-primary text-primary-foreground shadow-sm'
               : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
         >
@@ -156,10 +173,10 @@ export const UserManagementView: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setActiveRoleTab('educator')}
+          onClick={() => handleRoleTabChange('educator')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeRoleTab === 'educator'
-              ? 'bg-purple-600 text-white shadow-sm'
+              ? 'bg-primary text-primary-foreground shadow-sm'
               : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
         >
@@ -177,7 +194,7 @@ export const UserManagementView: React.FC = () => {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder={`Search ${activeRoleTab}s by name or email address...`}
-            className="w-full h-10 pl-10 pr-4 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+            className="w-full h-10 pl-10 pr-4 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
           />
         </div>
 
@@ -188,8 +205,13 @@ export const UserManagementView: React.FC = () => {
           </div>
           <select
             value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="h-10 px-3 rounded-xl border border-border bg-background text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all cursor-pointer"
+            onChange={e => {
+              const val = e.target.value;
+              startViewTransition(() => {
+                setStatusFilter(val);
+              });
+            }}
+            className="h-10 px-3 rounded-xl border border-border bg-background text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
           >
             <option value="all">All Account Statuses</option>
             <option value="active">Active Only</option>
@@ -199,7 +221,10 @@ export const UserManagementView: React.FC = () => {
       </div>
 
       {/* Main User Directory Table */}
-      <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+      <div
+        style={{ viewTransitionName: 'admin-user-table' }}
+        className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden"
+      >
         {isLoading ? (
           <div className="p-8 flex flex-col gap-4">
             <SkeletonCard />
@@ -233,7 +258,7 @@ export const UserManagementView: React.FC = () => {
                   <tr key={u.id} className="hover:bg-muted/30 transition-colors">
                     <td className="py-3.5 px-4 font-semibold text-foreground">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-purple-500/15 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-xs shrink-0 uppercase">
+                        <div className="w-7 h-7 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs shrink-0 uppercase">
                           {u.full_name.charAt(0)}
                         </div>
                         <div className="flex flex-col min-w-0">
@@ -285,7 +310,7 @@ export const UserManagementView: React.FC = () => {
                               }}
                               className="flex items-center gap-2 px-3 py-2 rounded-lg text-foreground hover:bg-muted cursor-pointer outline-none"
                             >
-                              <Eye className="w-3.5 h-3.5 text-purple-600" />
+                              <Eye className="w-3.5 h-3.5 text-primary" />
                               <span>View Detail</span>
                             </DropdownMenu.Item>
 
