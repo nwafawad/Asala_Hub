@@ -475,7 +475,7 @@ def get_user_detail_for_admin(session: Session, user_id: uuid.UUID) -> Optional[
     else:
         courses_db = session.exec(select(Course).where(col(Course.is_deleted) == False).limit(5)).all()
 
-    course_list = [CourseBasicInfo(id=c.id, title=c.title, code=c.code) for c in courses_db]
+    course_list = [CourseBasicInfo(id=c.id, title=c.title) for c in courses_db]
 
     # Fetch recent submissions
     subs_db = session.exec(

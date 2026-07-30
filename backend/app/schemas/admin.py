@@ -96,7 +96,6 @@ class AdminUserRead(BaseModel):
 class CourseBasicInfo(BaseModel):
     id: uuid.UUID
     title: str
-    code: str
 
 
 class SubmissionBasicInfo(BaseModel):

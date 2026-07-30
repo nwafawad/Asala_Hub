@@ -11,7 +11,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
 
 from app.core.database import get_session
-from app.models import User
+from app.core.exceptions import PermissionDeniedError
+from app.models import User, UserRole
 from app.models.base import get_naive_utc_now
 from app.schemas.auth import UserRegister, TokenResponse, TokenRefreshRequest, UserRead, RoleSwitchRequest
 from app.core.dependencies import get_current_user
@@ -113,6 +114,9 @@ def switch_role(
     Update the authenticated user's active role in the database
     and re-issue signed JWT access & refresh tokens containing the updated role claim.
     """
+    if body.role == UserRole.admin and current_user.role != UserRole.admin:
+        raise PermissionDeniedError("You do not have permission to switch to this role")
+
     current_user.role = body.role
     current_user.updated_at = get_naive_utc_now()
     session.add(current_user)
