@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { db, CachedSubmission, TransactionLogItem } from '@/lib/db';
 import { generateUUID } from '@/lib/uuid';
 import { api } from '@/lib/api';
+import { rehydrateStorage } from '@/lib/rehydrate';
 import { mapSubmissionReadToCached } from '@/lib/mappers';
 import { SubmissionReadDTO } from '@/types/api';
 import { useI18n } from '@/context/I18nContext';
@@ -38,57 +39,60 @@ export const GradeBook: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'graded'>('all');
   const [activeGraderSubmission, setActiveGraderSubmission] = useState<CachedSubmission | null>(null);
 
-  useEffect(() => {
-    loadSubmissions();
-  }, []);
-
   const loadSubmissions = async () => {
-    try {
-      setIsLoading(true);
-      // 1. Instant Load from IndexedDB cache
-      const [subList, moduleList] = await Promise.all([
-        db.cachedSubmissions.toArray(),
-        db.cachedModules.toArray(),
-      ]);
-      setSubmissions(subList);
+    const subList = await db.cachedSubmissions.toArray();
+    setSubmissions(subList);
+  };
 
-      const totalModules = moduleList.length;
-      if (totalModules > 0) {
-        const completedCount = moduleList.filter(m => m.isCompleted).length;
-        const cachedCount = moduleList.filter(m => m.isCachedOffline).length;
-        setModuleMetrics({
-          avgCompletion: Math.round((completedCount / totalModules) * 100),
-          cacheReadiness: Math.round((cachedCount / totalModules) * 100),
-        });
-      } else {
-        setModuleMetrics({ avgCompletion: 0, cacheReadiness: 0 });
-      }
-      setIsLoading(false);
+  useEffect(() => {
+    let isMounted = true;
 
-      // 2. Background sync with server API if online
-      if (typeof window !== 'undefined' && navigator.onLine) {
-        try {
-          const res = await api.get('/assignments/my-submissions', {
-            headers: { 'X-Suppress-401-Event': 'true' },
-          }).catch(() => null);
+    async function init() {
+      try {
+        setIsLoading(true);
+        // 1. Instant Load from IndexedDB cache
+        const [subList, moduleList] = await Promise.all([
+          db.cachedSubmissions.toArray(),
+          db.cachedModules.toArray(),
+        ]);
+        if (isMounted) {
+          setSubmissions(subList);
 
-          if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-            const cachedSubs = res.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
-            await db.cachedSubmissions.bulkPut(cachedSubs);
+          const totalModules = moduleList.length;
+          if (totalModules > 0) {
+            const completedCount = moduleList.filter(m => m.isCompleted).length;
+            const cachedCount = moduleList.filter(m => m.isCachedOffline).length;
+            setModuleMetrics({
+              avgCompletion: Math.round((completedCount / totalModules) * 100),
+              cacheReadiness: Math.round((cachedCount / totalModules) * 100),
+            });
+          } else {
+            setModuleMetrics({ avgCompletion: 0, cacheReadiness: 0 });
+          }
+          setIsLoading(false);
+        }
 
+        // 2. Throttled & Parallel Background sync with server API if online
+        if (typeof window !== 'undefined' && navigator.onLine) {
+          await rehydrateStorage();
+          if (isMounted) {
             const updatedSubList = await db.cachedSubmissions.toArray();
             setSubmissions(updatedSubList);
           }
-        } catch (syncErr) {
-          // Suppress sync errors in background
         }
+      } catch (err) {
+        console.error('Error loading submissions for GradeBook:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Error loading submissions for GradeBook:', err);
-    } finally {
-      setIsLoading(false);
     }
-  };
+
+    init();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSaveGrade = async (
     submissionId: string,

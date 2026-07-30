@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { api } from '@/lib/api';
-import { mapSubmissionReadToCached } from '@/lib/mappers';
-import { SubmissionReadDTO } from '@/types/api';
+import { rehydrateStorage } from '@/lib/rehydrate';
 import { useI18n } from '@/context/I18nContext';
 import {
   Activity,
@@ -37,77 +36,77 @@ export const PerformanceDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadAnalytics();
-  }, []);
+    let isMounted = true;
 
-  const loadAnalytics = async () => {
-    try {
-      setIsLoading(true);
-      // 1. Instant Load from IndexedDB cache
-      let [enrollments, submissions, modules] = await Promise.all([
-        db.cohortEnrollments.toArray(),
-        db.cachedSubmissions.toArray(),
-        db.cachedModules.toArray(),
-      ]);
+    async function loadAnalytics() {
+      try {
+        setIsLoading(true);
+        // 1. Instant Load from IndexedDB cache
+        let [enrollments, submissions, modules] = await Promise.all([
+          db.cohortEnrollments.toArray(),
+          db.cachedSubmissions.toArray(),
+          db.cachedModules.toArray(),
+        ]);
 
-      const calculateAndSetStats = (currentEnrollments: typeof enrollments, currentSubs: typeof submissions, currentMods: typeof modules) => {
-        const totalStudents = currentEnrollments.length;
-        const graded = currentSubs.filter(s => s.score !== undefined && s.score !== null);
-        const pending = currentSubs.length - graded.length;
+        const calculateAndSetStats = (currentEnrollments: typeof enrollments, currentSubs: typeof submissions, currentMods: typeof modules) => {
+          if (!isMounted) return;
+          const totalStudents = currentEnrollments.length;
+          const graded = currentSubs.filter(s => s.score !== undefined && s.score !== null);
+          const pending = currentSubs.length - graded.length;
 
-        let aCount = 0, bCount = 0, cCount = 0, fCount = 0;
-        graded.forEach(s => {
-          const pct = ((s.score || 0) / (s.maxScore || 100)) * 100;
-          if (pct >= 90) aCount++;
-          else if (pct >= 80) bCount++;
-          else if (pct >= 70) cCount++;
-          else fCount++;
-        });
+          let aCount = 0, bCount = 0, cCount = 0, fCount = 0;
+          graded.forEach(s => {
+            const pct = ((s.score || 0) / (s.maxScore || 100)) * 100;
+            if (pct >= 90) aCount++;
+            else if (pct >= 80) bCount++;
+            else if (pct >= 70) cCount++;
+            else fCount++;
+          });
 
-        const totalGraded = graded.length;
-        const passRate = totalGraded > 0 ? Math.round(((aCount + bCount + cCount) / totalGraded) * 100) : 0;
-        const completedMods = currentMods.filter(m => m.isCompleted).length;
-        const totalMods = currentMods.length;
-        const avgCompletion = totalMods > 0 ? Math.round((completedMods / totalMods) * 100) : 0;
+          const totalGraded = graded.length;
+          const passRate = totalGraded > 0 ? Math.round(((aCount + bCount + cCount) / totalGraded) * 100) : 0;
+          const completedMods = currentMods.filter(m => m.isCompleted).length;
+          const totalMods = currentMods.length;
+          const avgCompletion = totalMods > 0 ? Math.round((completedMods / totalMods) * 100) : 0;
 
-        setStats({
-          totalEnrolled: totalStudents,
-          avgCompletion,
-          passRate,
-          pendingGrading: pending,
-          gradeDist: [
-            { range: '90-100% (A)', count: aCount, percentage: totalGraded > 0 ? Math.round((aCount / totalGraded) * 100) : 0 },
-            { range: '80-89% (B)', count: bCount, percentage: totalGraded > 0 ? Math.round((bCount / totalGraded) * 100) : 0 },
-            { range: '70-79% (C)', count: cCount, percentage: totalGraded > 0 ? Math.round((cCount / totalGraded) * 100) : 0 },
-            { range: '<70% (Needs Revision)', count: fCount, percentage: totalGraded > 0 ? Math.round((fCount / totalGraded) * 100) : 0 },
-          ],
-        });
-      };
+          setStats({
+            totalEnrolled: totalStudents,
+            avgCompletion,
+            passRate,
+            pendingGrading: pending,
+            gradeDist: [
+              { range: '90-100% (A)', count: aCount, percentage: totalGraded > 0 ? Math.round((aCount / totalGraded) * 100) : 0 },
+              { range: '80-89% (B)', count: bCount, percentage: totalGraded > 0 ? Math.round((bCount / totalGraded) * 100) : 0 },
+              { range: '70-79% (C)', count: cCount, percentage: totalGraded > 0 ? Math.round((cCount / totalGraded) * 100) : 0 },
+              { range: '<70% (Needs Revision)', count: fCount, percentage: totalGraded > 0 ? Math.round((fCount / totalGraded) * 100) : 0 },
+            ],
+          });
+        };
 
-      calculateAndSetStats(enrollments, submissions, modules);
-      setIsLoading(false);
+        calculateAndSetStats(enrollments, submissions, modules);
+        if (isMounted) setIsLoading(false);
 
-      // 2. Background sync with server API if online
-      if (typeof window !== 'undefined' && navigator.onLine) {
-        try {
-          const res = await api.get('/assignments/my-submissions', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null);
-          if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-            const cachedSubs = res.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
-            await db.cachedSubmissions.bulkPut(cachedSubs);
-
+        // 2. Background sync with server API if online (throttled & parallel)
+        if (typeof window !== 'undefined' && navigator.onLine) {
+          await rehydrateStorage();
+          if (isMounted) {
             const updatedSubs = await db.cachedSubmissions.toArray();
             calculateAndSetStats(enrollments, updatedSubs, modules);
           }
-        } catch (syncErr) {
-          // Suppress sync errors in background
         }
+      } catch (err) {
+        console.error('Error loading performance analytics:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Error loading performance analytics:', err);
-    } finally {
-      setIsLoading(false);
     }
-  };
+
+    loadAnalytics();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">

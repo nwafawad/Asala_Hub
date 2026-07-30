@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, type CachedModule, type CachedCourse, type CachedSubmission } from '@/lib/db';
 import { api } from '@/lib/api';
-import { mapSubmissionReadToCached } from '@/lib/mappers';
-import { SubmissionReadDTO } from '@/types/api';
+import { rehydrateStorage } from '@/lib/rehydrate';
 import { useI18n } from '@/context/I18nContext';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
@@ -50,81 +49,82 @@ export const AssignmentListView: React.FC<AssignmentListViewProps> = ({ onSelect
   const ChevronIcon = language === 'ar' ? ChevronLeft : ChevronRight;
 
   useEffect(() => {
-    loadAssignments();
-  }, []);
+    let isMounted = true;
 
-  const buildAssignmentItems = (modules: CachedModule[], courses: CachedCourse[], submissions: CachedSubmission[]): AssignmentItem[] => {
-    const coursesMap = new Map<string, CachedCourse>(courses.map(c => [c.id, c]));
-    const submissionsMap = new Map<string, CachedSubmission>(
-      submissions.map(s => [s.assignmentId, s])
-    );
+    const buildAssignmentItems = (modules: CachedModule[], courses: CachedCourse[], submissions: CachedSubmission[]): AssignmentItem[] => {
+      const coursesMap = new Map<string, CachedCourse>(courses.map(c => [c.id, c]));
+      const submissionsMap = new Map<string, CachedSubmission>(
+        submissions.map(s => [s.assignmentId, s])
+      );
 
-    const assignmentModules = modules.filter(
-      m => m.type === 'assignment' || Boolean(m.assignmentId) || m.title.toLowerCase().includes('assignment')
-    );
+      const assignmentModules = modules.filter(
+        m => m.type === 'assignment' || Boolean(m.assignmentId) || m.title.toLowerCase().includes('assignment')
+      );
 
-    return assignmentModules.map((m: any) => {
-      const parentCourse = coursesMap.get(m.courseId);
-      const sub = submissionsMap.get(m.assignmentId || m.id);
+      return assignmentModules.map((m: any) => {
+        const parentCourse = coursesMap.get(m.courseId);
+        const sub = submissionsMap.get(m.assignmentId || m.id);
 
-      let status: 'drafting' | 'submitted' | 'graded' = 'drafting';
-      if (sub) {
-        if (sub.score !== undefined) status = 'graded';
-        else if (sub.syncStatus === 'pending' || sub.syncStatus === 'synced') status = 'submitted';
-      }
+        let status: 'drafting' | 'submitted' | 'graded' = 'drafting';
+        if (sub) {
+          if (sub.score !== undefined) status = 'graded';
+          else if (sub.syncStatus === 'pending' || sub.syncStatus === 'synced') status = 'submitted';
+        }
 
-      return {
-        id: m.id,
-        assignmentId: m.assignmentId || m.id,
-        title: m.title,
-        courseCode: parentCourse?.code || 'CS-101',
-        courseTitle: parentCourse?.title || 'Core Syllabus',
-        points: m.points || 100,
-        dueDate: m.dueDate || '2026-08-15',
-        status,
-        score: sub?.score,
-        submittedAt: sub?.submittedAt,
-        hasAttachments: Boolean(sub?.attachments && sub.attachments.length > 0),
-      };
-    });
-  };
+        return {
+          id: m.id,
+          assignmentId: m.assignmentId || m.id,
+          title: m.title,
+          courseCode: parentCourse?.code || 'CS-101',
+          courseTitle: parentCourse?.title || 'Core Syllabus',
+          points: m.points || 100,
+          dueDate: m.dueDate || '2026-08-15',
+          status,
+          score: sub?.score,
+          submittedAt: sub?.submittedAt,
+          hasAttachments: Boolean(sub?.attachments && sub.attachments.length > 0),
+        };
+      });
+    };
 
-  const loadAssignments = async () => {
-    try {
-      setIsLoading(true);
-      // 1. Instant Load from IndexedDB cache
-      const [modules, courses, submissions] = await Promise.all([
-        db.cachedModules.toArray(),
-        db.cachedCourses.toArray(),
-        db.cachedSubmissions.toArray(),
-      ]);
+    const loadAssignments = async () => {
+      try {
+        setIsLoading(true);
+        // 1. Instant Load from IndexedDB cache
+        const [modules, courses, submissions] = await Promise.all([
+          db.cachedModules.toArray(),
+          db.cachedCourses.toArray(),
+          db.cachedSubmissions.toArray(),
+        ]);
 
-      const items = buildAssignmentItems(modules, courses, submissions);
-      setAssignments(items);
-      setIsLoading(false);
+        if (isMounted) {
+          const items = buildAssignmentItems(modules, courses, submissions);
+          setAssignments(items);
+          setIsLoading(false);
+        }
 
-      // 2. Background sync with server API if online
-      if (typeof window !== 'undefined' && navigator.onLine) {
-        try {
-          const res = await api.get('/assignments/my-submissions', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null);
-          if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-            const cachedSubs = res.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
-            await db.cachedSubmissions.bulkPut(cachedSubs);
-
+        // 2. Background sync with server API if online (throttled & parallel)
+        if (typeof window !== 'undefined' && navigator.onLine) {
+          await rehydrateStorage();
+          if (isMounted) {
             const updatedSubs = await db.cachedSubmissions.toArray();
             const updatedItems = buildAssignmentItems(modules, courses, updatedSubs);
             setAssignments(updatedItems);
           }
-        } catch (syncErr) {
-          // Suppress sync errors in background
         }
+      } catch (err) {
+        console.error('Error loading assignment list:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Error loading assignment list:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+
+    loadAssignments();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredAssignments = useMemo(() => {
     return assignments.filter(item => {

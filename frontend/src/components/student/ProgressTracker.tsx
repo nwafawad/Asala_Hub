@@ -3,8 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { db, seedInitialMockData, type CachedSubmission } from '@/lib/db';
 import { api } from '@/lib/api';
-import { mapSubmissionReadToCached } from '@/lib/mappers';
-import { SubmissionReadDTO } from '@/types/api';
+import { rehydrateStorage } from '@/lib/rehydrate';
 import { useI18n } from '@/context/I18nContext';
 import { useSync } from '@/context/SyncContext';
 import { useOverlay } from '@/context/OverlayContext';
@@ -37,6 +36,8 @@ export const ProgressTracker: React.FC = () => {
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadData() {
       await seedInitialMockData();
       // 1. Instant Load from IndexedDB cache
@@ -47,45 +48,45 @@ export const ProgressTracker: React.FC = () => {
         db.transactionLogs.toArray(),
       ]);
 
-      setSubmissions(allSubmissions);
+      if (isMounted) {
+        setSubmissions(allSubmissions);
 
-      if (allSubmissions.length > 0 && !selectedSubId) {
-        const pendingSub = allSubmissions.find(s => s.syncStatus === 'pending');
-        setSelectedSubId(pendingSub ? pendingSub.id : allSubmissions[0].id);
+        if (allSubmissions.length > 0 && !selectedSubId) {
+          const pendingSub = allSubmissions.find(s => s.syncStatus === 'pending');
+          setSelectedSubId(pendingSub ? pendingSub.id : allSubmissions[0].id);
+        }
+
+        const courseStats = allCourses.map(c => {
+          const mods = allModules.filter(m => m.courseId === c.id);
+          const completed = mods.filter(m => m.isCompleted).length;
+          return {
+            id: c.id,
+            code: c.code,
+            title: c.title,
+            completed,
+            total: mods.length || 1,
+          };
+        });
+
+        setCourses(courseStats);
+        setTxLogs(logs.slice(-5).reverse());
       }
 
-      const courseStats = allCourses.map(c => {
-        const mods = allModules.filter(m => m.courseId === c.id);
-        const completed = mods.filter(m => m.isCompleted).length;
-        return {
-          id: c.id,
-          code: c.code,
-          title: c.title,
-          completed,
-          total: mods.length || 1,
-        };
-      });
-
-      setCourses(courseStats);
-      setTxLogs(logs.slice(-5).reverse());
-
-      // 2. Background sync with server API if online
+      // 2. Background sync with server API if online (throttled & parallel)
       if (typeof window !== 'undefined' && navigator.onLine) {
-        try {
-          const res = await api.get('/assignments/my-submissions', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null);
-          if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-            const cachedSubs = res.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
-            await db.cachedSubmissions.bulkPut(cachedSubs);
-
-            const updatedSubs = await db.cachedSubmissions.toArray();
-            setSubmissions(updatedSubs);
-          }
-        } catch (syncErr) {
-          // Suppress sync errors in background
+        await rehydrateStorage();
+        if (isMounted) {
+          const updatedSubs = await db.cachedSubmissions.toArray();
+          setSubmissions(updatedSubs);
         }
       }
     }
+
     loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const selectedSub = useMemo(() => {

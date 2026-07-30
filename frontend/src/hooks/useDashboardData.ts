@@ -47,17 +47,22 @@ export function useDashboardData() {
       // 2. Background sync with backend API if online
       if (typeof window !== 'undefined' && navigator.onLine) {
         try {
-          const resCourses = await api.get('/courses/', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null);
-          if (resCourses?.data && Array.isArray(resCourses.data) && resCourses.data.length > 0) {
-            const cachedCourses = resCourses.data.map((c: CourseReadDTO) => mapCourseReadToCached(c));
-            await db.cachedCourses.bulkPut(cachedCourses);
-          }
+          const [resCourses, resSubs] = await Promise.all([
+            api.get('/courses/', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null),
+            api.get('/assignments/my-submissions', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null),
+          ]);
 
-          const resSubs = await api.get('/assignments/my-submissions', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null);
-          if (resSubs?.data && Array.isArray(resSubs.data) && resSubs.data.length > 0) {
-            const cachedSubs = resSubs.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
-            await db.cachedSubmissions.bulkPut(cachedSubs);
-          }
+          await db.transaction('rw', [db.cachedCourses, db.cachedSubmissions], async () => {
+            if (resCourses?.data && Array.isArray(resCourses.data) && resCourses.data.length > 0) {
+              const cachedCourses = resCourses.data.map((c: CourseReadDTO) => mapCourseReadToCached(c));
+              await db.cachedCourses.bulkPut(cachedCourses);
+            }
+
+            if (resSubs?.data && Array.isArray(resSubs.data) && resSubs.data.length > 0) {
+              const cachedSubs = resSubs.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
+              await db.cachedSubmissions.bulkPut(cachedSubs);
+            }
+          });
 
           // Re-fetch updated IndexedDB data for UI
           const [updatedCourses, updatedSubCount] = await Promise.all([
