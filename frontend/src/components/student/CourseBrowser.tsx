@@ -13,6 +13,7 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { SkeletonCard } from '@/components/ui/Skeletons';
 import { CourseDetail } from '@/components/student/CourseDetail';
 import { ModuleViewerModal } from '@/components/student/ModuleViewerModal';
+import { useCourseSearch } from '@/hooks/useCourseSearch';
 import {
   BookOpen,
   HardDrive,

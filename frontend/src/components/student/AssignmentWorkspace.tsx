@@ -12,6 +12,7 @@ import { useOverlay } from '@/context/OverlayContext';
 import { useAuth } from '@/context/AuthContext';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { DraftHistoryModal } from '@/components/student/DraftHistoryModal';
 import {
   ArrowLeft,
   ArrowRight,

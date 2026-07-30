@@ -7,6 +7,8 @@ import { db } from '@/lib/db';
 import { KeyRound, Lock, ShieldCheck, Check, Sparkles, User, HardDrive, Plus, RefreshCw, Download, Trash2, ShieldAlert, FileCheck } from 'lucide-react';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { isDebugMode } from '@/lib/debug';
+import { SecuritySettingsPanel } from '@/components/shell/settings/SecuritySettingsPanel';
+import { StorageMetricsPanel } from '@/components/shell/settings/StorageMetricsPanel';
 
 export const SettingsView: React.FC = () => {
   const { user, setQuickPin, hasPinConfigured, logout } = useAuth();
