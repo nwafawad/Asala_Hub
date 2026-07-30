@@ -22,6 +22,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, children, onTabC
   const isEducator = isEducatorUser(user);
   const defaultTab = isEducator ? 'curriculum' : 'dashboard';
   const [activeTab, setActiveTabState] = useState<string>(currentTab || defaultTab);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const { isNearFull, isQueueFull, usedMb, quotaMb } = useStorage();
   const { syncNow, isOnline } = useSync();
 
@@ -38,6 +39,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, children, onTabC
     startViewTransition(() => {
       setActiveTabState(tab);
     });
+    setMobileMenuOpen(false);
   };
 
   // Desktop Keyboard Shortcuts (Alt+1 .. Alt+6) for power navigation
@@ -71,35 +73,51 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, children, onTabC
   const showBlockingModal = isNearFull || isQueueFull;
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex antialiased selection:bg-primary/20 selection:text-primary transition-colors">
+    <div className="min-h-screen bg-background text-foreground flex antialiased selection:bg-primary/20 selection:text-primary transition-colors relative">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-xl focus:shadow-lg focus:outline-none"
       >
         Skip to main content
       </a>
-      <Sidebar activeTab={effectiveActiveTab} setActiveTab={handleSetActiveTab} />
+
+      {/* Backdrop overlay for mobile drawer */}
+      {mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs md:hidden animate-in fade-in duration-200"
+          aria-hidden="true"
+        />
+      )}
+
+      <Sidebar
+        activeTab={effectiveActiveTab}
+        setActiveTab={handleSetActiveTab}
+        isOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+      />
+
       <div className="flex-1 flex flex-col min-w-0">
-        <Header />
+        <Header onMenuToggle={() => setMobileMenuOpen(prev => !prev)} />
 
         {!isOnline && (
-          <div className="bg-amber-500/15 text-amber-900 dark:text-amber-300 border-b border-amber-500/30 px-6 py-2.5 flex items-center justify-between gap-4 text-xs font-semibold animate-in slide-in-from-top duration-300">
+          <div className="bg-amber-500/15 text-amber-900 dark:text-amber-300 border-b border-amber-500/30 px-4 sm:px-6 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 text-xs font-semibold animate-in slide-in-from-top duration-300">
             <div className="flex items-center gap-2.5">
               <WifiOff className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <span>
-                <strong>Working Offline:</strong> Campus intranet network disconnected. Your assignment drafts and changes are saved locally to IndexedDB and will sync automatically when reconnected.
+                <strong>Working Offline:</strong> Intranet network disconnected. Drafts & changes save locally to IndexedDB.
               </span>
             </div>
             <button
               onClick={() => handleSetActiveTab('syncQueue')}
-              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 text-[11px] font-bold shrink-0 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 text-[11px] font-bold shrink-0 transition-colors cursor-pointer self-start sm:self-auto"
             >
               <span>Inspect Sync Queue</span>
             </button>
           </div>
         )}
 
-        <main id="main-content" className="flex-1 p-8 overflow-y-auto" tabIndex={-1}>
+        <main id="main-content" className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto" tabIndex={-1}>
           {children(activeTab, handleSetActiveTab)}
         </main>
       </div>

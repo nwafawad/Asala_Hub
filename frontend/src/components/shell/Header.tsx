@@ -8,12 +8,16 @@ import { SyncIndicator } from './SyncIndicator';
 import { ReAuthModal } from '@/components/auth/ReAuthModal';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { startViewTransition } from '@/lib/view-transition';
-import { Search, Sun, Moon, Languages, LogOut, User } from 'lucide-react';
+import { Search, Sun, Moon, Languages, LogOut, User, Menu } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 import { getInitials, isEducatorUser } from '@/lib/utils';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onMenuToggle?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
   const { t, toggleLanguage } = useI18n();
   const { user, isOfflineSession, logout } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -49,8 +53,17 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="h-16 border-b border-border bg-card/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30 transition-colors">
-        <div className="flex items-center gap-3 flex-1 max-w-md">
+      <header className="h-16 border-b border-border bg-card/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 transition-colors gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-xs sm:max-w-md">
+          {onMenuToggle && (
+            <button
+              onClick={onMenuToggle}
+              className="p-2 rounded-lg border border-border bg-background text-foreground hover:bg-muted md:hidden cursor-pointer shrink-0"
+              aria-label="Open menu drawer"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          )}
           <div className="relative w-full">
             <Search className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -63,21 +76,23 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {isOfflineSession && (
-            <StatusPill label={t.auth.signedInOffline} variant="warning" />
+            <div className="hidden sm:block">
+              <StatusPill label={t.auth.signedInOffline} variant="warning" />
+            </div>
           )}
 
           <SyncIndicator />
 
           <button
             onClick={handleToggleLanguage}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
+            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer focus:ring-2 focus:ring-primary/20"
             aria-label="Switch interface language"
             title="Switch Language"
           >
             <Languages className="w-3.5 h-3.5 text-primary" />
-            <span>{t.actions.switchLanguage}</span>
+            <span className="hidden sm:inline">{t.actions.switchLanguage}</span>
           </button>
 
           <button

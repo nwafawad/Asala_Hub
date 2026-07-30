@@ -14,6 +14,7 @@ import {
   Users,
   BookPlus,
   Award,
+  X,
 } from 'lucide-react';
 import { cn, getInitials, isEducatorUser } from '@/lib/utils';
 
@@ -22,9 +23,11 @@ import { useSync } from '@/context/SyncContext';
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiveTab }) => {
+export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiveTab, isOpen = false, onClose }) => {
   const { t } = useI18n();
   const { user } = useAuth();
   const { pendingCount } = useSync();
@@ -75,19 +78,40 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
     ];
   }, [t, user?.role]);
 
+  const handleTabClick = (tabId: string) => {
+    setActiveTab(tabId);
+    if (onClose) onClose();
+  };
+
   return (
-    <aside className="sticky top-0 h-screen w-64 border-r rtl:border-r-0 rtl:border-l border-border bg-card flex flex-col justify-between shrink-0 transition-colors overflow-y-auto z-40">
+    <aside
+      className={cn(
+        'fixed inset-y-0 left-0 rtl:left-auto rtl:right-0 z-50 w-64 border-r rtl:border-r-0 rtl:border-l border-border bg-card flex flex-col justify-between shrink-0 transition-transform duration-300 ease-in-out overflow-y-auto shadow-2xl md:shadow-none md:static md:sticky md:top-0 md:h-screen md:translate-x-0 md:z-40',
+        isOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full md:translate-x-0'
+      )}
+    >
       <div className="p-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary text-primary-foreground shadow-sm">
-            <Layers className="w-5 h-5" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary text-primary-foreground shadow-sm">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold font-heading text-foreground leading-tight">
+                {t.appName}
+              </h1>
+              <p className="text-[11px] text-muted-foreground">{t.appSubtitle}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold font-heading text-foreground leading-tight">
-              {t.appName}
-            </h1>
-            <p className="text-[11px] text-muted-foreground">{t.appSubtitle}</p>
-          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted md:hidden cursor-pointer"
+              aria-label="Close navigation drawer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         <nav className="mt-8 flex flex-col gap-1.5">
@@ -97,7 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => handleTabClick(item.id)}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer whitespace-nowrap overflow-hidden',
                   isActive
