@@ -10,9 +10,15 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('PWA Pre-cache partial warning:', err);
-      });
+      // Cache each asset individually so one missing/failing asset (e.g. favicon.ico)
+      // doesn't abort caching of the rest of the shell (cache.addAll is all-or-nothing).
+      return Promise.all(
+        STATIC_ASSETS.map((asset) =>
+          cache.add(asset).catch((err) => {
+            console.warn(`PWA Pre-cache asset failed (${asset}):`, err);
+          })
+        )
+      );
     })
   );
 });
@@ -42,7 +48,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   // API Requests: Network-First with Cache Fallback
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/courses/')) {
+  const isApiRequest = ['/api/', '/auth/', '/courses/', '/assignments/', '/admin/', '/sync', '/health'].some(
+    (prefix) => url.pathname.startsWith(prefix)
+  );
+  if (isApiRequest) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
