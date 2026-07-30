@@ -55,11 +55,16 @@ export function mapModuleReadToCached(dto: ModuleReadDTO): CachedModule {
     id: dto.id,
     courseId: dto.course_id,
     title: dto.title,
+    titleAr: dto.title_ar || undefined,
     type: dto.content_type,
     sequenceOrder: dto.order_index,
     isCachedOffline: true,
     sizeMb: 0.2,
     content: dto.content,
+    durationMinutes: dto.duration_minutes ?? undefined,
+    points: dto.points ?? undefined,
+    dueDate: dto.due_date || undefined,
+    audioUrl: dto.content_type === 'audio' ? dto.media_url || undefined : undefined,
   };
 }
 

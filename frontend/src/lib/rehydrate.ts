@@ -46,17 +46,57 @@ export async function rehydrateStorage(force = false): Promise<void> {
 
     await db.transaction('rw', [db.cachedCourses, db.cachedModules, db.cachedSubmissions], async () => {
       if (resCourses?.data && Array.isArray(resCourses.data) && resCourses.data.length > 0) {
-        const cachedCourses = resCourses.data.map((c: CourseReadDTO) => mapCourseReadToCached(c));
-        await db.cachedCourses.bulkPut(cachedCourses);
+        const freshCourses = resCourses.data.map((c: CourseReadDTO) => mapCourseReadToCached(c));
+        const existingCourses = await db.cachedCourses.bulkGet(freshCourses.map(c => c.id));
+        const mergedCourses = freshCourses.map((course, idx) => {
+          const existing = existingCourses[idx];
+          // Preserve locally-tracked offline caching state — the server has no concept of it
+          return existing
+            ? { ...course, isCachedOffline: existing.isCachedOffline, sizeMb: existing.sizeMb }
+            : course;
+        });
+        await db.cachedCourses.bulkPut(mergedCourses);
       }
 
       if (allModules.length > 0) {
-        await db.cachedModules.bulkPut(allModules);
+        const existingModules = await db.cachedModules.bulkGet(allModules.map(m => m.id));
+        const mergedModules = allModules.map((mod, idx) => {
+          const existing = existingModules[idx];
+          // Preserve locally-cached offline content & progress — the server response doesn't carry it
+          return existing
+            ? {
+                ...mod,
+                isCachedOffline: existing.isCachedOffline,
+                sizeMb: existing.sizeMb,
+                isCompleted: existing.isCompleted,
+                userNotes: existing.userNotes,
+                audioArrayBuffer: existing.audioArrayBuffer,
+                videoOfflineText: existing.videoOfflineText,
+                attachmentFile: existing.attachmentFile,
+              }
+            : mod;
+        });
+        await db.cachedModules.bulkPut(mergedModules);
       }
 
       if (resSubs?.data && Array.isArray(resSubs.data) && resSubs.data.length > 0) {
-        const cachedSubs = resSubs.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
-        await db.cachedSubmissions.bulkPut(cachedSubs);
+        const freshSubs = resSubs.data.map((s: SubmissionReadDTO) => mapSubmissionReadToCached(s));
+        const existingSubs = await db.cachedSubmissions.bulkGet(freshSubs.map(s => s.id));
+        const mergedSubs = freshSubs.map((sub, idx) => {
+          const existing = existingSubs[idx];
+          // Preserve local draft history / conflict metadata that the server doesn't return
+          return existing
+            ? {
+                ...sub,
+                attachments: existing.attachments,
+                draftHistory: existing.draftHistory,
+                deviceConflictDrafts: existing.deviceConflictDrafts,
+                conflictStatus: existing.conflictStatus,
+                receiptHash: existing.receiptHash,
+              }
+            : sub;
+        });
+        await db.cachedSubmissions.bulkPut(mergedSubs);
       }
     });
   } catch (err) {
