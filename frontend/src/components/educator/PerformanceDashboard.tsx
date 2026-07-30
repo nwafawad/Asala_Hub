@@ -92,7 +92,7 @@ export const PerformanceDashboard: React.FC = () => {
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-500/10 via-primary/5 to-transparent border border-purple-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-bold font-heading text-foreground">
@@ -166,7 +166,7 @@ export const PerformanceDashboard: React.FC = () => {
               </div>
               <div className="w-full h-3 rounded-full bg-muted overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-primary to-purple-500 rounded-full transition-all duration-500"
+                  className="h-full bg-primary rounded-full transition-all duration-500"
                   style={{ width: `${Math.max(item.percentage, 5)}%` }}
                 />
               </div>

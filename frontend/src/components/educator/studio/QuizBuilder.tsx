@@ -87,7 +87,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>+ Add Question</span>
+          <span>Add Question</span>
         </button>
       </div>
 
@@ -197,7 +197,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
                 onClick={() => addQuizOption(q.id)}
                 className="self-start text-[11px] font-bold text-blue-500 hover:underline cursor-pointer pt-1"
               >
-                + Add Choice Option
+                Add Choice Option
               </button>
             </div>
           </div>

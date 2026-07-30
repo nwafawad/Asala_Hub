@@ -132,7 +132,7 @@ export const CohortRoster: React.FC = () => {
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-500/10 via-primary/5 to-transparent border border-blue-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-bold font-heading text-foreground">

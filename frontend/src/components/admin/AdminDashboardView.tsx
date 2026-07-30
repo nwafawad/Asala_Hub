@@ -53,7 +53,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = () => {
       {/* Header Banner */}
       <div
         style={{ viewTransitionName: 'admin-header-banner' }}
-        className="p-6 rounded-2xl bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border border-primary/20 flex flex-col md:flex-row md:items-center justify-between gap-4"
+        className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
       >
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-bold font-heading text-foreground">

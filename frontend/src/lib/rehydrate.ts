@@ -14,12 +14,10 @@ export async function rehydrateStorage(): Promise<void> {
     const courseCount = await db.cachedCourses.count();
     const subCount = await db.cachedSubmissions.count();
 
-    if (courseCount === 0) {
-      const res = await api.get('/courses/').catch(() => null);
-      if (res?.data && Array.isArray(res.data)) {
-        const cachedCourses = res.data.map((c: CourseReadDTO) => mapCourseReadToCached(c));
-        await db.cachedCourses.bulkPut(cachedCourses);
-      }
+    const res = await api.get('/courses/').catch(() => null);
+    if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+      const cachedCourses = res.data.map((c: CourseReadDTO) => mapCourseReadToCached(c));
+      await db.cachedCourses.bulkPut(cachedCourses);
     }
 
     if (subCount === 0) {

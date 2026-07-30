@@ -306,7 +306,7 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
 
               {/* Audio Lecture Widget */}
               {module.type === 'audio' && (
-                <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-background to-card border border-indigo-500/20 flex flex-col gap-4">
+                <div className="p-5 rounded-2xl bg-card border border-border shadow-xs flex flex-col gap-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                       <Volume2 className="w-4 h-4" />
@@ -444,7 +444,7 @@ export const ModuleViewerModal: React.FC<ModuleViewerModalProps> = ({
 
               {/* 3. Assignment Guidelines */}
               {module.type === 'assignment' && (
-                <div className="p-6 rounded-2xl bg-gradient-to-br from-amber-500/10 to-background border border-amber-500/20 flex flex-col gap-4">
+                <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col gap-4">
                   <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
                     <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">
                       Assignment Guidelines

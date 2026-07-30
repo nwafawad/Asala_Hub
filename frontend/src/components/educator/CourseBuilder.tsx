@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { db, CachedCourse, CachedModule, TransactionLogItem, isAssignmentModule } from '@/lib/db';
+import { api } from '@/lib/api';
 import { generateUUID } from '@/lib/uuid';
 import { useI18n } from '@/context/I18nContext';
 import { useOverlay } from '@/context/OverlayContext';
@@ -64,13 +65,21 @@ export const CourseBuilder: React.FC = () => {
         action: 'UPDATE_COURSE',
         entityType: 'course',
         entityId: courseId,
-        payload: newCourse as unknown as Record<string, unknown>,
+        payload: {
+          ...newCourse,
+          description: courseCode ? `[${courseCode}] ${courseTitle}` : courseTitle,
+        } as unknown as Record<string, unknown>,
         timestamp,
         status: 'pending',
       };
       await db.transactionLogs.add(logItem);
 
-      showToast('Course Created', 'success', 'New course saved locally to IndexedDB.');
+      // Trigger sync engine if connected online
+      if (isOnline) {
+        syncNow().catch(err => console.error('Course sync publish error:', err));
+      }
+
+      showToast('Course Created', 'success', 'New course saved locally and queued for backend sync.');
       setIsCreatingCourse(false);
       setSelectedCourseId(courseId);
       await loadCoursesAndModules();
@@ -93,6 +102,7 @@ export const CourseBuilder: React.FC = () => {
   const loadCoursesAndModules = async () => {
     try {
       setIsLoading(true);
+      // 1. Instant load from IndexedDB
       const courseList = await db.cachedCourses.toArray();
       setCourses(courseList);
 
@@ -101,6 +111,38 @@ export const CourseBuilder: React.FC = () => {
         setSelectedCourseId(activeId);
         const moduleList = await db.cachedModules.where('courseId').equals(activeId).sortBy('sequenceOrder');
         setModules(moduleList);
+      }
+
+      // 2. Fetch server-authoritative courses from API when online
+      if (typeof window !== 'undefined' && navigator.onLine) {
+        try {
+          const res = await api.get('/courses/', { headers: { 'X-Suppress-401-Event': 'true' } });
+          if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+            const apiCourses: CachedCourse[] = res.data.map((c: any) => ({
+              id: c.id,
+              title: c.title,
+              code: c.code || `[${c.id.substring(0, 6).toUpperCase()}]`,
+              educatorName: c.educator_name || 'Prof. Educator',
+              moduleCount: c.module_count || 0,
+              isCachedOffline: true,
+              sizeMb: 0.5,
+              updatedAt: c.updated_at || new Date().toISOString(),
+            }));
+
+            await db.cachedCourses.bulkPut(apiCourses);
+            const freshCourseList = await db.cachedCourses.toArray();
+            setCourses(freshCourseList);
+
+            const activeId = selectedCourseId || (freshCourseList.length > 0 ? freshCourseList[0].id : null);
+            if (activeId) {
+              setSelectedCourseId(activeId);
+              const freshModules = await db.cachedModules.where('courseId').equals(activeId).sortBy('sequenceOrder');
+              setModules(freshModules);
+            }
+          }
+        } catch (apiErr) {
+          // Fall back gracefully to local IndexedDB records on offline/error
+        }
       }
     } catch (err) {
       console.error('Error loading course authoring data:', err);
@@ -234,7 +276,7 @@ export const CourseBuilder: React.FC = () => {
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 rounded-2xl bg-card border border-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-bold font-heading text-foreground">
@@ -274,7 +316,7 @@ export const CourseBuilder: React.FC = () => {
             className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-primary/30 bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors cursor-pointer"
           >
             <BookOpen className="w-4 h-4" />
-            <span>+ New Course</span>
+            <span>New Course</span>
           </button>
           
           <button
@@ -292,7 +334,7 @@ export const CourseBuilder: React.FC = () => {
             }`}
           >
             <Plus className="w-4 h-4" />
-            <span>+ Add Learning Module</span>
+            <span>Add Learning Module</span>
           </button>
 
           <button
@@ -310,7 +352,7 @@ export const CourseBuilder: React.FC = () => {
             }`}
           >
             <Plus className="w-4 h-4" />
-            <span>+ Add Assignment</span>
+            <span>Add Assignment</span>
           </button>
         </div>
       </div>
@@ -328,7 +370,7 @@ export const CourseBuilder: React.FC = () => {
               onClick={() => setIsCreatingCourse(true)}
               className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
             >
-              + Course
+              Course
             </button>
           </div>
 
@@ -389,7 +431,7 @@ export const CourseBuilder: React.FC = () => {
                 onClick={() => setIsCreatingCourse(true)}
                 className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 transition-opacity"
               >
-                + Create New Course
+                Create New Course
               </button>
             </div>
           ) : modules.length === 0 ? (
@@ -401,13 +443,13 @@ export const CourseBuilder: React.FC = () => {
                   onClick={() => setActiveEditorState({ mode: 'module', module: 'new' })}
                   className="px-3.5 py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
                 >
-                  + Add Learning Module
+                  Add Learning Module
                 </button>
                 <button
                   onClick={() => setActiveEditorState({ mode: 'assignment', module: 'new' })}
                   className="px-3.5 py-2 rounded-lg bg-amber-500/10 text-amber-600 text-xs font-semibold hover:bg-amber-500/20 transition-colors"
                 >
-                  + Add Assignment
+                  Add Assignment
                 </button>
               </div>
             </div>

@@ -8,101 +8,16 @@ and conflict resolution for offline-first client synchronization.
 from __future__ import annotations
 
 import difflib
-
-"""
-BR-6 Three-Way Merge Algorithm Specification
----------------------------------------------
-When a client submits an offline content edit with client_version < server_version,
-the sync engine resolves conflicts non-destructively as follows:
-
-1. BR-4 Guard: If the submission has ALREADY been graded on the server (grade is not None),
-   no client content modifications are permitted. The submission is marked SyncStatus.conflict
-   and rejected to protect educator grading integrity.
-
-2. Three-Way Non-Destructive Content Merge:
-   If no grade exists (grade is None), the engine evaluates server_content against client_content:
-
-   a. Identical Content (No-Op):
-      If client_content == server_content, no structural changes occurred. The transaction
-      is accepted as synced without creating a conflict.
-
-   b. Non-Overlapping Extension / Line Merge:
-      The engine parses line sequences for non-overlapping additions or edits (e.g. student added
-      new paragraphs on Device B while Device A edited line 1). The changes are merged cleanly
-      into server_content, version is incremented, and status is set to SyncStatus.synced.
-
-   c. Overlapping Line Conflict:
-      If both client and server modified the exact same line/block differently, an unresolvable
-      collision is detected. The submission is marked SyncStatus.conflict for manual admin resolution.
-"""
-
-
-def merge_submission_content(server_text: str, client_text: str) -> tuple[bool, str]:
-    """
-    BR-6 Three-Way Non-Destructive Content Merge Engine.
-    
-    Attempts to merge non-overlapping text changes between server_text and client_text.
-    
-    Returns:
-        (bool, str): (True, merged_text) if clean non-conflicting merge,
-                     (False, "") if an overlapping conflicting line edit is detected.
-    """
-    if server_text == client_text:
-        return True, server_text
-
-    if not server_text:
-        return True, client_text
-    if not client_text:
-        return True, server_text
-
-    # Extension / Append shortcut checks
-    if client_text.startswith(server_text):
-        return True, client_text
-    if server_text.startswith(client_text):
-        return True, server_text
-
-    server_lines = [line.strip() for line in server_text.splitlines() if line.strip()]
-    client_lines = [line.strip() for line in client_text.splitlines() if line.strip()]
-
-    # Single line edit check: if both are 1 line and differ -> conflicting choice (e.g. Option A vs Option B)
-    if len(server_lines) == 1 and len(client_lines) == 1 and server_lines[0] != client_lines[0]:
-        return False, ""
-
-    # Check key prefixes if present (e.g. "Answer: Option A" vs "Answer: Option B")
-    for s_line in server_lines:
-        for c_line in client_lines:
-            if s_line != c_line:
-                s_key = s_line.split(":")[0].strip() if ":" in s_line else None
-                c_key = c_line.split(":")[0].strip() if ":" in c_line else None
-                if s_key and c_key and s_key == c_key:
-                    return False, ""
-
-    # Non-overlapping line addition merge: preserve order
-    merged_lines = []
-    seen = set()
-
-    for line in server_lines:
-        if line not in seen:
-            merged_lines.append(line)
-            seen.add(line)
-
-    for line in client_lines:
-        if line not in seen:
-            merged_lines.append(line)
-            seen.add(line)
-
-    return True, "\n".join(merged_lines) + "\n"
-
-
-
 import uuid
 from typing import List, Dict, Optional, Any
 from datetime import datetime
-from sqlalchemy import text
+from collections import OrderedDict
+from sqlalchemy import text as sa_text
 from sqlmodel import Session
+from pydantic import ValidationError
+
 from app.models.base import get_naive_utc_now
 from app.models.user import User, UserRole
-from pydantic import ValidationError
 from app.models import Course, Module, ContentType
 from app.models.transaction import TransactionLog
 from app.models.assignment import Submission, SyncStatus
@@ -165,7 +80,7 @@ class ServerSequenceGenerator:
         if self.is_postgres and count > 0:
             # Allocate sequence block of size count in 1 atomic DB query
             end_seq = session.scalar(
-                text("SELECT setval('tx_log_server_seq', nextval('tx_log_server_seq') + :inc)"),
+                sa_text("SELECT setval('tx_log_server_seq', nextval('tx_log_server_seq') + :inc)"),
                 {"inc": count - 1}
             )
             self._current_seq = (end_seq or 100) - count
@@ -183,16 +98,17 @@ def normalize_payload(payload: dict, schema_version: int, entity_type: str) -> d
     Normalize older payload shapes into the current internal schema shape.
     Allows backward-compatible handling of older client payload versions (FR-20).
     """
-    if schema_version >= CURRENT_SCHEMA_VERSION:
-        return payload
-
     normalized = dict(payload)
-    if schema_version <= 1:
-        if entity_type == "submission":
-            if "body" in normalized and "content" not in normalized:
-                normalized["content"] = normalized.pop("body")
-            if "ver" in normalized and "version" not in normalized:
-                normalized["version"] = normalized.pop("ver")
+    if entity_type == "submission":
+        if "score" in normalized and "grade" not in normalized:
+            try:
+                normalized["grade"] = float(normalized["score"])
+            except (ValueError, TypeError):
+                pass
+        if "body" in normalized and "content" not in normalized:
+            normalized["content"] = normalized.pop("body")
+        if "ver" in normalized and "version" not in normalized:
+            normalized["version"] = normalized.pop("ver")
     return normalized
 
 
