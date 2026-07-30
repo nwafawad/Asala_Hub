@@ -8,7 +8,7 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { KeyRound, Lock, ArrowRight, Eye, EyeOff, LogOut, User, Loader2 } from 'lucide-react';
 
 export const ReAuthModal: React.FC = () => {
-  const { isReAuthModalOpen, renewSession, closeReAuthModal, user, logout } = useAuth();
+  const { isReAuthModalOpen, renewSession, closeReAuthModal, user, logout, reAuthReason } = useAuth();
   const { t } = useI18n();
 
   const [pinOrPass, setPinOrPass] = useState<string>('');
@@ -16,6 +16,18 @@ export const ReAuthModal: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Dynamic explanation text based on reAuthReason and user role
+  const getDescription = () => {
+    if (reAuthReason === 'inactivity') {
+      const idleLimit = user?.role === 'educator' ? '30 minutes' : '1 hour';
+      return `Your session was automatically locked after ${idleLimit} of inactivity to protect your account. Enter your 4-digit PIN or password to resume.`;
+    }
+    if (reAuthReason === 'session_expired') {
+      return 'Your security session has expired. Please verify your identity to continue your work.';
+    }
+    return t.auth.reAuthDesc || 'Enter your 4-digit Quick PIN or account password to verify your identity.';
+  };
 
   // Focus input when modal opens and reset internal state
   useEffect(() => {
@@ -60,7 +72,11 @@ export const ReAuthModal: React.FC = () => {
     <Dialog.Root open={isReAuthModalOpen} onOpenChange={open => !open && closeReAuthModal()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
-        <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border border-border bg-card/95 backdrop-blur-md p-6 shadow-2xl rounded-2xl animate-in fade-in-0 zoom-in-95">
+        <Dialog.Content
+          onPointerDownOutside={e => e.preventDefault()}
+          onEscapeKeyDown={e => e.preventDefault()}
+          className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border border-border bg-card/95 backdrop-blur-md p-6 shadow-2xl rounded-2xl animate-in fade-in-0 zoom-in-95"
+        >
           <div className="flex items-start gap-3.5">
             <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
               <KeyRound className="w-6 h-6" />
@@ -70,7 +86,7 @@ export const ReAuthModal: React.FC = () => {
                 {t.auth.reAuthTitle}
               </Dialog.Title>
               <Dialog.Description className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                {t.auth.reAuthDesc}
+                {getDescription()}
               </Dialog.Description>
             </div>
           </div>

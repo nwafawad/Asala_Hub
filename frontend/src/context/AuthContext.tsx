@@ -8,6 +8,9 @@ import { useOverlay } from './OverlayContext';
 import { rehydrateStorage } from '@/lib/rehydrate';
 
 import { isEducatorUser } from '@/lib/utils';
+import { useIdleTimer } from '@/hooks/useIdleTimer';
+
+export type ReAuthReason = 'inactivity' | 'session_expired' | 'manual';
 
 interface AuthContextType {
   user: IndexedDBUser | null;
@@ -15,6 +18,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isOfflineSession: boolean;
   isReAuthModalOpen: boolean;
+  reAuthReason: ReAuthReason;
   isRestoring: boolean;
   hasPinConfigured: boolean;
   login: (email: string, pass: string, rememberMe: boolean) => Promise<{ success: boolean; error?: string }>;
@@ -22,7 +26,7 @@ interface AuthContextType {
   renewSession: (pinOrPassword: string) => Promise<boolean>;
   setQuickPin: (pin: string | null) => Promise<void>;
   extendSession: () => Promise<void>;
-  openReAuthModal: () => void;
+  openReAuthModal: (reason?: ReAuthReason) => void;
   closeReAuthModal: () => void;
   switchRole: (newRole: 'student' | 'educator') => Promise<void>;
 }
@@ -36,7 +40,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [isOfflineSession, setIsOfflineSession] = useState<boolean>(false);
   const [isReAuthModalOpen, setIsReAuthModalOpen] = useState<boolean>(false);
+  const [reAuthReason, setReAuthReason] = useState<ReAuthReason>('manual');
   const { showToast } = useOverlay();
+
+  // Role-based idle timeout: Educator = 30 minutes, Student = 60 minutes
+  const idleTimeoutMs = user?.role === 'educator' ? 30 * 60 * 1000 : 60 * 60 * 1000;
+
+  const handleIdleTimeout = useCallback(() => {
+    if (user && !isReAuthModalOpen) {
+      setReAuthReason('inactivity');
+      setIsReAuthModalOpen(true);
+    }
+  }, [user, isReAuthModalOpen]);
+
+  const handleIdleWarning = useCallback(() => {
+    if (user && !isReAuthModalOpen) {
+      showToast(
+        'Session Inactivity Warning',
+        'warning',
+        'Your session will be locked in 60 seconds due to inactivity.'
+      );
+    }
+  }, [user, isReAuthModalOpen, showToast]);
+
+  const { updateLastActive } = useIdleTimer({
+    timeoutMs: idleTimeoutMs,
+    warningMs: 60 * 1000,
+    onTimeout: handleIdleTimeout,
+    onWarning: handleIdleWarning,
+    enabled: !!user && !isReAuthModalOpen && !isRestoring,
+  });
 
   // Restore session from IndexedDB or storage on boot
   const restoreSession = useCallback(async () => {
@@ -89,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           // Token expired -> trigger re-auth modal if user profile exists
           setUser(activeSession.user);
+          setReAuthReason('session_expired');
           setIsReAuthModalOpen(true);
         }
       } else if (typeof window !== 'undefined') {
@@ -119,6 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen to custom 401 session-expired event dispatched by Axios interceptor
     const handleExpiredEvent = () => {
+      setReAuthReason('session_expired');
       setIsReAuthModalOpen(true);
     };
 
@@ -344,6 +379,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         setIsReAuthModalOpen(false);
+        updateLastActive();
         showToast('Session Renewed', 'success', 'Saved drafts and notes preserved.');
         return true;
       } catch (err) {
@@ -381,7 +417,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [showToast]
   );
 
-  const openReAuthModal = useCallback(() => setIsReAuthModalOpen(true), []);
+  const openReAuthModal = useCallback((reason: ReAuthReason = 'manual') => {
+    setReAuthReason(reason);
+    setIsReAuthModalOpen(true);
+  }, []);
   const closeReAuthModal = useCallback(() => setIsReAuthModalOpen(false), []);
 
   const switchRole = useCallback(
@@ -430,6 +469,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAuthenticated: !!user && !!token,
       isOfflineSession,
       isReAuthModalOpen,
+      reAuthReason,
       isRestoring,
       hasPinConfigured,
       login,
@@ -446,6 +486,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       token,
       isOfflineSession,
       isReAuthModalOpen,
+      reAuthReason,
       isRestoring,
       hasPinConfigured,
       login,
