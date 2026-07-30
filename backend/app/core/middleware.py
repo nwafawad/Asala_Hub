@@ -71,8 +71,12 @@ async def security_and_logging_middleware(request: Request, call_next):
 def setup_cors(app: FastAPI) -> None:
     """
     Configure CORS middleware on the FastAPI application instance.
+    Supports localhost, Vercel deployments (*.vercel.app), and configured ALLOWED_HOSTS.
     """
-    origins: List[str] = list(settings.allowed_hosts_list)
+    raw_origins: List[str] = list(settings.allowed_hosts_list)
+    has_wildcard = "*" in raw_origins
+
+    origins = [o for o in raw_origins if o != "*"]
     if not origins:
         origins = [
             "http://localhost:3000",
@@ -80,10 +84,15 @@ def setup_cors(app: FastAPI) -> None:
         ]
     origins = list(set(origins))  # Remove duplicate origins
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    cors_kwargs = {
+        "allow_origins": origins,
+        "allow_credentials": True,
+        "allow_methods": ["*"],
+        "allow_headers": ["*"],
+    }
+    if has_wildcard:
+        cors_kwargs["allow_origin_regex"] = r"https://.*"
+    else:
+        cors_kwargs["allow_origin_regex"] = r"https://.*\.vercel\.app"
+
+    app.add_middleware(CORSMiddleware, **cors_kwargs)

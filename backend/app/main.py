@@ -37,6 +37,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Ensure required local directories exist
+    os.makedirs(settings.MEDIA_UPLOAD_DIR, exist_ok=True)
+    os.makedirs("backups", exist_ok=True)
+
     sync_task = None
     if settings.CAMPUS_MODE:
         logger.info("Initializing Campus Sync background service...")

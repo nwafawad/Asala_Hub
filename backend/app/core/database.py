@@ -9,7 +9,7 @@ from typing import Any
 from sqlmodel import create_engine, Session
 from app.core.config import settings
 
-is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+is_sqlite = settings.normalized_database_url.startswith("sqlite")
 engine_kwargs: dict[str, Any] = {
     "echo": settings.ECHO_SQL,
 }
@@ -26,7 +26,7 @@ else:
     })
 
 # Initialize database engine
-engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
+engine = create_engine(settings.normalized_database_url, **engine_kwargs)
 
 def get_session():
     """

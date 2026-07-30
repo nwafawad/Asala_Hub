@@ -10,6 +10,8 @@ echo "[entrypoint] Waiting for database connection..."
 python -c "
 import time, sys, os, psycopg2
 db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@db:5432/asalahub')
+if db_url.startswith('postgres://'):
+    db_url = db_url.replace('postgres://', 'postgresql://', 1)
 retries = 30
 while retries > 0:
     try:

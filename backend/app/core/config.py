@@ -68,6 +68,14 @@ class Settings(BaseSettings):
         return self.ENVIRONMENT.lower() in ("production", "prod")
 
     @property
+    def normalized_database_url(self) -> str:
+        """Ensure Postgres database URL uses postgresql:// scheme compatible with SQLAlchemy 2.0."""
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url
+
+    @property
     def effective_cookie_secure(self) -> bool:
         """Enforce Secure cookies in production unless explicitly configured otherwise."""
         if self.is_production and not self.COOKIE_SECURE:
