@@ -31,7 +31,6 @@ import { useSync } from '@/context/SyncContext';
 import { useAuth } from '@/context/AuthContext';
 import { useOverlay } from '@/context/OverlayContext';
 import { isEducatorUser } from '@/lib/utils';
-import { useDashboardData } from '@/hooks/useDashboardData';
 
 export function HomeContent() {
   const { t } = useI18n();
@@ -45,7 +44,6 @@ export function HomeContent() {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
 
   const isEducator = isEducatorUser(user);
-  const { isLoading, stats } = useDashboardData();
 
   // Admin Role Guard: redirect to /admin console
   useEffect(() => {
@@ -168,8 +166,6 @@ export function HomeContent() {
               <DashboardView
                 user={user}
                 isOnline={isOnline}
-                isLoading={isLoading}
-                stats={stats}
                 t={t}
                 onNavigate={tab => handleTabNavigate(tab, setActiveTab)}
               />

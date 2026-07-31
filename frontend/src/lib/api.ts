@@ -40,13 +40,25 @@ export function extractErrorMessage(error: any, fallback = 'An unexpected error 
   return error.message || fallback;
 }
 
+let inMemoryToken: string | null = null;
+
+export function setAuthToken(token: string | null): void {
+  inMemoryToken = token;
+}
+
 // Request Interceptor: Attach Bearer token
 api.interceptors.request.use(
   config => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token');
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
+      if (!inMemoryToken) {
+        inMemoryToken = localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token');
+      }
+      if (inMemoryToken && config.headers) {
+        if (typeof config.headers.set === 'function') {
+          config.headers.set('Authorization', `Bearer ${inMemoryToken}`);
+        } else {
+          config.headers.Authorization = `Bearer ${inMemoryToken}`;
+        }
       }
     }
     return config;
@@ -114,6 +126,7 @@ api.interceptors.response.use(
               }
             );
             const newToken = res.data.access_token;
+            setAuthToken(newToken);
 
             if (localStorage.getItem('asala_token')) {
               localStorage.setItem('asala_token', newToken);

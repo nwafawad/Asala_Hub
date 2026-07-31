@@ -66,12 +66,11 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsQueueFull(pendingCount >= 150);
 
       // 4. Track Days Since Last Successful Sync (30-day offline cap per FR-18)
-      const syncedItems = await db.transactionLogs
+      const lastSyncedItem = await db.transactionLogs
         .where('status')
         .equals('synced')
-        .sortBy('id');
-      // Take the item with the highest id for strict sequence ordering (Security #3)
-      const lastSyncedItem = syncedItems[syncedItems.length - 1];
+        .reverse()
+        .first();
 
       if (lastSyncedItem && lastSyncedItem.timestamp) {
         const diffMs = Date.now() - new Date(lastSyncedItem.timestamp).getTime();

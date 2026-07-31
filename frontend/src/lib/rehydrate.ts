@@ -7,6 +7,7 @@ import { notifyStorageUpdated } from './events';
 
 let lastRehydrateTime = 0;
 const REHYDRATE_THROTTLE_MS = 10_000; // 10s throttle window to eliminate duplicate network bursts
+let inFlightRehydratePromise: Promise<void> | null = null;
 
 /**
  * Rehydrates local IndexedDB caches (cachedCourses, cachedModules, cachedSubmissions)
@@ -19,32 +20,44 @@ export async function rehydrateStorage(force = false): Promise<void> {
   if (!force && now - lastRehydrateTime < REHYDRATE_THROTTLE_MS) {
     return;
   }
-  lastRehydrateTime = now;
 
-  try {
-    const [resCourses, resSubs] = await Promise.all([
-      api.get('/courses/', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null),
-      api.get('/assignments/my-submissions', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null),
-    ]);
+  if (inFlightRehydratePromise) {
+    return inFlightRehydratePromise;
+  }
 
-    // Fetch modules for each course in parallel
-    let allModules: ReturnType<typeof mapModuleReadToCached>[] = [];
-    if (resCourses?.data && Array.isArray(resCourses.data) && resCourses.data.length > 0) {
-      const moduleResponses = await Promise.all(
-        resCourses.data.map((c: CourseReadDTO) =>
-          api
-            .get(`/courses/${c.id}/modules`, { headers: { 'X-Suppress-401-Event': 'true' } })
-            .catch(() => null)
-        )
-      );
+  inFlightRehydratePromise = (async () => {
+    try {
+      lastRehydrateTime = Date.now();
+      const [resCourses, resSubs] = await Promise.all([
+        api.get('/courses/', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null),
+        api.get('/assignments/my-submissions', { headers: { 'X-Suppress-401-Event': 'true' } }).catch(() => null),
+      ]);
 
-      for (const modRes of moduleResponses) {
-        if (modRes?.data && Array.isArray(modRes.data)) {
-          const mapped = modRes.data.map((m: ModuleReadDTO) => mapModuleReadToCached(m));
-          allModules = allModules.concat(mapped);
+      // Fetch modules for each course with batch concurrency control
+      let allModules: ReturnType<typeof mapModuleReadToCached>[] = [];
+      if (resCourses?.data && Array.isArray(resCourses.data) && resCourses.data.length > 0) {
+        const courseDtos: CourseReadDTO[] = resCourses.data;
+        const BATCH_SIZE = 5;
+        const moduleResponses: any[] = [];
+        for (let i = 0; i < courseDtos.length; i += BATCH_SIZE) {
+          const chunk = courseDtos.slice(i, i + BATCH_SIZE);
+          const chunkRes = await Promise.all(
+            chunk.map((c: CourseReadDTO) =>
+              api
+                .get(`/courses/${c.id}/modules`, { headers: { 'X-Suppress-401-Event': 'true' } })
+                .catch(() => null)
+            )
+          );
+          moduleResponses.push(...chunkRes);
+        }
+
+        for (const modRes of moduleResponses) {
+          if (modRes?.data && Array.isArray(modRes.data)) {
+            const mapped = modRes.data.map((m: ModuleReadDTO) => mapModuleReadToCached(m));
+            allModules = allModules.concat(mapped);
+          }
         }
       }
-    }
 
     await db.transaction('rw', [db.cachedCourses, db.cachedModules, db.cachedSubmissions], async () => {
       if (resCourses?.data && Array.isArray(resCourses.data) && resCourses.data.length > 0) {
@@ -104,6 +117,11 @@ export async function rehydrateStorage(force = false): Promise<void> {
     notifyStorageUpdated();
   } catch (err) {
     console.warn('Automatic storage re-hydration notice:', err);
+  } finally {
+    inFlightRehydratePromise = null;
   }
+  })();
+
+  return inFlightRehydratePromise;
 }
 

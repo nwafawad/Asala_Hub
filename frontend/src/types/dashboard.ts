@@ -11,8 +11,8 @@ export interface DashboardStats {
 export interface DashboardViewProps {
   user: IndexedDBUser | null;
   isOnline: boolean;
-  isLoading: boolean;
-  stats: DashboardStats;
+  isLoading?: boolean;
+  stats?: DashboardStats;
   t: any;
   onNavigate: (tab: string) => void;
 }

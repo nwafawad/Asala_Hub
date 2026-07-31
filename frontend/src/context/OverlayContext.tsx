@@ -69,17 +69,20 @@ export const OverlayProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setActiveModal(null);
   }, []);
 
+  const value = React.useMemo(
+    () => ({
+      toasts,
+      showToast,
+      removeToast,
+      activeModal,
+      openModal,
+      closeModal,
+    }),
+    [toasts, showToast, removeToast, activeModal, openModal, closeModal]
+  );
+
   return (
-    <OverlayContext.Provider
-      value={{
-        toasts,
-        showToast,
-        removeToast,
-        activeModal,
-        openModal,
-        closeModal,
-      }}
-    >
+    <OverlayContext.Provider value={value}>
       {children}
     </OverlayContext.Provider>
   );

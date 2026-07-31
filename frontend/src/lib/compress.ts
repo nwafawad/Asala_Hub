@@ -60,7 +60,11 @@ export function compressPayload(input: string): string {
     const CHUNK_SIZE = 8192;
     for (let i = 0; i < uint8.byteLength; i += CHUNK_SIZE) {
       const chunk = uint8.subarray(i, i + CHUNK_SIZE);
-      binary += String.fromCharCode.apply(null, Array.from(chunk));
+      let chunkStr = '';
+      for (let j = 0; j < chunk.length; j++) {
+        chunkStr += String.fromCharCode(chunk[j]);
+      }
+      binary += chunkStr;
     }
     const base64Str = typeof btoa !== 'undefined' ? btoa(binary) : Buffer.from(binary, 'binary').toString('base64');
     return `__ASALA_CMP__${base64Str}`;
@@ -88,34 +92,47 @@ export function decompressPayload(input: string): string {
     const codes = Array.from(uint16);
     if (codes.length === 0) return '';
 
-    const dictionary: Record<number, number[]> = {};
+    const dictionary: Map<number, Uint8Array> = new Map();
     let code = 256;
-    let oldPhrase = [codes[0]];
-    const outBytes: number[] = [...oldPhrase];
+    let oldPhrase: Uint8Array = new Uint8Array([codes[0]]);
+    const outChunks: Uint8Array[] = [oldPhrase];
     let currByteChar = codes[0];
+    let totalBytes = oldPhrase.length;
 
     for (let i = 1; i < codes.length; i++) {
       const currCode = codes[i];
-      let phrase: number[];
+      let phrase: Uint8Array;
 
       if (currCode < 256) {
-        phrase = [currCode];
-      } else if (dictionary[currCode]) {
-        phrase = dictionary[currCode];
+        phrase = new Uint8Array([currCode]);
+      } else if (dictionary.has(currCode)) {
+        phrase = dictionary.get(currCode)!;
       } else {
-        phrase = [...oldPhrase, currByteChar];
+        phrase = new Uint8Array(oldPhrase.length + 1);
+        phrase.set(oldPhrase, 0);
+        phrase[oldPhrase.length] = currByteChar;
       }
 
-      outBytes.push(...phrase);
+      outChunks.push(phrase);
+      totalBytes += phrase.length;
       currByteChar = phrase[0];
+
       if (code < 65000) {
-        dictionary[code] = [...oldPhrase, currByteChar];
+        const newEntry = new Uint8Array(oldPhrase.length + 1);
+        newEntry.set(oldPhrase, 0);
+        newEntry[oldPhrase.length] = currByteChar;
+        dictionary.set(code, newEntry);
         code++;
       }
       oldPhrase = phrase;
     }
 
-    const decodedUint8 = new Uint8Array(outBytes);
+    const decodedUint8 = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (let i = 0; i < outChunks.length; i++) {
+      decodedUint8.set(outChunks[i], offset);
+      offset += outChunks[i].length;
+    }
     return new TextDecoder('utf-8').decode(decodedUint8);
   } catch (err) {
     console.warn('Decompression fallback to raw input:', err);

@@ -12,7 +12,7 @@ interface StorageMetricsPanelProps {
   onRefreshStorage: () => void;
 }
 
-export const StorageMetricsPanel: React.FC<StorageMetricsPanelProps> = ({
+export const StorageMetricsPanel: React.FC<StorageMetricsPanelProps> = React.memo(({
   usedMb,
   quotaMb,
   usagePercent,
@@ -72,4 +72,6 @@ export const StorageMetricsPanel: React.FC<StorageMetricsPanelProps> = ({
       </div>
     </div>
   );
-};
+});
+
+StorageMetricsPanel.displayName = 'StorageMetricsPanel';

@@ -60,6 +60,24 @@ export async function deriveKeyFromPassword(
   );
 }
 
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function base64ToUint8Array(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
 /**
  * Encrypts a UTF-8 string into an AES-GCM ciphertext payload format: "enc:<iv_b64>:<ciphertext_b64>"
  */
@@ -81,8 +99,8 @@ export async function encryptText(plaintext: string, key?: CryptoKey | null): Pr
       encodedText
     );
 
-    const ivB64 = btoa(String.fromCharCode(...Array.from(iv)));
-    const cipherB64 = btoa(String.fromCharCode(...Array.from(new Uint8Array(encryptedBuffer))));
+    const ivB64 = uint8ToBase64(iv);
+    const cipherB64 = uint8ToBase64(new Uint8Array(encryptedBuffer));
 
     return `enc:${ivB64}:${cipherB64}`;
   } catch (err) {
@@ -112,13 +130,13 @@ export async function decryptText(encryptedPayload: string, key?: CryptoKey | nu
     const ivB64 = parts[1];
     const cipherB64 = parts[2];
 
-    const iv = new Uint8Array(atob(ivB64).split('').map(c => c.charCodeAt(0)));
-    const cipherBuffer = new Uint8Array(atob(cipherB64).split('').map(c => c.charCodeAt(0)));
+    const iv = base64ToUint8Array(ivB64);
+    const cipherBuffer = base64ToUint8Array(cipherB64);
 
     const decryptedBuffer = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
+      { name: 'AES-GCM', iv: iv as unknown as BufferSource },
       targetKey,
-      cipherBuffer
+      cipherBuffer as unknown as BufferSource
     );
 
     const dec = new TextDecoder();

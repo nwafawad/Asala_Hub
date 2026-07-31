@@ -23,7 +23,7 @@ export async function cacheAudioLecture(audioUrl: string): Promise<boolean> {
     const cache = await caches.open(AUDIO_CACHE_NAME);
     const response = await fetch(audioUrl);
     if (response.ok) {
-      await cache.put(audioUrl, response.clone());
+      await cache.put(audioUrl, response);
       return true;
     }
     return false;

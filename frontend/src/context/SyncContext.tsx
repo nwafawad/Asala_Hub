@@ -29,6 +29,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [syncState, setSyncState] = useState<SyncState>('synced');
   const [pendingLogs, setPendingLogs] = useState<TransactionLogItem[]>([]);
+  const [pendingCount, setPendingCount] = useState<number>(0);
   const [pendingSubmissionsCount, setPendingSubmissionsCount] = useState<number>(0);
   const { showSystemMessage, blockingMessage, closeBlockingMessage } = useSystemMessage();
   // Bug #2: mutex ref — prevents concurrent sync requests from rapid clicks or simultaneous online events
@@ -40,18 +41,18 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load and count pending logs from Dexie IndexedDB
   const refreshLogs = useCallback(async () => {
     try {
-      const [logs, subs] = await Promise.all([
-        db.transactionLogs.toArray(),
-        db.cachedSubmissions.toArray(),
+      const [pCount, pendingSubs, logs] = await Promise.all([
+        db.transactionLogs.where('status').equals('pending').count(),
+        db.cachedSubmissions.where('syncStatus').equals('pending').count(),
+        db.transactionLogs.reverse().limit(100).toArray(),
       ]);
       setPendingLogs(logs);
-      const pendingCount = logs.filter(l => l.status === 'pending').length;
-      const pendingSubs = subs.filter(s => s.syncStatus === 'pending').length;
+      setPendingCount(pCount);
       setPendingSubmissionsCount(pendingSubs);
 
       if (!navigator.onLine) {
-        setSyncState(pendingCount > 0 || pendingSubs > 0 ? 'pending' : 'offline');
-      } else if (pendingCount > 0 || pendingSubs > 0) {
+        setSyncState(pCount > 0 || pendingSubs > 0 ? 'pending' : 'offline');
+      } else if (pCount > 0 || pendingSubs > 0) {
         setSyncState(prev => (prev === 'error' ? 'error' : 'pending'));
       } else {
         setSyncState('synced');
@@ -399,11 +400,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await refreshLogs();
     notifyStorageUpdated();
   };
-
-  const pendingCount = useMemo(
-    () => pendingLogs.filter(l => l.status === 'pending').length,
-    [pendingLogs]
-  );
 
   const contextValue = useMemo(
     () => ({
