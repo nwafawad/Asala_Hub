@@ -44,6 +44,11 @@ let inMemoryToken: string | null = null;
 
 export function setAuthToken(token: string | null): void {
   inMemoryToken = token;
+  if (token) {
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common.Authorization;
+  }
 }
 
 // Request Interceptor: Attach Bearer token
@@ -51,7 +56,8 @@ api.interceptors.request.use(
   config => {
     if (typeof window !== 'undefined') {
       if (!inMemoryToken) {
-        inMemoryToken = localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token');
+        // Prioritize sessionStorage (current session) over localStorage
+        inMemoryToken = sessionStorage.getItem('asala_token') || localStorage.getItem('asala_token');
       }
       if (inMemoryToken && config.headers) {
         if (typeof config.headers.set === 'function') {
@@ -100,7 +106,7 @@ api.interceptors.response.use(
       }
 
       if (typeof window !== 'undefined' && navigator.onLine) {
-        const token = localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token');
+        const token = sessionStorage.getItem('asala_token') || localStorage.getItem('asala_token');
 
         if (token && !token.startsWith('offline-token-')) {
           if (isRefreshing) {

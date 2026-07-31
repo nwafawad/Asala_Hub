@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { api } from '@/lib/api';
+import { api, setAuthToken } from '@/lib/api';
 import { db, seedInitialMockData, type IndexedDBUser, type UserSession } from '@/lib/db';
 import { deriveKeyFromPassword, setInMemoryKey, getInMemoryKey, zeroKey, encryptText, decryptText } from '@/lib/crypto';
 import { useOverlay } from './OverlayContext';
@@ -36,19 +36,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function purgeAllSessionStorage(): void {
   if (typeof window === 'undefined') return;
-  const asalaKeys: string[] = [];
+  setAuthToken(null);
+
+  const localAsalaKeys: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key?.startsWith('asala_')) asalaKeys.push(key);
+    if (key?.startsWith('asala_')) localAsalaKeys.push(key);
   }
-  asalaKeys.forEach(k => localStorage.removeItem(k));
+  localAsalaKeys.forEach(k => localStorage.removeItem(k));
 
-  const sessionKeys: string[] = [];
+  const sessionAsalaKeys: string[] = [];
   for (let i = 0; i < sessionStorage.length; i++) {
     const key = sessionStorage.key(i);
-    if (key?.startsWith('asala_')) sessionKeys.push(key);
+    if (key?.startsWith('asala_')) sessionAsalaKeys.push(key);
   }
-  sessionKeys.forEach(k => sessionStorage.removeItem(k));
+  sessionAsalaKeys.forEach(k => sessionStorage.removeItem(k));
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -124,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           setUser(freshUser);
           setToken(decryptedToken);
+          setAuthToken(decryptedToken);
 
           if (typeof window !== 'undefined') {
             localStorage.setItem('asala_role', freshUser.role);
@@ -147,10 +150,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsReAuthModalOpen(true);
         }
       } else if (typeof window !== 'undefined') {
-        const cachedRole = localStorage.getItem('asala_role');
-        const cachedEmail = localStorage.getItem('asala_email');
-        const cachedName = localStorage.getItem('asala_name');
-        const cachedToken = localStorage.getItem('asala_token') || sessionStorage.getItem('asala_token');
+        const cachedRole = sessionStorage.getItem('asala_role') || localStorage.getItem('asala_role');
+        const cachedEmail = sessionStorage.getItem('asala_email') || localStorage.getItem('asala_email');
+        const cachedName = sessionStorage.getItem('asala_name') || localStorage.getItem('asala_name');
+        const cachedToken = sessionStorage.getItem('asala_token') || localStorage.getItem('asala_token');
         if (cachedRole && cachedEmail) {
           setUser({
             id: 'boot-user',
@@ -160,6 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             preferredLanguage: 'en',
           });
           setToken(cachedToken);
+          setAuthToken(cachedToken);
         }
       }
     } catch (err) {
@@ -266,6 +270,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             setUser(profile);
             setToken(accessToken);
+            setAuthToken(accessToken);
             setIsOfflineSession(false);
             notifyStorageUpdated();
             return { success: true };
@@ -325,6 +330,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           setUser(matchUser);
           setToken(offlineToken);
+          setAuthToken(offlineToken);
           setIsOfflineSession(true);
           showToast('Signed in Offline', 'warning', `Signed in as ${matchUser.role} (${matchUser.fullName}).`);
           notifyStorageUpdated();
@@ -341,6 +347,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const logout = useCallback(async () => {
+    setAuthToken(null);
     purgeAllSessionStorage();
     zeroKey(); // Zero in-memory crypto key on logout (BR-7)
     await db.userSession.clear();
