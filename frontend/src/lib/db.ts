@@ -231,12 +231,12 @@ export class AsalaHubDatabase extends Dexie {
       cohortEnrollments: 'id, cohortId, studentId, studentName, status',
     });
 
-    // v7: Add compound indexes for submission status lookup and module sequence ordering
+    // v7: Add compound indexes for submission status lookup, module sequence ordering, and user status index
     this.version(7).stores({
       transactionLogs: '++id, offlineId, action, entityType, entityId, timestamp, status, serverSeqNum, [status+id]',
       cachedCourses: 'id, title, code, educatorName',
       cachedSubmissions: 'id, assignmentId, studentName, syncStatus, serverSeqNum, [assignmentId+syncStatus]',
-      users: 'id, email, role',
+      users: 'id, email, role, status',
       userSession: 'id, token, rememberMe, expiresAt',
       cachedModules: 'id, courseId, type, sequenceOrder, isCachedOffline, [courseId+sequenceOrder]',
       cachedCohorts: 'id, name, courseId, educatorId',

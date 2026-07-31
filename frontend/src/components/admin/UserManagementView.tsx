@@ -1,15 +1,9 @@
-'use client';
-
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useUserManagement } from '@/hooks/useUserManagement';
 import { AdminUserRead, UserRoleType } from '@/types/admin';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SkeletonCard } from '@/components/ui/Skeletons';
-import { PasswordResetModal } from './PasswordResetModal';
-import { SuspendConfirmModal } from './SuspendConfirmModal';
-import { UserDetailDrawer } from './UserDetailDrawer';
-import { CreateUserModal } from './CreateUserModal';
-import { BulkUserImportModal } from './BulkUserImportModal';
 import { startViewTransition } from '@/lib/view-transition';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
@@ -28,6 +22,143 @@ import {
   UserPlus,
   FileSpreadsheet,
 } from 'lucide-react';
+
+const PasswordResetModal = dynamic(() => import('./PasswordResetModal').then(m => m.PasswordResetModal), { ssr: false });
+const SuspendConfirmModal = dynamic(() => import('./SuspendConfirmModal').then(m => m.SuspendConfirmModal), { ssr: false });
+const UserDetailDrawer = dynamic(() => import('./UserDetailDrawer').then(m => m.UserDetailDrawer), { ssr: false });
+const CreateUserModal = dynamic(() => import('./CreateUserModal').then(m => m.CreateUserModal), { ssr: false });
+const BulkUserImportModal = dynamic(() => import('./BulkUserImportModal').then(m => m.BulkUserImportModal), { ssr: false });
+
+interface UserTableRowProps {
+  u: AdminUserRead;
+  activeRoleTab: UserRoleType;
+  onSelectDetail: (u: AdminUserRead) => void;
+  onResetPassword: (u: AdminUserRead) => void;
+  onSuspend: (u: AdminUserRead) => void;
+  onReactivate: (u: AdminUserRead) => void;
+  onForceLogout: (u: AdminUserRead) => void;
+}
+
+const UserTableRow: React.FC<UserTableRowProps> = React.memo(({
+  u,
+  onSelectDetail,
+  onResetPassword,
+  onSuspend,
+  onReactivate,
+  onForceLogout,
+}) => {
+  return (
+    <tr className="hover:bg-muted/30 transition-colors">
+      <td className="py-3.5 px-4 font-semibold text-foreground">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs shrink-0 uppercase">
+            {u.full_name.charAt(0)}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="truncate">{u.full_name}</span>
+            {u.must_change_password && (
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                Password Reset Required
+              </span>
+            )}
+          </div>
+        </div>
+      </td>
+
+      <td className="py-3.5 px-4 text-muted-foreground font-mono">{u.email}</td>
+
+      <td className="py-3.5 px-4 font-semibold text-foreground">
+        <span className="px-2 py-0.5 rounded bg-muted text-[11px] font-mono">
+          {u.course_count} {u.course_count === 1 ? 'course' : 'courses'}
+        </span>
+      </td>
+
+      <td className="py-3.5 px-4">
+        <StatusPill status={u.status === 'active' ? 'synced' : 'error'}>
+          {u.status.toUpperCase()}
+        </StatusPill>
+      </td>
+
+      <td className="py-3.5 px-4 text-muted-foreground text-[11px]">
+        {new Date(u.updated_at).toLocaleDateString()}
+      </td>
+
+      <td className="py-3.5 px-4 text-right">
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          </DropdownMenu.Trigger>
+
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              align="end"
+              className="z-50 min-w-[160px] p-1 rounded-xl border border-border bg-card shadow-xl text-xs flex flex-col gap-0.5 animate-in fade-in-0 zoom-in-95"
+            >
+              <DropdownMenu.Item
+                onClick={() => onSelectDetail(u)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-foreground hover:bg-muted cursor-pointer outline-none"
+              >
+                <Eye className="w-3.5 h-3.5 text-primary" />
+                <span>View Detail</span>
+              </DropdownMenu.Item>
+
+              <DropdownMenu.Item
+                onClick={() => onResetPassword(u)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-foreground hover:bg-muted cursor-pointer outline-none"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                <span>Reset Password</span>
+              </DropdownMenu.Item>
+
+              {u.status === 'active' ? (
+                <DropdownMenu.Item
+                  onClick={() => onSuspend(u)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 cursor-pointer outline-none font-semibold"
+                >
+                  <UserX className="w-3.5 h-3.5" />
+                  <span>Suspend Account</span>
+                </DropdownMenu.Item>
+              ) : (
+                <DropdownMenu.Item
+                  onClick={() => onReactivate(u)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer outline-none font-semibold"
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>Reactivate Account</span>
+                </DropdownMenu.Item>
+              )}
+
+              <DropdownMenu.Separator className="h-px bg-border my-1" />
+
+              <DropdownMenu.Item
+                onClick={() => onForceLogout(u)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted cursor-pointer outline-none"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Force Logout</span>
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      </td>
+    </tr>
+  );
+}, (prev, next) => {
+  return (
+    prev.u.id === next.u.id &&
+    prev.u.status === next.u.status &&
+    prev.u.full_name === next.u.full_name &&
+    prev.u.email === next.u.email &&
+    prev.u.course_count === next.u.course_count &&
+    prev.u.must_change_password === next.u.must_change_password &&
+    prev.u.updated_at === next.u.updated_at &&
+    prev.activeRoleTab === next.activeRoleTab
+  );
+});
+
+UserTableRow.displayName = 'UserTableRow';
 
 export const UserManagementView: React.FC = () => {
   const {
@@ -217,105 +348,19 @@ export const UserManagementView: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-border text-xs">
                 {users.map(u => (
-                  <tr key={u.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="py-3.5 px-4 font-semibold text-foreground">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs shrink-0 uppercase">
-                          {u.full_name.charAt(0)}
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="truncate">{u.full_name}</span>
-                          {u.must_change_password && (
-                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                              Password Reset Required
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-muted-foreground font-mono">{u.email}</td>
-
-                    <td className="py-3.5 px-4 font-semibold text-foreground">
-                      <span className="px-2 py-0.5 rounded bg-muted text-[11px] font-mono">
-                        {u.course_count} {u.course_count === 1 ? 'course' : 'courses'}
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <StatusPill status={u.status === 'active' ? 'synced' : 'error'}>
-                        {u.status.toUpperCase()}
-                      </StatusPill>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-muted-foreground text-[11px]">
-                      {new Date(u.updated_at).toLocaleDateString()}
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right">
-                      <DropdownMenu.Root>
-                        <DropdownMenu.Trigger asChild>
-                          <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        </DropdownMenu.Trigger>
-
-                        <DropdownMenu.Portal>
-                          <DropdownMenu.Content
-                            align="end"
-                            className="z-50 min-w-[160px] p-1 rounded-xl border border-border bg-card shadow-xl text-xs flex flex-col gap-0.5 animate-in fade-in-0 zoom-in-95"
-                          >
-                            <DropdownMenu.Item
-                              onClick={() => {
-                                setSelectedUser(u);
-                                setIsDetailDrawerOpen(true);
-                              }}
-                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-foreground hover:bg-muted cursor-pointer outline-none"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-primary" />
-                              <span>View Detail</span>
-                            </DropdownMenu.Item>
-
-                            <DropdownMenu.Item
-                              onClick={() => handleResetPassword(u)}
-                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-foreground hover:bg-muted cursor-pointer outline-none"
-                            >
-                              <KeyRound className="w-3.5 h-3.5 text-amber-500" />
-                              <span>Reset Password</span>
-                            </DropdownMenu.Item>
-
-                            {u.status === 'active' ? (
-                              <DropdownMenu.Item
-                                onClick={() => handleSuspend(u)}
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 cursor-pointer outline-none font-semibold"
-                              >
-                                <UserX className="w-3.5 h-3.5" />
-                                <span>Suspend Account</span>
-                              </DropdownMenu.Item>
-                            ) : (
-                              <DropdownMenu.Item
-                                onClick={() => handleReactivate(u)}
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer outline-none font-semibold"
-                              >
-                                <UserCheck className="w-3.5 h-3.5" />
-                                <span>Reactivate Account</span>
-                              </DropdownMenu.Item>
-                            )}
-
-                            <DropdownMenu.Separator className="h-px bg-border my-1" />
-
-                            <DropdownMenu.Item
-                              onClick={() => handleForceLogout(u)}
-                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted cursor-pointer outline-none"
-                            >
-                              <LogOut className="w-3.5 h-3.5" />
-                              <span>Force Logout</span>
-                            </DropdownMenu.Item>
-                          </DropdownMenu.Content>
-                        </DropdownMenu.Portal>
-                      </DropdownMenu.Root>
-                    </td>
-                  </tr>
+                  <UserTableRow
+                    key={u.id}
+                    u={u}
+                    activeRoleTab={activeRoleTab}
+                    onSelectDetail={item => {
+                      setSelectedUser(item);
+                      setIsDetailDrawerOpen(true);
+                    }}
+                    onResetPassword={handleResetPassword}
+                    onSuspend={handleSuspend}
+                    onReactivate={handleReactivate}
+                    onForceLogout={handleForceLogout}
+                  />
                 ))}
               </tbody>
             </table>

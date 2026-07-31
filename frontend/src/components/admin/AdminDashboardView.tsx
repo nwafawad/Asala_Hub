@@ -1,7 +1,6 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAdminApi } from '@/hooks/useAdminApi';
+import { useStorageUpdateListener } from '@/hooks/useStorageUpdateListener';
 import { AdminDashboardStats } from '@/types/admin';
 import { StatCard } from '@/components/ui/StatCard';
 import { SkeletonCard } from '@/components/ui/Skeletons';
@@ -21,12 +20,12 @@ interface AdminDashboardViewProps {
   onNavigateTab?: (tab: string) => void;
 }
 
-export const AdminDashboardView: React.FC<AdminDashboardViewProps> = () => {
+export const AdminDashboardView: React.FC<AdminDashboardViewProps> = React.memo(() => {
   const { getDashboardStats } = useAdminApi();
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const statsRes = await getDashboardStats();
@@ -36,11 +35,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [getDashboardStats]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
+
+  useStorageUpdateListener(loadData);
 
   const handleRefresh = () => {
     startViewTransition(() => {
@@ -172,4 +173,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = () => {
       </div>
     </div>
   );
-};
+});
+
+AdminDashboardView.displayName = 'AdminDashboardView';

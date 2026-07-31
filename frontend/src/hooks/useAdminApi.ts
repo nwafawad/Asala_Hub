@@ -33,11 +33,18 @@ export function useAdminApi() {
         return res.data;
       } catch (err) {
         console.warn('Admin API getUsers unavailable, computing fallback from IndexedDB:', err);
-        let localUsers = await db.users.toArray();
+        let collection;
         if (params?.role) {
-          localUsers = localUsers.filter(u => u.role === params.role);
+          collection = db.users.where('role').equals(params.role);
+        } else if (params?.status) {
+          collection = db.users.where('status').equals(params.status);
+        } else {
+          collection = db.users.toCollection();
         }
-        if (params?.status) {
+
+        let localUsers = await collection.toArray();
+
+        if (params?.role && params?.status) {
           localUsers = localUsers.filter(u => (u.status || 'active') === params.status);
         }
         if (params?.search) {
