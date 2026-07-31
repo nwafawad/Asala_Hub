@@ -26,12 +26,18 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('asala_lang', lang);
+    if (typeof document !== 'undefined') {
+      document.cookie = `asala_lang=${lang}; path=/; max-age=31536000`;
+    }
   }, []);
 
   const toggleLanguage = useCallback(() => {
     setLanguageState(prev => {
       const next = prev === 'en' ? 'ar' : 'en';
       localStorage.setItem('asala_lang', next);
+      if (typeof document !== 'undefined') {
+        document.cookie = `asala_lang=${next}; path=/; max-age=31536000`;
+      }
       return next;
     });
   }, []);

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Lora } from 'next/font/google';
+import { Geist, Lora, Noto_Sans_Arabic } from 'next/font/google';
+import { cookies } from 'next/headers';
 import { ThemeProvider } from 'next-themes';
 import { I18nProvider } from '@/context/I18nContext';
 import { SyncProvider } from '@/context/SyncContext';
@@ -19,6 +20,11 @@ const loraSerif = Lora({
   subsets: ['latin'],
 });
 
+const notoSansArabic = Noto_Sans_Arabic({
+  variable: '--font-arabic',
+  subsets: ['arabic'],
+});
+
 export const metadata: Metadata = {
   title: 'Asala Hub — Offline-First Campus LMS',
   description: 'Robust offline LMS platform for educational campuses',
@@ -34,13 +40,18 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const langCookie = cookieStore.get('asala_lang')?.value;
+  const lang = langCookie === 'ar' ? 'ar' : 'en';
+  const dir = lang === 'ar' ? 'rtl' : 'ltr';
+
   return (
-    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${loraSerif.variable}`}>
+    <html lang={lang} dir={dir} suppressHydrationWarning className={`${geistSans.variable} ${loraSerif.variable} ${notoSansArabic.variable}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <I18nProvider>

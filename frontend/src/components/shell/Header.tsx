@@ -65,13 +65,13 @@ export const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
             </button>
           )}
           <div className="relative w-full">
-            <Search className="w-4 h-4 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <input
               ref={inputRef}
               type="text"
               placeholder={t.searchPlaceholder}
               aria-label={t.searchPlaceholder}
-              className="w-full h-9 pl-9 rtl:pl-3 rtl:pr-9 pr-3 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-full h-9 ps-9 pe-3 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
         </div>
@@ -126,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
               </DropdownMenu.Trigger>
 
               <DropdownMenu.Portal>
-                <DropdownMenu.Content className="z-50 min-w-[200px] bg-card border border-border p-2 rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95">
+                <DropdownMenu.Content align="end" className="z-50 min-w-[200px] bg-card border border-border p-2 rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95">
                   <div className="px-3 py-2 border-b border-border mb-1">
                     <p className="text-xs font-bold text-foreground">{user.fullName}</p>
                     <p className="text-[10px] text-muted-foreground">{user.email} ({isEducator ? 'Educator' : 'Student'})</p>

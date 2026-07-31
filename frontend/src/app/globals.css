@@ -5,6 +5,7 @@
 @theme inline {
   --font-heading: var(--font-lora), serif;
   --font-sans: var(--font-geist), sans-serif;
+  --font-arabic: var(--font-arabic), var(--font-geist), sans-serif;
 
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -112,6 +113,16 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
   }
+  [dir="rtl"] body {
+    font-family: var(--font-arabic), var(--font-sans), sans-serif;
+  }
+  [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
+    font-family: var(--font-arabic), var(--font-heading), serif;
+  }
+}
+
+.font-arabic {
+  font-family: var(--font-arabic), var(--font-sans), sans-serif;
 }
 
 /* ==========================================

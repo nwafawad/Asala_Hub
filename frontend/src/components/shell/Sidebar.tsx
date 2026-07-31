@@ -28,9 +28,10 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiveTab, isOpen = false, onClose }) => {
-  const { t } = useI18n();
+  const { t, direction } = useI18n();
   const { user } = useAuth();
   const { pendingCount } = useSync();
+  const isRtl = direction === 'rtl';
 
   const navItems = React.useMemo(() => {
     if (user?.role === 'admin') {
@@ -86,8 +87,12 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ activeTab, setActiv
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 rtl:left-auto rtl:right-0 z-50 w-64 border-r rtl:border-r-0 rtl:border-l border-border bg-card flex flex-col justify-between shrink-0 transition-transform duration-300 ease-in-out overflow-y-auto shadow-2xl md:shadow-none md:static md:sticky md:top-0 md:h-screen md:translate-x-0 md:z-40',
-        isOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full md:translate-x-0'
+        'fixed inset-y-0 start-0 z-50 w-64 border-e border-border bg-card flex flex-col justify-between shrink-0 transition-transform duration-300 ease-in-out overflow-y-auto shadow-2xl md:shadow-none md:static md:sticky md:top-0 md:h-screen md:translate-x-0 md:z-40',
+        isOpen
+          ? 'translate-x-0'
+          : isRtl
+          ? 'translate-x-full md:translate-x-0'
+          : '-translate-x-full md:translate-x-0'
       )}
     >
       <div className="p-6">

@@ -8,6 +8,7 @@ import { startViewTransition } from '@/lib/view-transition';
 import { useStorage } from '@/context/StorageContext';
 import { useSync } from '@/context/SyncContext';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/context/I18nContext';
 import { isEducatorUser } from '@/lib/utils';
 import { AlertTriangle, HardDrive, RefreshCw, WifiOff } from 'lucide-react';
 
@@ -18,6 +19,7 @@ interface AppShellProps {
 }
 
 export const AppShell: React.FC<AppShellProps> = ({ currentTab, children, onTabChange }) => {
+  const { direction } = useI18n();
   const { user } = useAuth();
   const isEducator = isEducatorUser(user);
   const defaultTab = isEducator ? 'curriculum' : 'dashboard';
@@ -73,10 +75,10 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, children, onTabC
   const showBlockingModal = isNearFull || isQueueFull;
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex antialiased selection:bg-primary/20 selection:text-primary transition-colors relative">
+    <div dir={direction} className="min-h-screen bg-background text-foreground flex antialiased selection:bg-primary/20 selection:text-primary transition-colors relative">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-xl focus:shadow-lg focus:outline-none"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:start-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-xl focus:shadow-lg focus:outline-none"
       >
         Skip to main content
       </a>
