@@ -6,12 +6,15 @@ export function useCourseSearch(courses: CachedCourse[]) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const filteredCourses = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query && selectedCategory === 'all') return courses;
+
     return courses.filter(course => {
       const matchesSearch =
-        !searchQuery.trim() ||
-        course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.educatorName.toLowerCase().includes(searchQuery.toLowerCase());
+        !query ||
+        course.title.toLowerCase().includes(query) ||
+        course.code.toLowerCase().includes(query) ||
+        course.educatorName.toLowerCase().includes(query);
 
       const matchesCategory =
         selectedCategory === 'all' ||

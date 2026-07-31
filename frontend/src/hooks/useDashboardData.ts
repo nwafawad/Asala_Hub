@@ -26,7 +26,7 @@ export function useDashboardData() {
       let [cList, mList, logsList, subCount] = await Promise.all([
         db.cachedCourses.toArray(),
         db.cachedModules.toArray(),
-        db.transactionLogs.toArray(),
+        db.transactionLogs.reverse().limit(3).toArray(),
         db.cachedSubmissions.count(),
       ]);
 
@@ -36,7 +36,7 @@ export function useDashboardData() {
 
       setCourses(cList);
       setAssignments(mList.filter(m => m.type === 'assignment'));
-      setRecentLogs(logsList.slice(-3).reverse());
+      setRecentLogs(logsList);
       setStats({
         courseCount: cList.length,
         completedModules: completedCount,

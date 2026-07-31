@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAdminApi } from '@/hooks/useAdminApi';
 import { useOverlay } from '@/context/OverlayContext';
+import { useDebounce } from '@/hooks/useDebounce';
 import { AdminUserRead, UserRoleType } from '@/types/admin';
 
 export function useUserManagement() {
@@ -9,6 +10,7 @@ export function useUserManagement() {
 
   const [activeRoleTab, setActiveRoleTab] = useState<UserRoleType>('student');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [users, setUsers] = useState<AdminUserRead[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -19,7 +21,7 @@ export function useUserManagement() {
       const data = await getUsers({
         role: activeRoleTab,
         status: statusFilter === 'all' ? undefined : statusFilter,
-        search: searchQuery.trim() || undefined,
+        search: debouncedSearchQuery.trim() || undefined,
       });
       setUsers(data);
     } catch (err) {
@@ -27,7 +29,7 @@ export function useUserManagement() {
     } finally {
       setIsLoading(false);
     }
-  }, [getUsers, activeRoleTab, statusFilter, searchQuery]);
+  }, [getUsers, activeRoleTab, statusFilter, debouncedSearchQuery]);
 
   useEffect(() => {
     fetchUsers();

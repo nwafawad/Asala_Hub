@@ -20,28 +20,35 @@ export function useIdleTimer({
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const warningRef = useRef<NodeJS.Timeout | null>(null);
   const isWarningShownRef = useRef<boolean>(false);
+  const lastActiveRef = useRef<number>(Date.now());
+  const lastStorageWriteRef = useRef<number>(0);
 
   const updateLastActive = useCallback(() => {
     const now = Date.now();
-    try {
-      localStorage.setItem(LAST_ACTIVE_KEY, now.toString());
-    } catch {
-      // Ignore storage quota or access errors
+    lastActiveRef.current = now;
+    if (now - lastStorageWriteRef.current >= 15000) {
+      lastStorageWriteRef.current = now;
+      try {
+        localStorage.setItem(LAST_ACTIVE_KEY, now.toString());
+      } catch {
+        // Ignore storage quota or access errors
+      }
     }
     return now;
   }, []);
 
   const getLastActive = useCallback((): number => {
+    let stored = lastActiveRef.current;
     try {
       const val = localStorage.getItem(LAST_ACTIVE_KEY);
       if (val) {
         const parsed = parseInt(val, 10);
-        if (!isNaN(parsed)) return parsed;
+        if (!isNaN(parsed)) stored = Math.max(stored, parsed);
       }
     } catch {
       // Ignore storage errors
     }
-    return Date.now();
+    return stored;
   }, []);
 
   const resetTimers = useCallback(() => {

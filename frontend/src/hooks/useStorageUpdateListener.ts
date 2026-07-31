@@ -8,14 +8,20 @@ import { ASALA_STORAGE_UPDATED_EVENT } from '@/lib/events';
  */
 export function useStorageUpdateListener(onUpdate: () => void): void {
   useEffect(() => {
+    let timeout: NodeJS.Timeout | null = null;
+
     const handleUpdate = () => {
-      onUpdate();
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        onUpdate();
+      }, 300);
     };
 
     window.addEventListener(ASALA_STORAGE_UPDATED_EVENT, handleUpdate);
     window.addEventListener('storage', handleUpdate);
 
     return () => {
+      if (timeout) clearTimeout(timeout);
       window.removeEventListener(ASALA_STORAGE_UPDATED_EVENT, handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };

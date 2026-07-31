@@ -166,11 +166,13 @@ export function useAdminApi() {
       return res.data;
     } catch (err) {
       console.warn('Backend admin dashboard stats unavailable, computing fallback metrics from local DB:', err);
-      const localUsers = await db.users.toArray();
-      const students = localUsers.filter(u => u.role === 'student').length;
-      const educators = localUsers.filter(u => u.role === 'educator').length;
-      const active = localUsers.filter(u => !u.status || u.status === 'active').length;
-      const suspended = localUsers.filter(u => u.status === 'suspended').length;
+      const [students, educators, suspended, total] = await Promise.all([
+        db.users.where('role').equals('student').count(),
+        db.users.where('role').equals('educator').count(),
+        db.users.where('status').equals('suspended').count(),
+        db.users.count(),
+      ]);
+      const active = Math.max(0, total - suspended);
       return {
         total_students: students,
         total_educators: educators,
